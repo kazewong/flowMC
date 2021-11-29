@@ -1,5 +1,5 @@
 
-from model.maf import MaskedAutoregressiveFlow
+from nfsampler.NFmodel.maf import MaskedAutoregressiveFlow
 import jax
 import jax.numpy as jnp                # JAX NumPy
 import jax.random as random            # JAX random
@@ -9,8 +9,11 @@ from flax import linen as nn           # The Linen API
 from flax.training import train_state  # Useful dataclass to keep train state
 import optax                           # Optimizers
 
-
 from sklearn.datasets import make_moons
+
+"""
+Training a masked autoregressive flow to the dual moons dataset.
+"""
 
 
 model = MaskedAutoregressiveFlow(2,64,5)
