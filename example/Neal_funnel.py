@@ -44,7 +44,7 @@ def rw_metropolis_kernel(rng_key, logpdf, position, log_prob, transform_map = No
     # if transform_map != None:
     #     move_proposal = transform_map(move_proposal)
     
-    if transform_map != None:
+    if transform_map != None and inverse_map != None:
         proposal = inverse_map(position) + move_proposal 
         proposal = transform_map(proposal)
         proposal_log_prob = logpdf(proposal)
@@ -100,11 +100,11 @@ def inverse_map(x):
     z = x[1:]/jnp.exp(x[0]/2)
     return jnp.append(y,z)
 
-samples = 10000
+samples = 1000
 chains = 100
 precompiled = False
 
-n_dim = 2
+n_dim = 5
 n_samples = samples
 n_chains = chains
 rng_key = jax.random.PRNGKey(42)
@@ -121,3 +121,12 @@ assert raw_positions.shape == (n_chains, n_samples, n_dim)
 raw_positions.block_until_ready()
 assert transformed_positions.shape == (n_chains, n_samples, n_dim)
 transformed_positions.block_until_ready()
+
+raw_flatchain = np.concatenate(raw_positions[:,100:],axis=0)
+transformed_flatchain = np.concatenate(transformed_positions[:,100:],axis=0)
+
+import matplotlib.pyplot as plt
+plt.figure(figsize=(10,10))
+plt.scatter(raw_flatchain[:,0],raw_flatchain[:,1],s=1,alpha=0.1)
+plt.scatter(transformed_flatchain[:,0],transformed_flatchain[:,1],s=1,alpha=0.1)
+plt.show()
