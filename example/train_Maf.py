@@ -12,7 +12,7 @@ import optax                           # Optimizers
 from sklearn.datasets import make_moons
 
 """
-Training a masked autoregressive flow to the dual moons dataset.
+Training a masked autoregressive flow to fit the dual moons dataset.
 """
 
 
@@ -77,7 +77,7 @@ for epoch in range(1, num_epochs + 1):
     state = train_epoch(state, data[0], batch_size, epoch, input_rng)
     print('Loss: %.3f' % eval_step(state.params, data[0]))
 
-mean = jnp.zeros((10000,2))
-cov = jnp.repeat(jnp.eye(2)[None,:],10000,axis=0)
+mean = jnp.zeros((batch_size,2))
+cov = jnp.repeat(jnp.eye(2)[None,:],batch_size,axis=0)
 gaussian = random.multivariate_normal(key1, mean, cov)
 samples = model.apply({'params': state.params},gaussian,method=model.inverse)
