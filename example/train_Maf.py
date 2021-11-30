@@ -81,3 +81,9 @@ mean = jnp.zeros((batch_size,2))
 cov = jnp.repeat(jnp.eye(2)[None,:],batch_size,axis=0)
 gaussian = random.multivariate_normal(key1, mean, cov)
 samples = model.apply({'params': state.params},gaussian,method=model.inverse)
+
+import matplotlib.pyplot as plt
+plt.figure(figsize=(10,10))
+plt.scatter(data[0][:,0], data[0][:,1], s=0.1, c='r',label='data')
+plt.scatter(samples[0][:,1], samples[0][:,0], s=0.1, c='b',label='NF') # x-y is flipped in this configuration
+plt.show()

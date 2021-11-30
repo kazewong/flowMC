@@ -85,8 +85,8 @@ def mixture_logpdf(x):
     """
     cov = jnp.repeat(jnp.eye(2)[None,:],1,axis=0)
     mean = jnp.array([[0.0, 0.0]])
-    dist_1 = partial(multivariate_normal.logpdf, mean=mean+2.0, cov=cov)
-    dist_2 = partial(multivariate_normal.logpdf, mean=mean-2.0, cov=cov)
+    dist_1 = partial(multivariate_normal.logpdf, mean=mean+5.0, cov=cov)
+    dist_2 = partial(multivariate_normal.logpdf, mean=mean-5.0, cov=cov)
     # dist_3 = partial(norm.logpdf, loc=3.2, scale=5)
     # dist_4 = partial(norm.logpdf, loc=2.5, scale=2.8)
     log_probs = jnp.array([dist_1(x), dist_2(x)])#, dist_3(x), dist_4(x)])
@@ -95,7 +95,7 @@ def mixture_logpdf(x):
 
 
 samples = 30000
-chains = 4
+chains = 100
 precompiled = False
 
 n_dim = 2
@@ -111,3 +111,10 @@ run_mcmc = jax.vmap(rw_metropolis_sampler, in_axes=(0, None, None, 1),
 positions = run_mcmc(rng_keys, n_samples, mixture_logpdf, initial_position)
 assert positions.shape == (n_chains, n_samples, n_dim)
 positions.block_until_ready()
+
+flat_chain = np.concatenate(positions[:,1000:],axis=0)
+
+import matplotlib.pyplot as plt
+plt.figure(figsize=(10,10))
+plt.scatter(flat_chain[:,0],flat_chain[:,1],s=0.1)
+plt.show()
