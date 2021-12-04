@@ -1,5 +1,5 @@
 
-from nfsampler.NFmodel.maf import MaskedAutoregressiveFlow
+from nfsampler.nfmodel.maf import MaskedAutoregressiveFlow
 import jax
 import jax.numpy as jnp                # JAX NumPy
 import jax.random as random            # JAX random

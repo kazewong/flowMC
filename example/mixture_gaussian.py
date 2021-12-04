@@ -69,7 +69,7 @@ def rw_metropolis_sampler(rng_key, n_samples, logpdf, initial_position):
                                                  initial_state)
     
     
-    return all_positions
+    return rng_key,all_positions, log_prob
 
 
 def mixture_logpdf(x):

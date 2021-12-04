@@ -87,3 +87,9 @@ class MaskedAutoregressiveFlow(nn.Module):
             log_jacobian += log_jacobian_
         return inputs, log_jacobian
     
+    def sample(self, rng_key, n_samples, params):
+        mean = jnp.zeros((n_samples,self.n_dim))
+        cov = jnp.repeat(jnp.eye(self.n_dim)[None,:],n_samples,axis=0)
+        gaussian = jax.random.multivariate_normal(rng_key, mean, cov)
+        samples = self.apply({'params': params},gaussian,method=self.inverse)
+        return samples
