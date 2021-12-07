@@ -25,8 +25,8 @@ Define hyper-parameters here.
 
 learning_rate = 0.01
 momentum = 0.9
-num_epochs = 500
-batch_size = 10000
+num_epochs = 300
+batch_size = 800
 
 def train_flow(rng, model, state, data):
 
@@ -76,14 +76,17 @@ def train_flow(rng, model, state, data):
     return rng, state
 
 def dual_moon_pe(x):
+    """
+    Term 2 separate the distriubiotn
+    """
     term1 = 0.5 * ((jnp.linalg.norm(x, axis=-1) - 2) / 0.1) ** 2
     term2 = -0.5 * ((x[..., :1] + jnp.array([-5., 5.])) / 0.6) ** 2
     term3 = -0.5 * ((x[..., 1:2] + jnp.array([-5., 5.])) / 0.8) ** 2
     return -(term1 - logsumexp(term2, axis=-1) - logsumexp(term3, axis=-1))
 
 n_dim = 3
-n_samples = 10000
-n_chains = 100
+n_samples = 1000
+n_chains = 8
 precompiled = False
 rng_key = jax.random.PRNGKey(42)
 rng_key_mcmc, rng_key_nf = jax.random.split(rng_key,2)
@@ -105,8 +108,8 @@ state = train_state.TrainState.create(apply_fn=model.apply, params=params, tx=tx
 print(rng_keys_mcmc)
 rng_keys_mcmc, positions, log_prob = run_mcmc(rng_keys_mcmc, n_samples, dual_moon_pe, initial_position)
 flat_chain = positions.reshape(-1,n_dim)
-#rng_keys_nf, state1 = train_flow(rng_key_nf, model, state, flat_chain)
+rng_keys_nf, state1 = train_flow(rng_key_nf, model, state, flat_chain)
 
-# rng_keys_mcmc, positions, log_prob = run_mcmc(rng_keys_mcmc, n_samples, neal_funnel, positions.T[:,-1])
+# rng_keys_mcmc, positions, log_prob = run_mcmc(rng_keys_mcmc, n_samples, dual_moon_pe, positions.T[:,-1])
 # flat_chain = positions.reshape(-1,n_dim)
-# rng_keys_nf, state1 = train_flow(rng_key_nf, model, state, flat_chain)
+# rng_keys_nf, state1 = train_flow(rng_key_nf, model, state1, flat_chain)
