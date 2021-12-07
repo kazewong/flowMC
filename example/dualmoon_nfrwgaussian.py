@@ -23,10 +23,7 @@ Training a masked autoregressive flow to fit the dual moons dataset.
 Define hyper-parameters here.
 """
 
-learning_rate = 0.01
-momentum = 0.9
-num_epochs = 100
-batch_size = 1000
+
 
 def train_flow(rng, model, state, data):
 
@@ -77,11 +74,11 @@ def train_flow(rng, model, state, data):
 
 def dual_moon_pe(x):
     """
-    Term 2 separate the distriubiotn
+    Term 2 and 3 separate the distriubiotn and smear it along the first and second dimension
     """
     term1 = 0.5 * ((jnp.linalg.norm(x, axis=-1) - 2) / 0.1) ** 2
-    term2 = -0.5 * ((x[..., :1] + jnp.array([-5., 5.])) / 0.6) ** 2
-    term3 = -0.5 * ((x[..., 1:2] + jnp.array([-5., 5.])) / 0.8) ** 2
+    term2 = -0.5 * ((x[..., :1] + jnp.array([-3., 3.])) / 0.8) ** 2
+    term3 = -0.5 * ((x[..., 1:2] + jnp.array([-3., 3.])) / 0.6) ** 2
     return -(term1 - logsumexp(term2, axis=-1) - logsumexp(term3, axis=-1))
 
 def sample_nf(model, param, rng_key,n_sample):
@@ -91,9 +88,13 @@ def sample_nf(model, param, rng_key,n_sample):
     return rng_key,samples
 
 n_dim = 5
-n_samples = 200
+n_samples = 2000
 nf_samples = 100
 n_chains = 30
+learning_rate = 0.01
+momentum = 0.9
+num_epochs = 10
+batch_size = 10000
 precompiled = False
 
 print("Preparing RNG keys")
@@ -137,7 +138,7 @@ def sampling_loop(rng_keys_nf, rng_keys_mcmc, model, state, initial_position):
 
 last_step = initial_position
 chains = []
-for i in range(3):
+for i in range(1):
     rng_keys_nf, rng_keys_mcmc, state, last_step, accept_nf_log_prob, positions = sampling_loop(rng_keys_nf, rng_keys_mcmc, model, state, last_step)
     last_step = last_step.T
     chains.append(positions)
