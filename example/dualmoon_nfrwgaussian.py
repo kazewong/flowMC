@@ -25,8 +25,8 @@ Define hyper-parameters here.
 
 learning_rate = 0.01
 momentum = 0.9
-num_epochs = 300
-batch_size = 800
+num_epochs = 100
+batch_size = 1000
 
 def train_flow(rng, model, state, data):
 
@@ -84,15 +84,26 @@ def dual_moon_pe(x):
     term3 = -0.5 * ((x[..., 1:2] + jnp.array([-5., 5.])) / 0.8) ** 2
     return -(term1 - logsumexp(term2, axis=-1) - logsumexp(term3, axis=-1))
 
-n_dim = 3
-n_samples = 1000
-n_chains = 8
+def sample_nf(model, param, rng_key,n_sample):
+    rng_key, subkey = random.split(rng_key)
+    samples = model.apply({'params': param}, subkey, n_sample,param, method=model.sample)
+    samples = jnp.flip(samples[0],axis=1)
+    return rng_key,samples
+
+n_dim = 5
+n_samples = 200
+nf_samples = 100
+n_chains = 30
 precompiled = False
+
+print("Preparing RNG keys")
 rng_key = jax.random.PRNGKey(42)
 rng_key_mcmc, rng_key_nf = jax.random.split(rng_key,2)
 
 rng_keys_mcmc = jax.random.split(rng_key_mcmc, n_chains)  # (nchains,)
 rng_keys_nf, init_rng_keys_nf = jax.random.split(rng_key_nf,2)
+
+print("Initializing MCMC model and normalizing flow model.")
 
 initial_position = jnp.zeros((n_dim, n_chains)) #(n_dim, n_chains)
 
@@ -105,11 +116,28 @@ run_mcmc = jax.vmap(rw_metropolis_sampler, in_axes=(0, None, None, 1),
 tx = optax.adam(learning_rate, momentum)
 state = train_state.TrainState.create(apply_fn=model.apply, params=params, tx=tx)
 
-print(rng_keys_mcmc)
-rng_keys_mcmc, positions, log_prob = run_mcmc(rng_keys_mcmc, n_samples, dual_moon_pe, initial_position)
-flat_chain = positions.reshape(-1,n_dim)
-rng_keys_nf, state1 = train_flow(rng_key_nf, model, state, flat_chain)
+print("Sampling")
 
-# rng_keys_mcmc, positions, log_prob = run_mcmc(rng_keys_mcmc, n_samples, dual_moon_pe, positions.T[:,-1])
-# flat_chain = positions.reshape(-1,n_dim)
-# rng_keys_nf, state1 = train_flow(rng_key_nf, model, state1, flat_chain)
+def sampling_loop(rng_keys_nf, rng_keys_mcmc, model, state, initial_position):
+    rng_keys_mcmc, positions, log_prob = run_mcmc(rng_keys_mcmc, n_samples, dual_moon_pe, initial_position)
+    flat_chain = positions.reshape(-1,n_dim)
+
+    rng_keys_nf, state = train_flow(rng_key_nf, model, state, flat_chain)
+
+    rng_keys_nf, samples = sample_nf(model, state.params, rng_keys_nf, n_chains*nf_samples)
+    rng_keys_nf, subkey = jax.random.split(rng_keys_nf)
+    log_pdf_nfsample = dual_moon_pe(samples).reshape(nf_samples,n_chains)
+    log_uniform = jnp.log(jax.random.uniform(subkey,(nf_samples,n_chains)))
+    do_accept = log_uniform < log_pdf_nfsample - log_prob
+
+    accept_index = jnp.argmax(do_accept>0 , axis=0)*n_chains + jnp.arange(n_chains)
+    accept_nf_sample = samples[accept_index]
+    accept_nf_log_prob = log_pdf_nfsample.flatten()[accept_index] 
+    return rng_keys_nf, rng_keys_mcmc, state, accept_nf_sample, accept_nf_log_prob, positions
+
+last_step = initial_position
+chains = []
+for i in range(3):
+    rng_keys_nf, rng_keys_mcmc, state, last_step, accept_nf_log_prob, positions = sampling_loop(rng_keys_nf, rng_keys_mcmc, model, state, last_step)
+    last_step = last_step.T
+    chains.append(positions)
