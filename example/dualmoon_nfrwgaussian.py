@@ -88,12 +88,12 @@ def sample_nf(model, param, rng_key,n_sample):
     return rng_key,samples
 
 n_dim = 5
-n_samples = 2000
+n_samples = 200
 nf_samples = 100
-n_chains = 30
+n_chains = 100
 learning_rate = 0.01
 momentum = 0.9
-num_epochs = 10
+num_epochs = 100
 batch_size = 10000
 precompiled = False
 
@@ -138,7 +138,21 @@ def sampling_loop(rng_keys_nf, rng_keys_mcmc, model, state, initial_position):
 
 last_step = initial_position
 chains = []
-for i in range(1):
+for i in range(5):
     rng_keys_nf, rng_keys_mcmc, state, last_step, accept_nf_log_prob, positions = sampling_loop(rng_keys_nf, rng_keys_mcmc, model, state, last_step)
     last_step = last_step.T
     chains.append(positions)
+
+chains = np.concatenate(chains,axis=1)
+nf_samples = sample_nf(model, state.params, rng_keys_nf, 10000)
+
+import corner
+import matplotlib.pyplot as plt
+
+# Plot one chain to show the jump
+plt.plot(chains[70,:,0],chains[70,:,1])
+plt.show()
+plt.close()
+
+# Plot all chains
+figure = corner.corner(chains.reshape(-1,n_dim), labels=["$x_1$", "$x_2$", "$x_3$", "$x_4$", "$x_5$"])
