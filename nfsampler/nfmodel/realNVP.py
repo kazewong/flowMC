@@ -87,8 +87,8 @@ class RealNVP(nn.Module):
         return x, log_det
 
     def sample(self, rng_key, n_samples, params):
-        mean = jnp.zeros((n_samples,self.n_dim))
-        cov = jnp.repeat(jnp.eye(self.n_dim)[None,:],n_samples,axis=0)
+        mean = jnp.zeros((n_samples,self.n_features))
+        cov = jnp.repeat(jnp.eye(self.n_features)[None,:],n_samples,axis=0)
         gaussian = jax.random.multivariate_normal(rng_key, mean, cov)
         samples = self.apply({'params': params},gaussian,method=self.inverse)
         return samples
