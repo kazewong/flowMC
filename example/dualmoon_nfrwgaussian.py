@@ -109,7 +109,7 @@ print("Initializing MCMC model and normalizing flow model.")
 initial_position = jnp.zeros((n_dim, n_chains)) #(n_dim, n_chains)
 
 model = MaskedAutoregressiveFlow(n_dim,64,4)
-params = model.init(init_rng_keys_nf, jnp.ones((1,n_dim)))['params']
+params = model.init(init_rng_keys_nf, jnp.ones((batch_size,n_dim)))
 
 run_mcmc = jax.vmap(rw_metropolis_sampler, in_axes=(0, None, None, 1),
                     out_axes=0)
@@ -138,21 +138,22 @@ def sampling_loop(rng_keys_nf, rng_keys_mcmc, model, state, initial_position):
 
 last_step = initial_position
 chains = []
-for i in range(5):
-    rng_keys_nf, rng_keys_mcmc, state, last_step, accept_nf_log_prob, positions = sampling_loop(rng_keys_nf, rng_keys_mcmc, model, state, last_step)
-    last_step = last_step.T
-    chains.append(positions)
+rng_keys_mcmc, positions, log_prob = run_mcmc(rng_keys_mcmc, n_samples, dual_moon_pe, initial_position)
+# for i in range(10):
+#     rng_keys_nf, rng_keys_mcmc, state, last_step, accept_nf_log_prob, positions = sampling_loop(rng_keys_nf, rng_keys_mcmc, model, state, last_step)
+#     last_step = last_step.T
+#     chains.append(positions)
 
-chains = np.concatenate(chains,axis=1)
-nf_samples = sample_nf(model, state.params, rng_keys_nf, 10000)
+# chains = np.concatenate(chains,axis=1)
+# nf_samples = sample_nf(model, state.params, rng_keys_nf, 10000)
 
-import corner
-import matplotlib.pyplot as plt
+# import corner
+# import matplotlib.pyplot as plt
 
-# Plot one chain to show the jump
-plt.plot(chains[70,:,0],chains[70,:,1])
-plt.show()
-plt.close()
+# # Plot one chain to show the jump
+# plt.plot(chains[70,:,0],chains[70,:,1])
+# plt.show()
+# plt.close()
 
-# Plot all chains
-figure = corner.corner(chains.reshape(-1,n_dim), labels=["$x_1$", "$x_2$", "$x_3$", "$x_4$", "$x_5$"])
+# # Plot all chains
+# figure = corner.corner(chains.reshape(-1,n_dim), labels=["$x_1$", "$x_2$", "$x_3$", "$x_4$", "$x_5$"])
