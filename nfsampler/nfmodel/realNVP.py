@@ -85,3 +85,10 @@ class RealNVP(nn.Module):
             x, log_det_i = self.affine_coupling[self.n_layer-1-i].inverse(x)
             log_det += log_det_i
         return x, log_det
+
+    def sample(self, rng_key, n_samples, params):
+        mean = jnp.zeros((n_samples,self.n_dim))
+        cov = jnp.repeat(jnp.eye(self.n_dim)[None,:],n_samples,axis=0)
+        gaussian = jax.random.multivariate_normal(rng_key, mean, cov)
+        samples = self.apply({'params': params},gaussian,method=self.inverse)
+        return samples
