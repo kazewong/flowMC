@@ -2,7 +2,7 @@
 from nfsampler.nfmodel.maf import MaskedAutoregressiveFlow
 from nfsampler.nfmodel.realNVP import RealNVP
 from nfsampler.sampler.Gaussian_random_walk import rw_metropolis_sampler
-from nfsampler.sampler.NF_proposal import nf_metropolis_sampler
+from nfsampler.sampler.NF_proposal import nf_metropolis_sampler, nf_metropolis_kernel
 import jax
 import jax.numpy as jnp                # JAX NumPy
 import jax.random as random            # JAX random
@@ -127,22 +127,28 @@ def sampling_loop(rng_keys_nf, rng_keys_mcmc, model, state, initial_position):
 
 last_step = initial_position
 chains = []
-for i in range(5):
+for i in range(3):
 	rng_keys_nf, rng_keys_mcmc, state, positions = sampling_loop(rng_keys_nf, rng_keys_mcmc, model, state, last_step)
 	last_step = positions[:,-1].T
 	# rng_keys_mcmc, positions, log_prob = run_mcmc(rng_keys_mcmc, n_samples, likelihood, initial_position)
 	# last_step = last_step.T
 	chains.append(positions)
 chains = np.concatenate(chains,axis=1)
-nf_samples = sample_nf(model, state.params, rng_keys_nf, 10000)
+#nf_samples = sample_nf(model, state.params, rng_keys_nf, 10000)
 
-import corner
-import matplotlib.pyplot as plt
+rng_key, subkey = random.split(rng_keys_nf,2)
+proposal_position = model.apply({'params': params}, subkey, initial_position.shape[1]*nf_samples, params, method=model.sample)[0]
 
-# Plot one chain to show the jump
-plt.plot(chains[70,:,0],chains[70,:,1])
-plt.show()
-plt.close()
+log_pdf_nf_proposal = model.apply({'params': params}, proposal_position, method=model.log_prob)
+log_pdf_nf_initial = model.apply({'params': params}, initial_position.T, method=model.log_prob)
+log_pdf_proposal = dual_moon_pe(proposal_position)
+log_pdf_initial = dual_moon_pe(initial_position.T)
 
-# Plot all chains
-figure = corner.corner(chains.reshape(-1,n_dim), labels=["$x_1$", "$x_2$", "$x_3$", "$x_4$", "$x_5$"])
+proposal_position = proposal_position.reshape(nf_samples, initial_position.shape[1], initial_position.shape[0])
+log_pdf_nf_proposal = log_pdf_nf_proposal.reshape(nf_samples, initial_position.shape[1])
+log_pdf_proposal = log_pdf_proposal.reshape(nf_samples, initial_position.shape[1])
+
+rng_key, *subkeys = random.split(rng_key,initial_position.shape[1]+1)
+subkeys = jnp.array(subkeys)
+
+nf_metropolis_kernel(subkeys, proposal_position[0], initial_position.T, log_pdf_proposal[0], log_pdf_nf_proposal[0], log_pdf_initial, log_pdf_nf_initial)

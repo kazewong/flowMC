@@ -24,7 +24,7 @@ def nf_metropolis_sampler(rng_key, n_samples, nf_model, nf_param, target_pdf, in
         key, positions, log_prob, log_prob_nf = state
         key, *sub_key = jax.random.split(key, positions.shape[1]+1)
         sub_key = jnp.array(sub_key)
-        new_position, new_log_prob, new_log_prob_nf = nf_metropolis_kernel(sub_key, positions[i], positions[i-1], log_pdf_proposal[i], log_pdf_nf_proposal[i], log_prob, log_prob_nf)
+        new_position, new_log_prob, new_log_prob_nf = nf_metropolis_kernel(sub_key, proposal_position[i], positions[i-1], log_pdf_proposal[i], log_pdf_nf_proposal[i], log_prob, log_prob_nf)
         positions=positions.at[i].set(new_position)
         return (key, positions, new_log_prob, new_log_prob_nf)
 
