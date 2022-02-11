@@ -2,6 +2,7 @@
 from nfsampler.nfmodel.maf import MaskedAutoregressiveFlow
 from nfsampler.nfmodel.realNVP import RealNVP
 from nfsampler.sampler.Gaussian_random_walk import rw_metropolis_sampler
+from nfsampler.sampler.MALA import mala_sampler
 from nfsampler.sampler.NF_proposal import nf_metropolis_sampler
 import jax
 import jax.numpy as jnp                # JAX NumPy
@@ -76,6 +77,8 @@ def dual_moon_pe(x):
     term3 = -0.5 * ((x[..., 1:2] + jnp.array([-3., 3.])) / 0.6) ** 2
     return -(term1 - logsumexp(term2, axis=-1) - logsumexp(term3, axis=-1))
 
+d_dual_moon = jax.grad(dual_moon_pe)
+
 def sample_nf(model, param, rng_key,n_sample):
     rng_key, subkey = random.split(rng_key)
     samples = model.apply({'params': param}, subkey, n_sample,param, method=model.sample)
@@ -83,7 +86,7 @@ def sample_nf(model, param, rng_key,n_sample):
     return rng_key,samples
 
 n_dim = 5
-n_samples = 200
+n_samples = 20
 nf_samples = 100
 n_chains = 100
 learning_rate = 0.01
@@ -94,36 +97,39 @@ precompiled = False
 
 print("Preparing RNG keys")
 rng_key = jax.random.PRNGKey(42)
-rng_key_mcmc, rng_key_nf = jax.random.split(rng_key,2)
+rng_key_init, rng_key_mcmc, rng_key_nf = jax.random.split(rng_key,3)
 
 rng_keys_mcmc = jax.random.split(rng_key_mcmc, n_chains)  # (nchains,)
 rng_keys_nf, init_rng_keys_nf = jax.random.split(rng_key_nf,2)
 
 print("Initializing MCMC model and normalizing flow model.")
 
-initial_position = jnp.zeros((n_dim, n_chains)) #(n_dim, n_chains)
+initial_position = jax.random.normal(rng_key_init,shape=(n_dim, n_chains)) #(n_dim, n_chains)
 
 #model = MaskedAutoregressiveFlow(n_dim,64,4)
 model = RealNVP(10,n_dim,64, 1)
 params = model.init(init_rng_keys_nf, jnp.ones((batch_size,n_dim)))['params']
 
-run_mcmc = jax.vmap(rw_metropolis_sampler, in_axes=(0, None, None, 1),
+run_mcmc = jax.vmap(mala_sampler, in_axes=(0, None, None, None, 1, None),
                     out_axes=0)
+# run_mcmc = jax.vmap(rw_metropolis_sampler, in_axes=(0, None, None, 1),
+#                     out_axes=0)
+
 
 tx = optax.adam(learning_rate, momentum)
 state = train_state.TrainState.create(apply_fn=model.apply, params=params, tx=tx)
 
 print("Sampling")
 
-
 def sampling_loop(rng_keys_nf, rng_keys_mcmc, model, state, initial_position):
-	rng_keys_mcmc, positions, log_prob = run_mcmc(rng_keys_mcmc, n_samples, dual_moon_pe, initial_position)
-	flat_chain = positions.reshape(-1,n_dim)	
-	rng_keys_nf, state = train_flow(rng_key_nf, model, state, flat_chain)	
-	rng_keys_nf, nf_chain, log_prob, log_prob_nf = nf_metropolis_sampler(rng_keys_nf, nf_samples, model, state.params , dual_moon_pe, positions[:,-1])
+    #rng_keys_mcmc, positions, log_prob = run_mcmc(rng_keys_mcmc, n_samples, dual_moon_pe, initial_position)
+    rng_keys_mcmc, positions, log_prob = run_mcmc(rng_keys_mcmc, n_samples, dual_moon_pe, d_dual_moon, initial_position, 0.01)
+    flat_chain = positions.reshape(-1,n_dim)
+    # rng_keys_nf, state = train_flow(rng_key_nf, model, state, flat_chain)
+    # rng_keys_nf, nf_chain, log_prob, log_prob_nf = nf_metropolis_sampler(rng_keys_nf, nf_samples, model, state.params , dual_moon_pe, positions[:,-1])
 
-	positions = jnp.concatenate((positions,nf_chain),axis=1)
-	return rng_keys_nf, rng_keys_mcmc, state, positions
+    # positions = jnp.concatenate((positions,nf_chain),axis=1)
+    return rng_keys_nf, rng_keys_mcmc, state, positions
 
 last_step = initial_position
 chains = []

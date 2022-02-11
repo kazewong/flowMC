@@ -61,7 +61,7 @@ rng_key, positions, log_prob = run_mcmc(rng_keys, n_samples, mixture_logpdf, d_p
 assert positions.shape == (n_chains, n_samples, n_dim)
 positions.block_until_ready()
 
-flat_chain = np.concatenate(positions[:,1000:],axis=0)
+flat_chain = np.concatenate(positions,axis=0)#[:,1000:],axis=0)
 
 import matplotlib.pyplot as plt
 plt.figure(figsize=(10,10))
