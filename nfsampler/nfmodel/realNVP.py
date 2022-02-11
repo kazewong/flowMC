@@ -5,6 +5,25 @@ from flax import linen as nn
 import numpy as np
 
 class MLP(nn.Module):
+
+    """
+    Multi-layer perceptron in Flax.
+
+    Parameters
+    ----------
+    features : list of int
+        The number of features in each layer.
+    activation : callable
+        The activation function at each level
+    use_bias : bool
+        Whether to use bias in the layers.
+    init_weight_scale : float
+        The initial weight scale for the layers.
+    kernel_init : callable
+        The kernel initializer for the layers.
+        We use a gaussian kernel with a standard deviation of `init_weight_scale` by default.
+    """
+
     features: Sequence[int]
     activation: Callable = nn.relu
     use_bias: bool = True
@@ -22,6 +41,22 @@ class MLP(nn.Module):
 
 
 class AffineCoupling(nn.Module):
+
+    """
+    Affine coupling layer. (Defined in the RealNVP paper https://arxiv.org/abs/1605.08803)
+    We use tanh as the default activation function.
+
+    Parameters
+    ----------
+    n_features : int
+        The number of features in the input.
+    n_hidden : int
+        The number of hidden units in the MLP.
+    mask : ndarray
+        Alternating mask for the affine coupling layer.
+    dt : float
+        Scaling factor for the affine coupling layer.
+    """
 
     n_features: int
     n_hidden: int
@@ -55,7 +90,24 @@ class AffineCoupling(nn.Module):
 
 
 class RealNVP(nn.Module):
-    
+
+    """
+
+    RealNVP mode defined in the paper https://arxiv.org/abs/1605.08803.
+    MLP is needed to make sure the scaling between layers are more or less the same.
+
+    Parameters
+    ----------
+    n_features : int
+        The number of features in the input.
+    n_hidden : int
+        The number of hidden units in the MLP.
+    n_layer : int
+        The number of affine coupling layers.
+    dt : float
+        Scaling factor for the affine coupling layer.
+    """
+
     n_layer: int
     n_features: int
     n_hidden: int
