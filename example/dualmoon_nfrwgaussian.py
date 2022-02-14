@@ -1,5 +1,3 @@
-
-from nfsampler.nfmodel.maf import MaskedAutoregressiveFlow
 from nfsampler.nfmodel.realNVP import RealNVP
 from nfsampler.sampler.Gaussian_random_walk import rw_metropolis_sampler
 from nfsampler.sampler.MALA import mala_sampler
@@ -11,62 +9,10 @@ from jax.scipy.special import logsumexp
 from jax.scipy.stats import multivariate_normal
 import numpy as np  
 
-from flax import linen as nn           # The Linen API
 from flax.training import train_state  # Useful dataclass to keep train state
 import optax                           # Optimizers
-from functools import partial
-from jax.scipy.stats import norm
 
-
-"""
-Training a masked autoregressive flow to fit the dual moons dataset.
-"""
-
-"""
-Define hyper-parameters here.
-"""
-
-
-
-def train_step(model, state, batch):
-	def loss(params):
-		y, log_det = model.apply({'params': params},batch)
-		mean = jnp.zeros((batch.shape[0],model.n_features))
-		cov = jnp.repeat(jnp.eye(model.n_features)[None,:],batch.shape[0],axis=0)
-		log_det = log_det + multivariate_normal.logpdf(y,mean,cov)
-		return -jnp.mean(log_det)
-	grad_fn = jax.value_and_grad(loss)
-	value, grad = grad_fn(state.params)
-	state = state.apply_gradients(grads=grad)
-	return value,state
-
-train_step = jax.jit(train_step,static_argnums=(0,))
-
-def train_flow(rng, model, state, data):
-
-    def train_epoch(state, train_ds, batch_size, epoch, rng):
-        """Train for a single epoch."""
-        train_ds_size = len(train_ds)
-        steps_per_epoch = train_ds_size // batch_size
-
-        perms = jax.random.permutation(rng, train_ds_size)
-        perms = perms[:steps_per_epoch * batch_size]  # skip incomplete batch
-        perms = perms.reshape((steps_per_epoch, batch_size))
-        for perm in perms:
-            batch = train_ds[perm, ...]
-            value, state = train_step(model, state, batch)
-
-        return value, state
-
-    for epoch in range(1, num_epochs + 1):
-        print('Epoch %d' % epoch)
-        # Use a separate PRNG key to permute image data during shuffling
-        rng, input_rng = jax.random.split(rng)
-        # Run an optimization step over a training batch
-        value, state = train_epoch(state, data, batch_size, epoch, input_rng)
-        print('Train loss: %.3f' % value)
-
-    return rng, state
+from nfsampler.nfmodel.utils import *
 
 def dual_moon_pe(x):
     """
@@ -79,12 +25,6 @@ def dual_moon_pe(x):
 
 d_dual_moon = jax.grad(dual_moon_pe)
 
-def sample_nf(model, param, rng_key,n_sample):
-    rng_key, subkey = random.split(rng_key)
-    samples = model.apply({'params': param}, subkey, n_sample,param, method=model.sample)
-    samples = jnp.flip(samples[0],axis=1)
-    return rng_key,samples
-
 n_dim = 5
 n_samples = 20
 nf_samples = 100
@@ -92,8 +32,7 @@ n_chains = 100
 learning_rate = 0.01
 momentum = 0.9
 num_epochs = 100
-batch_size = 10000
-precompiled = False
+batch_size = 1000
 
 print("Preparing RNG keys")
 rng_key = jax.random.PRNGKey(42)
@@ -125,10 +64,10 @@ def sampling_loop(rng_keys_nf, rng_keys_mcmc, model, state, initial_position):
     #rng_keys_mcmc, positions, log_prob = run_mcmc(rng_keys_mcmc, n_samples, dual_moon_pe, initial_position)
     rng_keys_mcmc, positions, log_prob = run_mcmc(rng_keys_mcmc, n_samples, dual_moon_pe, d_dual_moon, initial_position, 0.01)
     flat_chain = positions.reshape(-1,n_dim)
-    # rng_keys_nf, state = train_flow(rng_key_nf, model, state, flat_chain)
-    # rng_keys_nf, nf_chain, log_prob, log_prob_nf = nf_metropolis_sampler(rng_keys_nf, nf_samples, model, state.params , dual_moon_pe, positions[:,-1])
+    rng_keys_nf, state = train_flow(rng_key_nf, model, state, flat_chain, num_epochs, batch_size)
+    rng_keys_nf, nf_chain, log_prob, log_prob_nf = nf_metropolis_sampler(rng_keys_nf, nf_samples, model, state.params , dual_moon_pe, positions[:,-1])
 
-    # positions = jnp.concatenate((positions,nf_chain),axis=1)
+    positions = jnp.concatenate((positions,nf_chain),axis=1)
     return rng_keys_nf, rng_keys_mcmc, state, positions
 
 last_step = initial_position
@@ -136,8 +75,6 @@ chains = []
 for i in range(5):
 	rng_keys_nf, rng_keys_mcmc, state, positions = sampling_loop(rng_keys_nf, rng_keys_mcmc, model, state, last_step)
 	last_step = positions[:,-1].T
-	# rng_keys_mcmc, positions, log_prob = run_mcmc(rng_keys_mcmc, n_samples, likelihood, initial_position)
-	# last_step = last_step.T
 	chains.append(positions)
 chains = np.concatenate(chains,axis=1)
 nf_samples = sample_nf(model, state.params, rng_keys_nf, 10000)
@@ -151,4 +88,4 @@ plt.show()
 plt.close()
 
 # Plot all chains
-figure = corner.corner(chains.reshape(-1,n_dim), labels=["$x_1$", "$x_2$", "$x_3$", "$x_4$", "$x_5$"])
+corner.corner(chains.reshape(-1,n_dim), labels=["$x_1$", "$x_2$", "$x_3$", "$x_4$", "$x_5$"])
