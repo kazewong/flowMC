@@ -67,6 +67,13 @@ class MaskedAutoEncoder(nn.Module):
         return outputs, log_det_jacobian
 
 class MaskedAutoregressiveFlow(nn.Module):
+    """
+    Masked Autoregressive Flow model following https://arxiv.org/abs/1705.07057
+
+    Not full functional due to missing Batch norm module.
+    Without the BatchNormFlow module, the network cannot be too deep or trained for too long.
+    Otherwise some of the weights will start turning into nans.
+    """
     n_dim: int
     n_hidden: int
     n_layer: int
