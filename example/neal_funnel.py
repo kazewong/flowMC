@@ -24,10 +24,11 @@ from jax.scipy.stats import norm
 from nfsampler.nfmodel.utils import *
 
 def neal_funnel(x):
-    y_dist = partial(norm.logpdf, loc=0, scale=3)
-    x_dist = partial(norm.logpdf, loc=0, scale=jnp.exp(x[0]/2))
-    y_pdf = y_dist(x[0])
-    x_pdf = x_dist(x[1:])
+    # y_dist = partial(norm.logpdf, loc=0, scale=3)
+    # x_dist = partial(norm.logpdf, loc=0, scale=jnp.exp(x[0]/2))
+    x = x.T
+    y_pdf = norm.logpdf(x[0],loc=0,scale=3)
+    x_pdf = norm.logpdf(x[1:],loc=0,scale=jnp.exp(x[0]/2))
     return y_pdf + jnp.sum(x_pdf,axis=0)
 
 d_neal_funnel = jax.grad(neal_funnel)
@@ -64,11 +65,10 @@ state = train_state.TrainState.create(apply_fn=model.apply, params=params, tx=tx
 print("Sampling")
 
 def sampling_loop(rng_keys_nf, rng_keys_mcmc, model, state, initial_position):
-    #rng_keys_mcmc, positions, log_prob = run_mcmc(rng_keys_mcmc, n_samples, dual_moon_pe, initial_position)
     rng_keys_mcmc, positions, log_prob = run_mcmc(rng_keys_mcmc, n_samples, neal_funnel, d_neal_funnel, initial_position, 0.01)
     flat_chain = positions.reshape(-1,n_dim)
     rng_keys_nf, state = train_flow(rng_key_nf, model, state, flat_chain, num_epochs, batch_size)
-    rng_keys_nf, nf_chain, log_prob, log_prob_nf = nf_metropolis_sampler(rng_keys_nf, nf_samples, model, state.params , dual_moon_pe, positions[:,-1])
+    rng_keys_nf, nf_chain, log_prob, log_prob_nf = nf_metropolis_sampler(rng_keys_nf, nf_samples, model, state.params , neal_funnel, positions[:,-1])
 
     positions = jnp.concatenate((positions,nf_chain),axis=1)
     return rng_keys_nf, rng_keys_mcmc, state, positions
