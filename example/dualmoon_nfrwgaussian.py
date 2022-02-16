@@ -4,9 +4,7 @@ from nfsampler.sampler.MALA import mala_sampler
 from nfsampler.sampler.NF_proposal import nf_metropolis_sampler
 import jax
 import jax.numpy as jnp                # JAX NumPy
-import jax.random as random            # JAX random
 from jax.scipy.special import logsumexp
-from jax.scipy.stats import multivariate_normal
 import numpy as np  
 
 from flax.training import train_state  # Useful dataclass to keep train state
