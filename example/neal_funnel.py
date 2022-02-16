@@ -7,80 +7,21 @@ When we go to high dimension, the product term seems to dominate, and most of th
 I wonder whether this is well appercimated by the community.
 """
 
-import argparse
-from functools import partial
-import time
-import numpy as np
-
+from nfsampler.nfmodel.realNVP import RealNVP
+from nfsampler.sampler.Gaussian_random_walk import rw_metropolis_sampler
+from nfsampler.sampler.MALA import mala_sampler
+from nfsampler.sampler.NF_proposal import nf_metropolis_sampler
 import jax
-import jax.numpy as jnp
-from jax.scipy.stats import norm
+import jax.numpy as jnp                # JAX NumPy
 from jax.scipy.special import logsumexp
+import numpy as np  
+
+from flax.training import train_state  # Useful dataclass to keep train state
+import optax                           # Optimizers
 from functools import partial
-from jax import jit
+from jax.scipy.stats import norm
 
-
-
-@partial(jax.jit, static_argnums=(1, 4, 5))
-def rw_metropolis_kernel(rng_key, logpdf, position, log_prob, transform_map = None, inverse_map = None):
-    """Moves the chains by one step using the Random Walk Metropolis algorithm.
-    Attributes
-    ----------
-    rng_key: jax.random.PRNGKey
-      Key for the pseudo random number generator.
-    logpdf: function
-      Returns the log-probability of the model given a position.
-    position: jnp.ndarray, shape (n_dims,)
-      The starting position.
-    log_prob: float
-      The log probability at the starting position.
-    Returns
-    -------
-    Tuple
-        The next positions of the chains along with their log probability.
-    """
-    key1, key2 = jax.random.split(rng_key)
-    move_proposal = jax.random.normal(key1, shape=position.shape)
-    # if transform_map != None:
-    #     move_proposal = transform_map(move_proposal)
-    
-    if transform_map != None and inverse_map != None:
-        proposal = inverse_map(position) + move_proposal 
-        proposal = transform_map(proposal)
-        proposal_log_prob = logpdf(proposal)
-    else:
-        proposal = position + move_proposal
-        proposal_log_prob = logpdf(proposal)
-
-    log_uniform = jnp.log(jax.random.uniform(key2))
-    do_accept = log_uniform < proposal_log_prob - log_prob
-
-    position = jnp.where(do_accept, proposal, position)
-    log_prob = jnp.where(do_accept, proposal_log_prob, log_prob)
-    return position, log_prob
-
-
-@partial(jax.jit, static_argnums=(1, 2, 4, 5))
-def rw_metropolis_sampler(rng_key, n_samples, logpdf, initial_position, transform_map = None, inverse_map = None):
-
-    def mh_update_sol2(i, state):
-        key, positions, log_prob = state
-        _, key = jax.random.split(key)
-        new_position, new_log_prob = rw_metropolis_kernel(key, logpdf, positions[i-1], log_prob, transform_map, inverse_map)
-        positions=positions.at[i].set(new_position)
-        return (key, positions, new_log_prob)
-
-
-    logp = logpdf(initial_position)
-    all_positions = jnp.zeros((n_samples,)+initial_position.shape)
-    initial_state = (rng_key,all_positions, logp)
-    rng_key, all_positions, log_prob = jax.lax.fori_loop(1, n_samples, 
-                                                 mh_update_sol2, 
-                                                 initial_state)
-    
-    
-    return all_positions
-
+from nfsampler.nfmodel.utils import *
 
 def neal_funnel(x):
     y_dist = partial(norm.logpdf, loc=0, scale=3)
@@ -89,44 +30,65 @@ def neal_funnel(x):
     x_pdf = x_dist(x[1:])
     return y_pdf + jnp.sum(x_pdf,axis=0)
 
-def proposal_map(x):
-    y = x[0]*3
-    z = x[1:]*jnp.exp(y/2)
-    return jnp.append(y,z)
-
-
-def inverse_map(x):
-    y = x[0]/3
-    z = x[1:]/jnp.exp(x[0]/2)
-    return jnp.append(y,z)
-
-samples = 1000
-chains = 100
-precompiled = False
+d_neal_funnel = jax.grad(neal_funnel)
 
 n_dim = 5
-n_samples = samples
-n_chains = chains
+n_samples = 20
+nf_samples = 100
+n_chains = 100
+learning_rate = 0.01
+momentum = 0.9
+num_epochs = 100
+batch_size = 1000
+
+print("Preparing RNG keys")
 rng_key = jax.random.PRNGKey(42)
+rng_key_init, rng_key_mcmc, rng_key_nf = jax.random.split(rng_key,3)
 
-rng_keys = jax.random.split(rng_key, n_chains)  # (nchains,)
-initial_position = jnp.array(np.random.normal(size=(n_dim,n_chains)))  # (n_dim, n_chains)
+rng_keys_mcmc = jax.random.split(rng_key_mcmc, n_chains)  # (nchains,)
+rng_keys_nf, init_rng_keys_nf = jax.random.split(rng_key_nf,2)
 
-run_mcmc = jax.vmap(rw_metropolis_sampler, in_axes=(0, None, None, 1, None, None),
+print("Initializing MCMC model and normalizing flow model.")
+
+initial_position = jax.random.normal(rng_key_init,shape=(n_dim, n_chains)) #(n_dim, n_chains)
+
+model = RealNVP(10,n_dim,64, 1)
+params = model.init(init_rng_keys_nf, jnp.ones((batch_size,n_dim)))['params']
+
+run_mcmc = jax.vmap(mala_sampler, in_axes=(0, None, None, None, 1, None),
                     out_axes=0)
-raw_positions = run_mcmc(rng_keys, n_samples, neal_funnel, initial_position ,None , None)
-transformed_positions = run_mcmc(rng_keys, n_samples, neal_funnel, initial_position, proposal_map, inverse_map)
 
-assert raw_positions.shape == (n_chains, n_samples, n_dim)
-raw_positions.block_until_ready()
-assert transformed_positions.shape == (n_chains, n_samples, n_dim)
-transformed_positions.block_until_ready()
+tx = optax.adam(learning_rate, momentum)
+state = train_state.TrainState.create(apply_fn=model.apply, params=params, tx=tx)
 
-raw_flatchain = np.concatenate(raw_positions[:,100:],axis=0)
-transformed_flatchain = np.concatenate(transformed_positions[:,100:],axis=0)
+print("Sampling")
 
+def sampling_loop(rng_keys_nf, rng_keys_mcmc, model, state, initial_position):
+    #rng_keys_mcmc, positions, log_prob = run_mcmc(rng_keys_mcmc, n_samples, dual_moon_pe, initial_position)
+    rng_keys_mcmc, positions, log_prob = run_mcmc(rng_keys_mcmc, n_samples, neal_funnel, d_neal_funnel, initial_position, 0.01)
+    flat_chain = positions.reshape(-1,n_dim)
+    rng_keys_nf, state = train_flow(rng_key_nf, model, state, flat_chain, num_epochs, batch_size)
+    rng_keys_nf, nf_chain, log_prob, log_prob_nf = nf_metropolis_sampler(rng_keys_nf, nf_samples, model, state.params , dual_moon_pe, positions[:,-1])
+
+    positions = jnp.concatenate((positions,nf_chain),axis=1)
+    return rng_keys_nf, rng_keys_mcmc, state, positions
+
+last_step = initial_position
+chains = []
+for i in range(5):
+	rng_keys_nf, rng_keys_mcmc, state, positions = sampling_loop(rng_keys_nf, rng_keys_mcmc, model, state, last_step)
+	last_step = positions[:,-1].T
+	chains.append(positions)
+chains = np.concatenate(chains,axis=1)
+nf_samples = sample_nf(model, state.params, rng_keys_nf, 10000)
+
+import corner
 import matplotlib.pyplot as plt
-plt.figure(figsize=(10,10))
-plt.scatter(raw_flatchain[:,0],raw_flatchain[:,1],s=1,alpha=0.1)
-plt.scatter(transformed_flatchain[:,0],transformed_flatchain[:,1],s=1,alpha=0.1)
+
+# Plot one chain to show the jump
+plt.plot(chains[70,:,0],chains[70,:,1])
 plt.show()
+plt.close()
+
+# Plot all chains
+corner.corner(chains.reshape(-1,n_dim), labels=["$x_1$", "$x_2$", "$x_3$", "$x_4$", "$x_5$"])

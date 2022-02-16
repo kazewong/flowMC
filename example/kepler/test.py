@@ -3,8 +3,11 @@ import jax.numpy as jnp
 import numpy as np
 import matplotlib.pyplot as plt
 
+#import jaxopt
 from scipy.optimize import minimize
-from utils import rv_model, get_parameters_and_log_jac, log_probability
+from utils import rv_model, get_kepler_params_and_log_jac, log_likelihood
+
+jax.config.update("jax_enable_x64", True)
 
 
 true_params = jnp.array([
@@ -23,6 +26,14 @@ plt.plot(x, rv_model(true_params, x), "C0")
 plt.show(block=False)
 
 
-neg_logp_and_grad = jax.jit(jax.value_and_grad(lambda p: -log_probability(p, t, rv_err, rv_obs)))
+# neg_logp_and_grad = jax.jit(lambda p: -log_likelihood(p, t, rv_err, rv_obs))
+# solver = jaxopt.LBFGS(fun=neg_logp_and_grad, maxiter=1000)
+# res = solver.run(true_params)
+
+neg_logp_and_grad = jax.jit(jax.value_and_grad(lambda p: -log_likelihood(p, t, rv_err, rv_obs)))
 soln = minimize(neg_logp_and_grad, true_params, jac=True)
-jnp.asarray(get_parameters_and_log_jac(soln.x)[0])
+pos_ini = jnp.asarray(get_kepler_params_and_log_jac(soln.x)[0])
+
+pos_ini = pos_ini.repeat(10, 0)
+
+jnp.asarray(get_kepler_params_and_log_jac(soln.x)[0])
