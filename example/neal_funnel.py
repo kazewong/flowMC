@@ -8,21 +8,12 @@ I wonder whether this is well appercimated by the community.
 """
 
 from nfsampler.nfmodel.realNVP import RealNVP
-from nfsampler.sampler.Gaussian_random_walk import rw_metropolis_sampler
 from nfsampler.sampler.MALA import mala_sampler
-from nfsampler.sampler.NF_proposal import nf_metropolis_sampler
 import jax
 import jax.numpy as jnp                # JAX NumPy
-from jax.scipy.special import logsumexp
 import numpy as np  
-
-from flax.training import train_state  # Useful dataclass to keep train state
-import optax                           # Optimizers
-from functools import partial
 from jax.scipy.stats import norm
-
-from nfsampler.nfmodel.utils import *
-from nfsampler.utils import *
+from nfsampler.utils import Sampler, initialize_rng_keys
 
 def neal_funnel(x):
     # y_dist = partial(norm.logpdf, loc=0, scale=3)
@@ -49,26 +40,24 @@ config['stepsize'] = 0.01
 
 
 print("Preparing RNG keys")
-rng_key_init ,rng_keys_mcmc, rng_keys_nf, init_rng_keys_nf = initialize_rng_keys(config['n_chains'],seed=42)
+rng_key_set = initialize_rng_keys(config['n_chains'],seed=42)
 
 print("Initializing MCMC model and normalizing flow model.")
 
-initial_position = jax.random.normal(rng_key_init,shape=(config['n_dim'], config['n_chains'])) #(n_dim, n_chains)
+initial_position = jax.random.normal(rng_key_set[0],shape=(config['n_dim'], config['n_chains'])) #(n_dim, n_chains)
+
 
 model = RealNVP(10,config['n_dim'],64, 1)
-params = model.init(init_rng_keys_nf, jnp.ones((config['batch_size'],config['n_dim'])))['params']
-
 run_mcmc = jax.vmap(mala_sampler, in_axes=(0, None, None, None, 1, None),
                     out_axes=0)
 
-tx = optax.adam(config['learning_rate'], config['momentum'])
-state = train_state.TrainState.create(apply_fn=model.apply, params=params, tx=tx)
+print("Initializing sampler class")
+
+nf_sampler = Sampler(rng_key_set, config, model, run_mcmc, neal_funnel, d_neal_funnel)
 
 print("Sampling")
 
-sampling_step = sampling_loop(rng_keys_nf, rng_keys_mcmc, model, state, initial_position, run_mcmc, neal_funnel, config, d_likelihood=d_neal_funnel)
-
-chains, nf_samples = sample(rng_keys_nf, rng_keys_mcmc, sampling_loop, initial_position, model, state, run_mcmc, neal_funnel, config, d_likelihood=d_neal_funnel)
+chains, nf_samples = nf_sampler.sample(initial_position)
 
 import corner
 import matplotlib.pyplot as plt

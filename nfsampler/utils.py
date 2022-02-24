@@ -3,6 +3,8 @@ import jax.numpy as jnp
 import numpy as np
 from nfsampler.nfmodel.utils import sample_nf,train_flow
 from nfsampler.sampler.NF_proposal import nf_metropolis_sampler
+from flax.training import train_state  # Useful dataclass to keep train state
+import optax                           # Optimizers
 
 
 def initialize_rng_keys(n_chains,seed=42):
@@ -45,3 +47,24 @@ def sample(rng_keys_nf, rng_keys_mcmc, sampling_loop, initial_position, nf_model
     chains = np.concatenate(chains,axis=1)
     nf_samples = sample_nf(nf_model, state.params, rng_keys_nf, 10000)
     return chains, nf_samples
+
+
+class Sampler:
+    def __init__(self, rng_key_set, config, nf_model, local_sampler, likelihood, d_likelihood=None):
+        rng_key_init ,rng_keys_mcmc, rng_keys_nf, init_rng_keys_nf = rng_key_set
+        self.config = config
+        self.nf_model = nf_model
+        params = nf_model.init(init_rng_keys_nf, jnp.ones((config['batch_size'],config['n_dim'])))['params']
+
+        tx = optax.adam(config['learning_rate'], config['momentum'])
+        self.state = train_state.TrainState.create(apply_fn=nf_model.apply, params=params, tx=tx)
+        self.local_sampler = local_sampler
+        self.likelihood = likelihood
+        self.d_likelihood = d_likelihood
+        self.rng_keys_nf = rng_keys_nf
+        self.rng_keys_mcmc = rng_keys_mcmc
+
+
+    def sample(self, initial_position):
+        chains, nf_samples = sample(self.rng_keys_nf, self.rng_keys_mcmc, sampling_loop, initial_position, self.nf_model, self.state, self.local_sampler, self.likelihood, self.config, self.d_likelihood)
+        return chains, nf_samples
