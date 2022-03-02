@@ -3,7 +3,6 @@ import jax.numpy as jnp
 from jax import grad
 from functools import partial
 
-@partial(jax.jit, static_argnums=(1, 2))
 def mala_kernel(rng_key, logpdf, d_logpdf, position, log_prob, kernal_size=0.1):
 
     key1, key2 = jax.random.split(rng_key)
@@ -21,8 +20,8 @@ def mala_kernel(rng_key, logpdf, d_logpdf, position, log_prob, kernal_size=0.1):
     log_prob = jnp.where(do_accept, proposal_log_prob, log_prob)
     return position, log_prob
 
+mala_kernel_vec = jax.vmap(mala_kernel, in_axes=(0, None, None, 0, 0, None))
 
-@partial(jax.jit, static_argnums=(1, 2, 3))
 def mala_sampler(rng_key, n_samples, logpdf, d_logpdf, initial_position, kernal_size=0.1):
 
     def mh_update_sol2(i, state):
@@ -42,4 +41,3 @@ def mala_sampler(rng_key, n_samples, logpdf, d_logpdf, initial_position, kernal_
     
     
     return rng_key, all_positions, log_prob
-

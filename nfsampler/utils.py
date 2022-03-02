@@ -42,7 +42,8 @@ def sample(rng_keys_nf, rng_keys_mcmc, sampling_loop, initial_position, nf_model
     chains = []
     for i in range(n_loop):
         rng_keys_nf, rng_keys_mcmc, state, positions = sampling_loop(rng_keys_nf, rng_keys_mcmc, nf_model, state, last_step, run_mcmc, likelihood, params, d_likelihood)
-        last_step = positions[:,-1].T
+        print(positions.shape)
+        last_step = positions[:,-1]
         chains.append(positions)
     chains = np.concatenate(chains,axis=1)
     nf_samples = sample_nf(nf_model, state.params, rng_keys_nf, 10000)

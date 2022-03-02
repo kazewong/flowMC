@@ -47,11 +47,11 @@ rng_key_set = initialize_rng_keys(config['n_chains'],seed=42)
 
 print("Initializing MCMC model and normalizing flow model.")
 
-initial_position = jax.random.normal(rng_key_set[0],shape=(config['n_dim'], config['n_chains'])) #(n_dim, n_chains)
+initial_position = jax.random.normal(rng_key_set[0],shape=(config['n_chains'],config['n_dim'])) #(n_dim, n_chains)
 
 
 model = RealNVP(10,config['n_dim'],64, 1)
-run_mcmc = jax.vmap(mala_sampler, in_axes=(0, None, None, None, 1, None),
+run_mcmc = jax.vmap(mala_sampler, in_axes=(0, None, None, None, 0, None),
                     out_axes=0)
 
 print("Initializing sampler class")
