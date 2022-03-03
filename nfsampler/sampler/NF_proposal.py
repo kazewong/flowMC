@@ -38,6 +38,7 @@ def nf_metropolis_sampler(rng_key, n_samples, nf_model, nf_param, target_pdf, in
     log_pdf_proposal = target_pdf(proposal_position)
     log_pdf_initial = target_pdf(initial_position)
 
+
     proposal_position = proposal_position.reshape(n_samples, initial_position.shape[0], initial_position.shape[1])
     log_pdf_nf_proposal = log_pdf_nf_proposal.reshape(n_samples, initial_position.shape[0])
     log_pdf_proposal = log_pdf_proposal.reshape(n_samples, initial_position.shape[0])

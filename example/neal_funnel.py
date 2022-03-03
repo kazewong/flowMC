@@ -16,12 +16,9 @@ from jax.scipy.stats import norm
 from nfsampler.utils import Sampler, initialize_rng_keys
 
 def neal_funnel(x):
-    # y_dist = partial(norm.logpdf, loc=0, scale=3)
-    # x_dist = partial(norm.logpdf, loc=0, scale=jnp.exp(x[0]/2))
-    x = x.T
     y_pdf = norm.logpdf(x[0],loc=0,scale=3)
     x_pdf = norm.logpdf(x[1:],loc=0,scale=jnp.exp(x[0]/2))
-    return y_pdf + jnp.sum(x_pdf,axis=0)
+    return y_pdf + jnp.sum(x_pdf)
 
 d_neal_funnel = jax.grad(neal_funnel)
 
@@ -44,11 +41,11 @@ rng_key_set = initialize_rng_keys(config['n_chains'],seed=42)
 
 print("Initializing MCMC model and normalizing flow model.")
 
-initial_position = jax.random.normal(rng_key_set[0],shape=(config['n_dim'], config['n_chains'])) #(n_dim, n_chains)
+initial_position = jax.random.normal(rng_key_set[0],shape=(config['n_chains'],config['n_dim'])) #(n_dim, n_chains)
 
 
 model = RealNVP(10,config['n_dim'],64, 1)
-run_mcmc = jax.vmap(mala_sampler, in_axes=(0, None, None, None, 1, None),
+run_mcmc = jax.vmap(mala_sampler, in_axes=(0, None, None, None, 0, None),
                     out_axes=0)
 
 print("Initializing sampler class")

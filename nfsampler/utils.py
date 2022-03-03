@@ -30,7 +30,8 @@ def sampling_loop(rng_keys_nf, rng_keys_mcmc, model, state, initial_position, ru
         rng_keys_mcmc, positions, log_prob = run_mcmc(rng_keys_mcmc, n_samples, likelihood, d_likelihood, initial_position, stepsize)
     flat_chain = positions.reshape(-1,n_dim)
     rng_keys_nf, state = train_flow(rng_keys_nf, model, state, flat_chain, num_epochs, batch_size)
-    rng_keys_nf, nf_chain, log_prob, log_prob_nf = nf_metropolis_sampler(rng_keys_nf, nf_samples, model, state.params , likelihood, positions[:,-1])
+    likelihood_vec = jax.vmap(likelihood)
+    rng_keys_nf, nf_chain, log_prob, log_prob_nf = nf_metropolis_sampler(rng_keys_nf, nf_samples, model, state.params , likelihood_vec, positions[:,-1])
 
     positions = jnp.concatenate((positions,nf_chain),axis=1)
     return rng_keys_nf, rng_keys_mcmc, state, positions
@@ -42,7 +43,6 @@ def sample(rng_keys_nf, rng_keys_mcmc, sampling_loop, initial_position, nf_model
     chains = []
     for i in range(n_loop):
         rng_keys_nf, rng_keys_mcmc, state, positions = sampling_loop(rng_keys_nf, rng_keys_mcmc, nf_model, state, last_step, run_mcmc, likelihood, params, d_likelihood)
-        print(positions.shape)
         last_step = positions[:,-1]
         chains.append(positions)
     chains = np.concatenate(chains,axis=1)
