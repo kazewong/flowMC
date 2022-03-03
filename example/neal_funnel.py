@@ -8,79 +8,53 @@ I wonder whether this is well appercimated by the community.
 """
 
 from nfsampler.nfmodel.realNVP import RealNVP
-from nfsampler.sampler.Gaussian_random_walk import rw_metropolis_sampler
 from nfsampler.sampler.MALA import mala_sampler
-from nfsampler.sampler.NF_proposal import nf_metropolis_sampler
 import jax
 import jax.numpy as jnp                # JAX NumPy
-from jax.scipy.special import logsumexp
 import numpy as np  
-
-from flax.training import train_state  # Useful dataclass to keep train state
-import optax                           # Optimizers
-from functools import partial
 from jax.scipy.stats import norm
-
-from nfsampler.nfmodel.utils import *
+from nfsampler.utils import Sampler, initialize_rng_keys
 
 def neal_funnel(x):
-    # y_dist = partial(norm.logpdf, loc=0, scale=3)
-    # x_dist = partial(norm.logpdf, loc=0, scale=jnp.exp(x[0]/2))
-    x = x.T
     y_pdf = norm.logpdf(x[0],loc=0,scale=3)
     x_pdf = norm.logpdf(x[1:],loc=0,scale=jnp.exp(x[0]/2))
-    return y_pdf + jnp.sum(x_pdf,axis=0)
+    return y_pdf + jnp.sum(x_pdf)
 
 d_neal_funnel = jax.grad(neal_funnel)
 
-n_dim = 5
-n_samples = 20
-nf_samples = 100
-n_chains = 100
-learning_rate = 0.01
-momentum = 0.9
-num_epochs = 100
-batch_size = 1000
+config = {}
+config['n_dim'] = 5 # Dimension of the problem
+config['n_loop'] = 5 # Number of sampling loop (global + local +/ training)
+config['n_samples'] = 20 # Number of samples per local sampling loop
+config['nf_samples'] = 100 # Number of samples per global sampling loop
+config['n_chains'] = 100 # Number of chains
+config['stepsize'] = 0.01 # MALA step size
+config['learning_rate'] = 0.01 # Learning rate when training normalizing flow
+config['momentum'] = 0.9 # Momentum when training normalizing flow
+config['num_epochs'] = 100 # Number of epochs during training
+config['batch_size'] = 1000 # Batch size during training
+
+
 
 print("Preparing RNG keys")
-rng_key = jax.random.PRNGKey(42)
-rng_key_init, rng_key_mcmc, rng_key_nf = jax.random.split(rng_key,3)
-
-rng_keys_mcmc = jax.random.split(rng_key_mcmc, n_chains)  # (nchains,)
-rng_keys_nf, init_rng_keys_nf = jax.random.split(rng_key_nf,2)
+rng_key_set = initialize_rng_keys(config['n_chains'],seed=42)
 
 print("Initializing MCMC model and normalizing flow model.")
 
-initial_position = jax.random.normal(rng_key_init,shape=(n_dim, n_chains)) #(n_dim, n_chains)
+initial_position = jax.random.normal(rng_key_set[0],shape=(config['n_chains'],config['n_dim'])) #(n_dim, n_chains)
 
-model = RealNVP(10,n_dim,64, 1)
-params = model.init(init_rng_keys_nf, jnp.ones((batch_size,n_dim)))['params']
 
-run_mcmc = jax.vmap(mala_sampler, in_axes=(0, None, None, None, 1, None),
+model = RealNVP(10,config['n_dim'],64, 1)
+run_mcmc = jax.vmap(mala_sampler, in_axes=(0, None, None, None, 0, None),
                     out_axes=0)
 
-tx = optax.adam(learning_rate, momentum)
-state = train_state.TrainState.create(apply_fn=model.apply, params=params, tx=tx)
+print("Initializing sampler class")
+
+nf_sampler = Sampler(rng_key_set, config, model, run_mcmc, neal_funnel, d_neal_funnel)
 
 print("Sampling")
 
-def sampling_loop(rng_keys_nf, rng_keys_mcmc, model, state, initial_position):
-    rng_keys_mcmc, positions, log_prob = run_mcmc(rng_keys_mcmc, n_samples, neal_funnel, d_neal_funnel, initial_position, 0.01)
-    flat_chain = positions.reshape(-1,n_dim)
-    rng_keys_nf, state = train_flow(rng_key_nf, model, state, flat_chain, num_epochs, batch_size)
-    rng_keys_nf, nf_chain, log_prob, log_prob_nf = nf_metropolis_sampler(rng_keys_nf, nf_samples, model, state.params , neal_funnel, positions[:,-1])
-
-    positions = jnp.concatenate((positions,nf_chain),axis=1)
-    return rng_keys_nf, rng_keys_mcmc, state, positions
-
-last_step = initial_position
-chains = []
-for i in range(5):
-	rng_keys_nf, rng_keys_mcmc, state, positions = sampling_loop(rng_keys_nf, rng_keys_mcmc, model, state, last_step)
-	last_step = positions[:,-1].T
-	chains.append(positions)
-chains = np.concatenate(chains,axis=1)
-nf_samples = sample_nf(model, state.params, rng_keys_nf, 10000)
+chains, nf_samples = nf_sampler.sample(initial_position)
 
 import corner
 import matplotlib.pyplot as plt
@@ -91,4 +65,4 @@ plt.show()
 plt.close()
 
 # Plot all chains
-corner.corner(chains.reshape(-1,n_dim), labels=["$x_1$", "$x_2$", "$x_3$", "$x_4$", "$x_5$"])
+corner.corner(chains.reshape(-1,config['n_dim']), labels=["$x_1$", "$x_2$", "$x_3$", "$x_4$", "$x_5$"])
