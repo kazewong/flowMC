@@ -23,16 +23,16 @@ def neal_funnel(x):
 d_neal_funnel = jax.grad(neal_funnel)
 
 config = {}
-config['n_dim'] = 5
-config['n_loop'] = 5
-config['n_samples'] = 20
-config['nf_samples'] = 100
-config['n_chains'] = 100
-config['learning_rate'] = 0.01
-config['momentum'] = 0.9
-config['num_epochs'] = 100
-config['batch_size'] = 1000
-config['stepsize'] = 0.01
+config['n_dim'] = 5 # Dimension of the problem
+config['n_loop'] = 5 # Number of sampling loop (global + local +/ training)
+config['n_samples'] = 20 # Number of samples per local sampling loop
+config['nf_samples'] = 100 # Number of samples per global sampling loop
+config['n_chains'] = 100 # Number of chains
+config['stepsize'] = 0.01 # MALA step size
+config['learning_rate'] = 0.01 # Learning rate when training normalizing flow
+config['momentum'] = 0.9 # Momentum when training normalizing flow
+config['num_epochs'] = 100 # Number of epochs during training
+config['batch_size'] = 1000 # Batch size during training
 
 
 
