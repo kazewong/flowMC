@@ -91,8 +91,8 @@ def refine(M, ecc, ome, E):
     return E + dE
 
 
-def rv_model(kepler_params, t):
-    v0, log_s2, log_period, log_k, sin_phi, cos_phi, ecc, sin_w, cos_w = kepler_params
+def rv_model(kepler_params_, t):
+    v0, log_s2, log_period, log_k, sin_phi, cos_phi, ecc, sin_w, cos_w = kepler_params_
     phi = jnp.arctan2(sin_phi, cos_phi)
     sin_f, cos_f = kepler(2 * np.pi * t * jnp.exp(-log_period) + phi, ecc)
     return v0 + jnp.exp(log_k) * (cos_w * cos_f - sin_w * sin_f + ecc * cos_w)
@@ -148,15 +148,15 @@ def log_prior(kepler_params,
     logp_ecc += (ecc_alpha - 1) * jnp.log(ecc) 
     logp_ecc += (ecc_beta - 1) * jnp.log(1 - ecc)
 
-    logp_log_k = - 0.5 * (log_k - log_k_mean) ** 5 / log_k_var
-    logp_v0 = - 0.5 * (v0 - v0_mean) ** 5 / v0_var
-    logp_log_period = - 0.5 * (log_period - log_period_mean) ** 5 / log_period_var
-    logp_log_s2 = - 0.5 * (log_s2 - log_s2_mean) ** 5 / log_s2_var
+    logp_log_k = - 0.5 * (log_k - log_k_mean) ** 2 / log_k_var
+    logp_v0 = - 0.5 * (v0 - v0_mean) ** 2 / v0_var
+    logp_log_period = - 0.5 * (log_period - log_period_mean) ** 2 / log_period_var
+    logp_log_s2 = - 0.5 * (log_s2 - log_s2_mean) ** 2 / log_s2_var
 
     return logp_phis_ + logp_ws_ + logp_ecc + logp_log_k + logp_v0 + logp_log_period + logp_log_s2
 
 
-def sample_prior(n_samples, ecc_alpha=2, ecc_beta=2,
+def sample_prior(rng_key, n_samples, ecc_alpha=2, ecc_beta=2,
                  log_k_mean=1, log_k_var=1,
                  v0_mean=0, v0_var=1,
                  log_period_mean=1, log_period_var=1,
@@ -164,17 +164,29 @@ def sample_prior(n_samples, ecc_alpha=2, ecc_beta=2,
     """
     returns kepler_params
     """
+    rng_key, sub_key = jax.random.split(rng_key)
+    v0 = jax.random.normal(sub_key, (n_samples,)) * jnp.sqrt(v0_var) + v0_mean
     
+    rng_key, sub_key = jax.random.split(rng_key)
+    log_s2 = jax.random.normal(sub_key, (n_samples,)) * jnp.sqrt(log_s2_var)
+    log_s2 += log_s2_mean
+    
+    rng_key, sub_key = jax.random.split(rng_key)
+    log_k = jax.random.normal(sub_key, (n_samples,)) * jnp.sqrt(log_k_var)
+    log_k += log_k_mean
+    
+    rng_key, sub_key = jax.random.split(rng_key)
+    log_period = jax.random.normal(sub_key, (n_samples,)) * jnp.sqrt(log_period_var)
+    log_period += log_period_mean
+    
+    rng_key, sub_key = jax.random.split(rng_key)
+    ecc = jax.random.beta(sub_key, ecc_alpha, ecc_beta, (n_samples,))
+    ecc_ = jnp.log(ecc / (1 - ecc))
 
+    rng_key, sub_key = jax.random.split(rng_key)
+    sin_phi_, cos_phi_, sin_w_, cos_w_ = jax.random.multivariate_normal(sub_key, jnp.zeros(4), jnp.eye(4), (n_samples,) ).T
+    
+    kepler_params = v0, log_s2, log_period, log_k, sin_phi_, cos_phi_, ecc_, sin_w_, cos_w_
 
-
-# def random_init():
-#     """
-#     sample according to priors + run optim.
-#     v0, log_s2, log_period, log_k, sin_phi_, cos_phi_, ecc_, sin_w_, cos_w_
-#     """
-#     jnp.array([
-#     12.0, np.log(0.5), np.log(14.5), np.log(2.3), 
-#     np.sin(1.5), np.cos(1.5), 0.4, np.sin(-0.7), np.cos(-0.7)
-#     ])
+    return jnp.stack(kepler_params) # shape = (9, n_samples)
 
