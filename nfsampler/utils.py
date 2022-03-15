@@ -25,9 +25,11 @@ def sampling_loop(rng_keys_nf, rng_keys_mcmc, model, state, initial_position, ru
     batch_size = params['batch_size']
     nf_samples = params['nf_samples']
     if d_likelihood is None:
-        rng_keys_mcmc, positions, log_prob = run_mcmc(rng_keys_mcmc, n_samples, likelihood, initial_position, stepsize)
+        rng_keys_mcmc, positions, log_prob, acceptance = run_mcmc(rng_keys_mcmc, n_samples, likelihood, initial_position, stepsize)
     else:
-        rng_keys_mcmc, positions, log_prob = run_mcmc(rng_keys_mcmc, n_samples, likelihood, d_likelihood, initial_position, stepsize)
+        rng_keys_mcmc, positions, log_prob, acceptance = run_mcmc(rng_keys_mcmc, n_samples, likelihood, d_likelihood, initial_position, stepsize)
+    # if logging == True:
+
     flat_chain = positions.reshape(-1,n_dim)
     rng_keys_nf, state = train_flow(rng_keys_nf, model, state, flat_chain, num_epochs, batch_size)
     likelihood_vec = jax.vmap(likelihood)
