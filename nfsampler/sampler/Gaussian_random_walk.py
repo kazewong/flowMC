@@ -30,7 +30,7 @@ def rw_metropolis_kernel(rng_key, logpdf, position, log_prob):
 
     position = jnp.where(do_accept, proposal, position)
     log_prob = jnp.where(do_accept, proposal_log_prob, log_prob)
-    return position, log_prob
+    return position, log_prob, do_accept.astype(jnp.int8)
 
 
 @partial(jax.jit, static_argnums=(1, 2))
@@ -45,12 +45,13 @@ def rw_metropolis_sampler(rng_key, n_samples, logpdf, initial_position):
 
 
     logp = logpdf(initial_position)
+    acceptance = jnp.zeros(logp.shape)
     all_positions = jnp.zeros((n_samples,)+initial_position.shape) + initial_position
-    initial_state = (rng_key,all_positions, logp)
-    rng_key, all_positions, log_prob = jax.lax.fori_loop(1, n_samples, 
-                                                 mh_update_sol2, 
-                                                 initial_state)
+    initial_state = (rng_key,all_positions, logp, acceptance)
+    rng_key, all_positions, log_prob, acceptance = jax.lax.fori_loop(1, n_samples, 
+                                                   mh_update_sol2, 
+                                                   initial_state)
     
     
-    return rng_key, all_positions, log_prob
+    return rng_key, all_positions, log_prob, acceptance
 
