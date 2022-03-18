@@ -42,4 +42,4 @@ def mala_sampler(rng_key, n_samples, logpdf, d_logpdf, initial_position, kernal_
                                                    initial_state)
     
     
-    return rng_key, all_positions, log_prob, acceptance
+    return rng_key, all_positions, log_prob, acceptance/(n_samples-1)

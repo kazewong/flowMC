@@ -33,6 +33,7 @@ config['learning_rate'] = 0.01 # Learning rate when training normalizing flow
 config['momentum'] = 0.9 # Momentum when training normalizing flow
 config['num_epochs'] = 100 # Number of epochs during training
 config['batch_size'] = 1000 # Batch size during training
+config['logging'] = True # Whether to log the training process
 
 
 
