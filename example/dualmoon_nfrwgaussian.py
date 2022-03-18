@@ -11,7 +11,7 @@ from nfsampler.nfmodel.utils import *
 
 def dual_moon_pe(x):
     """
-    Term 2 and 3 separate the distriubiotn and smear it along the first and second dimension
+    Term 2 and 3 separate the distribution and smear it along the first and second dimension
     """
     term1 = 0.5 * ((jnp.linalg.norm(x) - 2) / 0.1) ** 2
     term2 = -0.5 * ((x[:1] + jnp.array([-3., 3.])) / 0.8) ** 2

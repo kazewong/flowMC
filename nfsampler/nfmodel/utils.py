@@ -44,7 +44,7 @@ def train_flow(rng, model, state, data, num_epochs, batch_size):
 
     return rng, state
 
-def sample_nf(model, param, rng_key,n_sample):
+def sample_nf(model, param, rng_key, n_sample):
     rng_key, subkey = random.split(rng_key)
     samples = model.apply({'params': param}, subkey, n_sample,param, method=model.sample)
     samples = jnp.flip(samples[0],axis=1)

@@ -8,7 +8,21 @@ from flax.training import train_state  # Useful dataclass to keep train state
 import optax                           # Optimizers
 from tensorboardX import SummaryWriter
 
-def initialize_rng_keys(n_chains,seed=42):
+def initialize_rng_keys(n_chains, seed=42):
+    """
+    Initialize the random number generator keys for the sampler.
+
+    Args:
+        n_chains (int): Number of chains for the local sampler.
+        seed (int): Seed for the random number generator.
+
+
+    Returns:
+        rng_keys_init (Device Array): RNG keys for sampling initial position from prior.
+        rng_keys_mcmc (Device Array): RNG keys for the local sampler.
+        rng_keys_nf (Device Array): RNG keys for the normalizing flow global sampler.
+        init_rng_keys_nf (Device Array): RNG keys for initializing wieght of the normalizing flow model.
+    """
     rng_key = jax.random.PRNGKey(42)
     rng_key_init, rng_key_mcmc, rng_key_nf = jax.random.split(rng_key,3)
 
@@ -27,7 +41,9 @@ def sampling_loop(rng_keys_nf, rng_keys_mcmc, model, state, initial_position, ru
     nf_samples = params['nf_samples']
 
     if d_likelihood is None:
-        rng_keys_mcmc, positions, log_prob, acceptance = run_mcmc(rng_keys_mcmc, n_samples, likelihood, initial_position, stepsize)
+        rng_keys_mcmc, positions, log_prob, acceptance = local_sampler(
+            rng_keys_mcmc, n_samples, likelihood, initial_position, stepsize
+            )
     else:
         rng_keys_mcmc, positions, log_prob, acceptance = run_mcmc(rng_keys_mcmc, n_samples, likelihood, d_likelihood, initial_position, stepsize)
 
@@ -60,14 +76,27 @@ def sample(rng_keys_nf, rng_keys_mcmc, sampling_loop, initial_position, nf_model
 
 
 class Sampler:
-    def __init__(self, rng_key_set, config, nf_model, local_sampler, likelihood, d_likelihood=None):
+    """
+    Sampler class that host configuration parameters, NF model, and local sampler
+
+    Args:
+        rng_key_set (Device Array): RNG keys set generated using initialize_rng_keys.
+        config (dict): Configuration parameters.
+        nf_model (flax module): Normalizing flow model.
+        local_sampler (function): Local sampler function.
+        likelihood (function): Likelihood function.
+        d_likelihood (Device Array): Derivative of the likelihood function.
+    """
+    def __init__(self, rng_key_set, config, nf_model, local_sampler,
+                 likelihood, d_likelihood=None):
         rng_key_init ,rng_keys_mcmc, rng_keys_nf, init_rng_keys_nf = rng_key_set
         self.config = config
         self.nf_model = nf_model
         params = nf_model.init(init_rng_keys_nf, jnp.ones((config['batch_size'],config['n_dim'])))['params']
 
         tx = optax.adam(config['learning_rate'], config['momentum'])
-        self.state = train_state.TrainState.create(apply_fn=nf_model.apply, params=params, tx=tx)
+        self.state = train_state.TrainState.create(apply_fn=nf_model.apply,
+                                                   params=params, tx=tx)
         self.local_sampler = local_sampler
         self.likelihood = likelihood
         self.d_likelihood = d_likelihood

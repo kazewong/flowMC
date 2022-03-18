@@ -1,10 +1,7 @@
-from re import S
 import jax
 import jax.numpy as jnp                # JAX NumPy
 from jax.scipy.special import logsumexp
 import numpy as np  
-import optax 
-from flax.training import train_state  # Useful dataclass to keep train state
 import matplotlib.pyplot as plt
 from scipy.optimize import minimize
 import corner
@@ -59,16 +56,15 @@ d_log_posterior = jax.grad(log_posterior)
 
 config = {}
 config['n_dim'] = 9
-config['n_loop'] = 5
+config['n_loop'] = 1
 config['n_samples'] = 20
 config['nf_samples'] = 10
 config['n_chains'] = 100
 config['learning_rate'] = 0.01
 config['momentum'] = 0.9
-config['num_epochs'] = 10
+config['num_epochs'] = 2
 config['batch_size'] = 100
 config['stepsize'] = 0.01
-
 
 print("Preparing RNG keys")
 rng_key_set = initialize_rng_keys(config['n_chains'],seed=42)
@@ -87,7 +83,12 @@ for i in tqdm.tqdm(range(config['n_chains'])):
 
 initial_position = jnp.stack(optimized) #(n_chains, n_dim)
 
+# mean = initial_position.mean(0)
+# init_centered = (initial_position - mean)
+# cov = init_centered.T @ init_centered / config['n_chains']
+
 model = RealNVP(10, config['n_dim'], 64, 1)
+
 run_mcmc = jax.vmap(mala_sampler, in_axes=(0, None, None, None, 0, None),
                     out_axes=0)
 
