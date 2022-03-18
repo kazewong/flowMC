@@ -33,6 +33,16 @@ def initialize_rng_keys(n_chains, seed=42):
 
 
 def sampling_loop(rng_keys_nf, rng_keys_mcmc, model, state, initial_position, local_sampler, likelihood, params, d_likelihood=None,writer=None):
+
+    """
+    Sampling loop for both the global sampler and the local sampler.
+
+    Args:
+        rng_keys_nf (Device Array): RNG keys for the normalizing flow global sampler.
+        rng_keys_mcmc (Device Array): RNG keys for the local sampler.
+        
+    """
+
     stepsize = params['stepsize']
     n_dim = params['n_dim']
     n_samples = params['n_samples']

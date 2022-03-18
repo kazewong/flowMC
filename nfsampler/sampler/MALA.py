@@ -10,17 +10,17 @@ def mala_kernel(rng_key, logpdf, d_logpdf, position, log_prob, kernal_size=0.1):
     This function make a proposal and accept/reject it.
 
     Args:
-        rng_key: random key
-        logpdf: log-density function
-        d_logpdf: gradient of log-density function
-        position: current position
-        log_prob: log-probability of the current position
-        kernal_size: step size of the MALA step
+        rng_key (n_chains, 2): random key
+        logpdf (function) : log-density function
+        d_logpdf (function): gradient of log-density function
+        position (n_chains, n_dim): current position
+        log_prob (n_chains, ): log-probability of the current position
+        kernal_size (float): step size of the MALA step
 
     Returns:
-        position: the new poisiton of the chain
-        log_prob: the log-probability of the new position
-        do_accept: whether to accept the new position
+        position (n_chains, n_dim): the new poisiton of the chain
+        log_prob (n_chains, ): the log-probability of the new position
+        do_accept (n_chains, ): whether to accept the new position
 
     """
     key1, key2 = jax.random.split(rng_key)
