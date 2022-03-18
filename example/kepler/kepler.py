@@ -9,7 +9,6 @@ import tqdm
 
 from nfsampler.nfmodel.realNVP import RealNVP
 from nfsampler.sampler.MALA import mala_sampler
-from nfsampler.sampler.NF_proposal import nf_metropolis_sampler
 from nfsampler.nfmodel.utils import *
 
 from utils import rv_model, log_likelihood, log_prior, sample_prior, get_kepler_params_and_log_jac
