@@ -5,6 +5,24 @@ from functools import partial
 
 def mala_kernel(rng_key, logpdf, d_logpdf, position, log_prob, kernal_size=0.1):
 
+    """
+    Metropolis-adjusted Langevin algorithm kernel.
+    This function make a proposal and accept/reject it.
+
+    Args:
+        rng_key: random key
+        logpdf: log-density function
+        d_logpdf: gradient of log-density function
+        position: current position
+        log_prob: log-probability of the current position
+        kernal_size: step size of the MALA step
+
+    Returns:
+        position: the new poisiton of the chain
+        log_prob: the log-probability of the new position
+        do_accept: whether to accept the new position
+
+    """
     key1, key2 = jax.random.split(rng_key)
     proposal = position + kernal_size * d_logpdf(position)
     proposal += kernal_size * jnp.sqrt(2/kernal_size) * jax.random.normal(key1, shape=position.shape)
@@ -23,6 +41,25 @@ def mala_kernel(rng_key, logpdf, d_logpdf, position, log_prob, kernal_size=0.1):
 mala_kernel_vec = jax.vmap(mala_kernel, in_axes=(0, None, None, 0, 0, None))
 
 def mala_sampler(rng_key, n_samples, logpdf, d_logpdf, initial_position, kernal_size=0.1):
+
+    """
+    Metropolis-adjusted Langevin algorithm sampler.
+    This function do n step with the MALA kernel.
+
+    Args:
+        rng_key (n_chains, 2): random key for the sampler 
+        n_samples (int): number of local steps 
+        logpdf (function): log-density function
+        d_logpdf (function): gradient of log-density function
+        initial_position (n_chains, n_dim): initial position of the chain
+        kernal_size (float): step size of the MALA step
+
+    Returns:
+        rng_key (n_chains, 2): random key for the sampler after the sampling
+        all_positions (n_chains, n_samples, n_dim): all the positions of the chain
+        log_probs (n_chains, ): log probability at the end of the chain
+        acceptance: acceptance rate of the chain 
+    """
 
     def mh_update_sol2(i, state):
         key, positions, log_prob, acceptance = state
