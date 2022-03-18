@@ -40,7 +40,7 @@ def sampling_loop(rng_keys_nf, rng_keys_mcmc, model, state, initial_position, lo
     Args:
         rng_keys_nf (Device Array): RNG keys for the normalizing flow global sampler.
         rng_keys_mcmc (Device Array): RNG keys for the local sampler.
-        
+
     """
 
     stepsize = params['stepsize']
@@ -51,20 +51,20 @@ def sampling_loop(rng_keys_nf, rng_keys_mcmc, model, state, initial_position, lo
     nf_samples = params['nf_samples']
 
     if d_likelihood is None:
-        rng_keys_mcmc, positions, log_prob, acceptance = local_sampler(
+        rng_keys_mcmc, positions, log_prob, local_acceptance, global_acceptance = local_sampler(
             rng_keys_mcmc, n_samples, likelihood, initial_position, stepsize
             )
     else:
-        rng_keys_mcmc, positions, log_prob, acceptance = local_sampler(rng_keys_mcmc, n_samples, likelihood, d_likelihood, initial_position, stepsize)
+        rng_keys_mcmc, positions, log_prob, local_acceptance = local_sampler(rng_keys_mcmc, n_samples, likelihood, d_likelihood, initial_position, stepsize)
 
 
     flat_chain = positions.reshape(-1,n_dim)
     rng_keys_nf, state = train_flow(rng_keys_nf, model, state, flat_chain, num_epochs, batch_size)
     likelihood_vec = jax.vmap(likelihood)
-    rng_keys_nf, nf_chain, log_prob, log_prob_nf = nf_metropolis_sampler(rng_keys_nf, nf_samples, model, state.params , likelihood_vec, positions[:,-1])
+    rng_keys_nf, nf_chain, log_prob, log_prob_nf, global_acceptance = nf_metropolis_sampler(rng_keys_nf, nf_samples, model, state.params , likelihood_vec, positions[:,-1])
 
     positions = jnp.concatenate((positions,nf_chain),axis=1)
-    return rng_keys_nf, rng_keys_mcmc, state, positions, acceptance
+    return rng_keys_nf, rng_keys_mcmc, state, positions, local_acceptance, global_acceptance
 
 
 def sample(rng_keys_nf, rng_keys_mcmc, sampling_loop, initial_position, nf_model, state, run_mcmc, likelihood, params, d_likelihood=None,writer=None):
@@ -72,12 +72,14 @@ def sample(rng_keys_nf, rng_keys_mcmc, sampling_loop, initial_position, nf_model
     last_step = initial_position
     chains = []
     for i in range(n_loop):
-        rng_keys_nf, rng_keys_mcmc, state, positions, acceptance = sampling_loop(rng_keys_nf, rng_keys_mcmc, nf_model, state, last_step, run_mcmc, likelihood, params, d_likelihood, writer)
+        rng_keys_nf, rng_keys_mcmc, state, positions, local_acceptance, global_acceptance = sampling_loop(rng_keys_nf, rng_keys_mcmc, nf_model, state, last_step, run_mcmc, likelihood, params, d_likelihood, writer)
         last_step = positions[:,-1]
         chains.append(positions)
         if writer is not None:
-            acceptance = dict(zip(np.arange(len(acceptance)).astype(str),acceptance))
-            writer.add_scalars('acceptance_array',acceptance,i)
+            local_acceptance = dict(zip(np.arange(len(local_acceptance)).astype(str),local_acceptance))
+            global_acceptance = dict(zip(np.arange(len(global_acceptance)).astype(str),global_acceptance))
+            writer.add_scalars('local_acceptance',local_acceptance,i)
+            writer.add_scalars('global_acceptance',global_acceptance,i)
                 
 
     chains = np.concatenate(chains,axis=1)
