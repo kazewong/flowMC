@@ -32,7 +32,7 @@ def initialize_rng_keys(n_chains, seed=42):
     return rng_key_init ,rng_keys_mcmc, rng_keys_nf, init_rng_keys_nf
 
 
-def sampling_loop(rng_keys_nf, rng_keys_mcmc, model, state, initial_position, run_mcmc, likelihood, params, d_likelihood=None,writer=None):
+def sampling_loop(rng_keys_nf, rng_keys_mcmc, model, state, initial_position, local_sampler, likelihood, params, d_likelihood=None,writer=None):
     stepsize = params['stepsize']
     n_dim = params['n_dim']
     n_samples = params['n_samples']
@@ -45,7 +45,7 @@ def sampling_loop(rng_keys_nf, rng_keys_mcmc, model, state, initial_position, ru
             rng_keys_mcmc, n_samples, likelihood, initial_position, stepsize
             )
     else:
-        rng_keys_mcmc, positions, log_prob, acceptance = run_mcmc(rng_keys_mcmc, n_samples, likelihood, d_likelihood, initial_position, stepsize)
+        rng_keys_mcmc, positions, log_prob, acceptance = local_sampler(rng_keys_mcmc, n_samples, likelihood, d_likelihood, initial_position, stepsize)
 
 
     flat_chain = positions.reshape(-1,n_dim)
