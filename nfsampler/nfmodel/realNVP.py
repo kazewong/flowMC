@@ -68,9 +68,9 @@ class AffineCoupling(nn.Module):
         self.translate_MLP = MLP([self.n_features, self.n_hidden, self.n_features])
 
     def __call__(self, x):
-        s = self.mask * self.scale_MLP(x*(1-self.mask))
+        s = self.mask * self.scale_MLP(x * (1-self.mask))
         s = jnp.tanh(s)
-        t = self.mask * self.translate_MLP(x*(1-self.mask))
+        t = self.mask * self.translate_MLP(x * (1-self.mask))
         s = self.dt * s
         t = self.dt * t
         log_det = s.reshape(s.shape[0], -1).sum(axis=-1)
@@ -78,9 +78,9 @@ class AffineCoupling(nn.Module):
         return outputs, log_det
 
     def inverse(self, x):
-        s = self.mask * self.scale_MLP(x*(1-self.mask))
+        s = self.mask * self.scale_MLP(x * (1-self.mask))
         s = jnp.tanh(s)
-        t = self.mask * self.translate_MLP(x*(1-self.mask))
+        t = self.mask * self.translate_MLP(x * (1-self.mask))
         s = self.dt * s
         t = self.dt * t
         log_det = -s.reshape(s.shape[0], -1).sum(axis=-1)
@@ -106,12 +106,17 @@ class RealNVP(nn.Module):
         The number of affine coupling layers.
     dt : float
         Scaling factor for the affine coupling layer.
+    base_mean : ndarray 
+        Mean of Gaussian base distribution
+    base_cov : ndarray
+        Covariance of Gaussian base distribution
     """
 
     n_layer: int
     n_features: int
     n_hidden: int
     dt: float = 1
+    
 
     def setup(self):
         affine_coupling = []
@@ -123,6 +128,9 @@ class RealNVP(nn.Module):
             mask = jnp.array(mask)
             affine_coupling.append(AffineCoupling(self.n_features, self.n_hidden, mask, dt=self.dt))
         self.affine_coupling = affine_coupling
+
+        self.base_mean = jnp.zeros((1, self.n_features))
+        self.base_cov = jnp.eye(self.n_features)[None, :]
 
     def __call__(self, x):
         log_det = jnp.zeros(x.shape[0])
@@ -139,15 +147,15 @@ class RealNVP(nn.Module):
         return x, log_det
 
     def sample(self, rng_key, n_samples, params):
-        mean = jnp.zeros((n_samples,self.n_features))
-        cov = jnp.repeat(jnp.eye(self.n_features)[None,:],n_samples,axis=0)
+        mean = jnp.repeat(self.base_mean, n_samples, axis=0)
+        cov = jnp.repeat(self.base_cov, n_samples, axis=0)
         gaussian = jax.random.multivariate_normal(rng_key, mean, cov)
         samples = self.inverse(gaussian)
         return samples
 
     def log_prob(self, x):
         y, log_det = self.__call__(x)
-        mean = jnp.zeros((x.shape[0],self.n_features))
-        cov = jnp.repeat(jnp.eye(self.n_features)[None,:],x.shape[0],axis=0)
-        log_det = log_det + jax.scipy.stats.multivariate_normal.logpdf(y,mean,cov)
+        mean = jnp.repeat(self.base_mean, x.shape[0], axis=0)
+        cov = jnp.repeat(self.base_cov, x.shape[0], axis=0)
+        log_det = log_det + jax.scipy.stats.multivariate_normal.logpdf(y, mean,cov)
         return log_det

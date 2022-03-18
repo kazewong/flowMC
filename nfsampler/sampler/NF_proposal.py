@@ -30,19 +30,28 @@ def nf_metropolis_sampler(rng_key, n_samples, nf_model, nf_param, target_pdf, in
 
     rng_key, *subkeys = random.split(rng_key,3)
     all_positions = jnp.zeros((n_samples,)+initial_position.shape) + initial_position
-    proposal_position = nf_model.apply({'params': nf_param}, subkeys[0], initial_position.shape[0]*n_samples, nf_param, method=nf_model.sample)[0]
+    proposal_position = nf_model.apply({'params': nf_param}, subkeys[0],
+                                       initial_position.shape[0]*n_samples,
+                                       nf_param, method=nf_model.sample)[0]
 
 
-    log_pdf_nf_proposal = nf_model.apply({'params': nf_param}, proposal_position, method=nf_model.log_prob)
-    log_pdf_nf_initial = nf_model.apply({'params': nf_param}, initial_position, method=nf_model.log_prob)
+    log_pdf_nf_proposal = nf_model.apply({'params': nf_param},
+                                         proposal_position,
+                                         method=nf_model.log_prob)
+    log_pdf_nf_initial = nf_model.apply({'params': nf_param}, initial_position,
+                                        method=nf_model.log_prob)
     log_pdf_proposal = target_pdf(proposal_position)
     log_pdf_initial = target_pdf(initial_position)
 
 
-    proposal_position = proposal_position.reshape(n_samples, initial_position.shape[0], initial_position.shape[1])
-    log_pdf_nf_proposal = log_pdf_nf_proposal.reshape(n_samples, initial_position.shape[0])
+    proposal_position = proposal_position.reshape(n_samples,
+                                                  initial_position.shape[0],
+                                                  initial_position.shape[1])
+    log_pdf_nf_proposal = log_pdf_nf_proposal.reshape(n_samples,
+                                                      initial_position.shape[0])
     log_pdf_proposal = log_pdf_proposal.reshape(n_samples, initial_position.shape[0])
-    initial_state = (subkeys[1], all_positions, log_pdf_initial, log_pdf_nf_initial)
+    initial_state = (subkeys[1], all_positions, log_pdf_initial,
+                    log_pdf_nf_initial)
     rng_key, all_positions, log_prob, log_prob_nf = jax.lax.fori_loop(1, n_samples, 
                                                  mh_update_sol2, 
                                                  initial_state)
