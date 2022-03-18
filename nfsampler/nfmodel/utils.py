@@ -35,12 +35,12 @@ def train_flow(rng, model, state, data, num_epochs, batch_size):
         return value, state
 
     for epoch in range(1, num_epochs + 1):
-        print('Epoch %d' % epoch)
+        #print('Epoch %d' % epoch)
         # Use a separate PRNG key to permute image data during shuffling
         rng, input_rng = jax.random.split(rng)
         # Run an optimization step over a training batch
         value, state = train_epoch(state, data, batch_size, epoch, input_rng)
-        print('Train loss: %.3f' % value)
+        #print('Train loss: %.3f' % value)
 
     return rng, state
 

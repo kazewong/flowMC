@@ -1,11 +1,12 @@
 import jax
 import jax.numpy as jnp
 import numpy as np
+import tensorboard
 from nfsampler.nfmodel.utils import sample_nf,train_flow
 from nfsampler.sampler.NF_proposal import nf_metropolis_sampler
 from flax.training import train_state  # Useful dataclass to keep train state
 import optax                           # Optimizers
-
+from tensorboardX import SummaryWriter
 
 def initialize_rng_keys(n_chains, seed=42):
     """
@@ -31,44 +32,21 @@ def initialize_rng_keys(n_chains, seed=42):
     return rng_key_init ,rng_keys_mcmc, rng_keys_nf, init_rng_keys_nf
 
 
-def sampling_loop(rng_keys_nf, rng_keys_mcmc, model, state, initial_position,
-                  local_sampler, likelihood, config, d_likelihood=None):
-    """
-    Main worker kernel that do one sample cycle of the local and global sampler.
+def sampling_loop(rng_keys_nf, rng_keys_mcmc, model, state, initial_position, local_sampler, likelihood, params, d_likelihood=None,writer=None):
+    stepsize = params['stepsize']
+    n_dim = params['n_dim']
+    n_samples = params['n_samples']
+    num_epochs = params['num_epochs']
+    batch_size = params['batch_size']
+    nf_samples = params['nf_samples']
 
-    Args:
-        rng_keys_nf (Device Array): RNG keys for the normalizing flow global sampler.
-        rng_keys_mcmc (Device Array): RNG keys for the local sampler.
-        model (flax module): Normalizing flow model.
-        state (flax state): Train state of the normalizing flow model.
-        initial_position (Device Array): Initial position for the local sampler.
-        local_sampler (function): Local sampler function.
-        likelihood (function): Likelihood function.
-        params (dict): Configuration parameters.
-        d_likelihood (Device Array): Derivative of the likelihood function.
-    
-    Returns:
-        rng_keys_nf (Device Array): RNG keys for the normalizing flow global sampler after the loop.
-        rng_keys_mcmc (Device Array): RNG keys for the local sampler after the loop.
-        state (flax state): Train state of the normalizing flow model after the loop.
-        positions (Device Array): Walker positions after the loop.
-    """
-    stepsize = config['stepsize']
-    n_dim = config['n_dim']
-    n_samples = config['n_samples']
-    num_epochs = config['num_epochs']
-    batch_size = config['batch_size']
-    nf_samples = config['nf_samples']
     if d_likelihood is None:
         rng_keys_mcmc, positions, log_prob, acceptance = local_sampler(
             rng_keys_mcmc, n_samples, likelihood, initial_position, stepsize
             )
     else:
-        rng_keys_mcmc, positions, log_prob, acceptance = local_sampler(
-            rng_keys_mcmc, n_samples, likelihood, d_likelihood,
-            initial_position, stepsize
-            )
-    # if logging == True:
+        rng_keys_mcmc, positions, log_prob, acceptance = local_sampler(rng_keys_mcmc, n_samples, likelihood, d_likelihood, initial_position, stepsize)
+
 
     flat_chain = positions.reshape(-1,n_dim)
     rng_keys_nf, state = train_flow(rng_keys_nf, model, state, flat_chain, num_epochs, batch_size)
@@ -76,36 +54,22 @@ def sampling_loop(rng_keys_nf, rng_keys_mcmc, model, state, initial_position,
     rng_keys_nf, nf_chain, log_prob, log_prob_nf = nf_metropolis_sampler(rng_keys_nf, nf_samples, model, state.params , likelihood_vec, positions[:,-1])
 
     positions = jnp.concatenate((positions,nf_chain),axis=1)
-    return rng_keys_nf, rng_keys_mcmc, state, positions
+    return rng_keys_nf, rng_keys_mcmc, state, positions, acceptance
 
 
-def sample(rng_keys_nf, rng_keys_mcmc, sampling_loop, initial_position, nf_model, state, local_sampler, likelihood, config, d_likelihood=None):
-    """
-    Wrapper function that calls the sampling loop and produce the final chain.
-
-    Args:
-        rng_keys_nf (Device Array): RNG keys for the normalizing flow global sampler.
-        rng_keys_mcmc (Device Array): RNG keys for the local sampler.
-        sampling_loop (function): Sampling loop function.
-        initial_position (Device Array): Initial position for the local sampler.
-        nf_model (flax module): Normalizing flow model.
-        state (flax state): Train state of the normalizing flow model.
-        local_sampler (function): Local sampler function.
-        likelihood (function): Likelihood function.
-        config (dict): Configuration parameters.
-        d_likelihood (Device Array): Derivative of the likelihood function.
-
-    Returns:
-        chain (Device Array): Sampled chain. (n_walkers, n_samples, n_dim)
-        nf_sample (Device Array): Sampled normalizing flow chain.
-    """
-    n_loop = config['n_loop']
+def sample(rng_keys_nf, rng_keys_mcmc, sampling_loop, initial_position, nf_model, state, run_mcmc, likelihood, params, d_likelihood=None,writer=None):
+    n_loop = params['n_loop']
     last_step = initial_position
     chains = []
     for i in range(n_loop):
-        rng_keys_nf, rng_keys_mcmc, state, positions = sampling_loop(rng_keys_nf, rng_keys_mcmc, nf_model, state, last_step, local_sampler, likelihood, config, d_likelihood)
+        rng_keys_nf, rng_keys_mcmc, state, positions, acceptance = sampling_loop(rng_keys_nf, rng_keys_mcmc, nf_model, state, last_step, run_mcmc, likelihood, params, d_likelihood, writer)
         last_step = positions[:,-1]
         chains.append(positions)
+        if writer is not None:
+            acceptance = dict(zip(np.arange(len(acceptance)).astype(str),acceptance))
+            writer.add_scalars('acceptance_array',acceptance,i)
+                
+
     chains = np.concatenate(chains,axis=1)
     nf_samples = sample_nf(nf_model, state.params, rng_keys_nf, 10000)
     return chains, nf_samples
@@ -138,12 +102,11 @@ class Sampler:
         self.d_likelihood = d_likelihood
         self.rng_keys_nf = rng_keys_nf
         self.rng_keys_mcmc = rng_keys_mcmc
+        if 'logging' in config:
+            if config['logging'] == True:
+                self.writer = SummaryWriter('log_dir')
 
 
     def sample(self, initial_position):
-        chains, nf_samples = sample(self.rng_keys_nf, self.rng_keys_mcmc,
-                                    sampling_loop, initial_position,
-                                    self.nf_model, self.state,
-                                    self.local_sampler, self.likelihood,
-                                    self.config, self.d_likelihood)
+        chains, nf_samples = sample(self.rng_keys_nf, self.rng_keys_mcmc, sampling_loop, initial_position, self.nf_model, self.state, self.local_sampler, self.likelihood, self.config, self.d_likelihood,self.writer)
         return chains, nf_samples
