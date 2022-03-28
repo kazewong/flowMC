@@ -70,6 +70,7 @@ config['momentum'] = 0.9
 config['num_epochs'] = 10
 config['batch_size'] = 1000
 config['stepsize'] = 0.01
+config['logging'] = True
 
 print("Preparing RNG keys")
 rng_key_set = initialize_rng_keys(config['n_chains'],seed=42)
