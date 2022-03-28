@@ -1,2 +1,3 @@
 *.pyc
 nfsampler/nfmodel/__pycache__/maf.cpython-37.pyc
+log_dir/
