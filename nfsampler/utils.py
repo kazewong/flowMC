@@ -23,7 +23,7 @@ def initialize_rng_keys(n_chains, seed=42):
         rng_keys_nf (Device Array): RNG keys for the normalizing flow global sampler.
         init_rng_keys_nf (Device Array): RNG keys for initializing wieght of the normalizing flow model.
     """
-    rng_key = jax.random.PRNGKey(42)
+    rng_key = jax.random.PRNGKey(seed)
     rng_key_init, rng_key_mcmc, rng_key_nf = jax.random.split(rng_key,3)
 
     rng_keys_mcmc = jax.random.split(rng_key_mcmc, n_chains)  # (nchains,)
