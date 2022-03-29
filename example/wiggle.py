@@ -53,10 +53,6 @@ def plot_2d_level(log_prob, dim=2, x_min=-10, x_max=10,
     plt.title(title)
     return log_probs
 
-
-plot_2d_level(log_prob)
-plt.show(block=False)
-
 d_log_prob = jax.grad(log_prob)
 
 config = {}
@@ -96,7 +92,8 @@ import corner
 import matplotlib.pyplot as plt
 
 # Plot one chain to show the jump
-plt.plot(chains[70,:,1],chains[70,:,0])
+plot_2d_level(log_prob)
+plt.plot(chains[70,:,0],chains[70,:,1])
 plt.show(block=False)
 
 # Plot all chains
