@@ -75,7 +75,7 @@ def mala_sampler(rng_key, n_steps, logpdf, d_logpdf, initial_position, dt=1e-5):
 
 
     logp = logpdf(initial_position)
-    acceptance = jnp.zeros(n_steps)
+    acceptance = jnp.zeros((n_steps,)+(initial_position.shape[0],))
     all_positions = jnp.zeros((n_steps,)+initial_position.shape) + initial_position
     initial_state = (rng_key,all_positions, logp, acceptance)
     rng_key, all_positions, log_prob, acceptance = jax.lax.fori_loop(1, n_steps, 

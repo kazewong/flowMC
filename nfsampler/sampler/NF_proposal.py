@@ -28,7 +28,10 @@ def nf_metropolis_sampler(rng_key, n_steps, nf_model, nf_param, target_pdf, init
             sub_key, proposal_position[i], positions[i-1], log_pdf_proposal[i],
             log_pdf_nf_proposal[i], log_prob, log_prob_nf
             )
-        positions=positions.at[i].set(new_position)
+        positions = positions.at[i].set(new_position)
+        print(i)
+        print(do_accept.shape)
+        print(acceptance.shape)
         acceptance = acceptance.at[i].set(do_accept)
 
         return (key, positions, new_log_prob, new_log_prob_nf, acceptance)
@@ -57,7 +60,7 @@ def nf_metropolis_sampler(rng_key, n_steps, nf_model, nf_param, target_pdf, init
     log_pdf_nf_proposal = log_pdf_nf_proposal.reshape(n_steps,
                                                       initial_position.shape[0])
     log_pdf_proposal = log_pdf_proposal.reshape(n_steps, initial_position.shape[0])
-    acceptance = jnp.zeros(n_steps)
+    acceptance = jnp.zeros((n_steps,)+(initial_position.shape[0],))
     initial_state = (subkeys[1], all_positions, log_pdf_initial,
                     log_pdf_nf_initial, acceptance)
     rng_key, all_positions, log_prob, log_prob_nf, acceptance = jax.lax.fori_loop(1, n_steps, 
