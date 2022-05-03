@@ -5,16 +5,17 @@ from jax.scipy.special import logsumexp
 from jax.scipy.stats import multivariate_normal
 
 def train_step(model, state, batch):
-	def loss(params):
-		y, log_det = model.apply({'params': params},batch)
-		mean = jnp.zeros((batch.shape[0],model.n_features))
-		cov = jnp.repeat(jnp.eye(model.n_features)[None,:],batch.shape[0],axis=0)
-		log_det = log_det + multivariate_normal.logpdf(y,mean,cov)
-		return -jnp.mean(log_det)
-	grad_fn = jax.value_and_grad(loss)
-	value, grad = grad_fn(state.params)
-	state = state.apply_gradients(grads=grad)
-	return value,state
+    def loss(params):
+        y, log_det = model.apply({'params': params},batch)
+        mean = jnp.zeros((batch.shape[0],model.n_features))
+        cov = jnp.repeat(jnp.eye(model.n_features)[None,:],batch.shape[0],axis=0)
+        log_det = log_det + multivariate_normal.logpdf(y, mean, cov)
+        return - jnp.mean(log_det)
+
+    grad_fn = jax.value_and_grad(loss)
+    value, grad = grad_fn(state.params)
+    state = state.apply_gradients(grads=grad)
+    return value,state
 
 train_step = jax.jit(train_step,static_argnums=(0,))
 

@@ -23,26 +23,16 @@ def dual_moon_pe(x):
 
 d_dual_moon = jax.grad(dual_moon_pe)
 
-# n_dim = 5
-# n_samples = 20
-# nf_samples = 100
-# n_chains = 100
-# learning_rate = 0.01
-# momentum = 0.9
-# num_epochs = 100
-# batch_size = 1000
-
-
 config = {}
 config['n_dim'] = 5
-config['n_loop'] = 5
-config['n_samples'] = 20
-config['nf_samples'] = 100
-config['n_chains'] = 100
+config['n_loop'] = 3
+config['n_local_steps'] = 20
+config['n_global_steps'] = 3
+config['n_chains'] = 4
 config['learning_rate'] = 0.01
 config['momentum'] = 0.9
-config['num_epochs'] = 100
-config['batch_size'] = 1000
+config['num_epochs'] = 1
+config['batch_size'] = 10  # error if larger than combination of params above
 config['stepsize'] = 0.01
 
 print("Preparing RNG keys")
@@ -64,6 +54,8 @@ nf_sampler = Sampler(rng_key_set, config, model, run_mcmc, dual_moon_pe, d_dual_
 print("Sampling")
 
 chains, nf_samples, local_accs, global_accs = nf_sampler.sample(initial_position)
+
+print('chains shape: ', chains.shape, 'local_accs shape: ', local_accs.shape, 'global_accs shape: ', global_accs.shape)
 
 import corner
 import matplotlib.pyplot as plt

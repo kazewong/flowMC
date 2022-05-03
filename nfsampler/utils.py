@@ -32,7 +32,7 @@ def initialize_rng_keys(n_chains, seed=42):
     return rng_key_init ,rng_keys_mcmc, rng_keys_nf, init_rng_keys_nf
 
 
-def sampling_loop(rng_keys_nf, rng_keys_mcmc, model, state, initial_position, local_sampler, likelihood, params, d_likelihood=None, writer=None):
+def sampling_loop(rng_keys_nf, rng_keys_mcmc, model, state, initial_position, local_sampler, likelihood, config, d_likelihood=None, writer=None):
 
     """
     Sampling loop for both the global sampler and the local sampler.
@@ -46,21 +46,21 @@ def sampling_loop(rng_keys_nf, rng_keys_mcmc, model, state, initial_position, lo
 
     """
 
-    stepsize = params['stepsize']
-    n_dim = params['n_dim']
-    n_samples = params['n_samples']
-    num_epochs = params['num_epochs']
-    batch_size = params['batch_size']
-    nf_samples = params['nf_samples']
+    stepsize = config['stepsize']
+    n_dim = config['n_dim']
+    n_local_steps = config['n_local_steps']
+    num_epochs = config['num_epochs']
+    batch_size = config['batch_size']
+    n_global_steps = config['n_global_steps']
 
     if d_likelihood is None:
         # TODO: This is for the gaussian RW right? No global acceptance below? 
         rng_keys_mcmc, positions, log_prob, local_acceptance, global_acceptance = local_sampler(
-            rng_keys_mcmc, n_samples, likelihood, initial_position, stepsize
+            rng_keys_mcmc, n_local_steps, likelihood, initial_position, stepsize
             )
     else:
         rng_keys_mcmc, positions, log_prob, local_acceptance = local_sampler(
-            rng_keys_mcmc, n_samples, likelihood, d_likelihood, initial_position, stepsize
+            rng_keys_mcmc, n_local_steps, likelihood, d_likelihood, initial_position, stepsize
             )
 
     flat_chain = positions.reshape(-1,n_dim)
@@ -68,7 +68,8 @@ def sampling_loop(rng_keys_nf, rng_keys_mcmc, model, state, initial_position, lo
                                     num_epochs, batch_size)
     likelihood_vec = jax.vmap(likelihood)
     rng_keys_nf, nf_chain, log_prob, log_prob_nf, global_acceptance = nf_metropolis_sampler(
-        rng_keys_nf, nf_samples, model, state.params , likelihood_vec, positions[:,-1]
+        rng_keys_nf, n_global_steps, model, state.params , likelihood_vec,
+        positions[:,-1]
         )
 
     positions = jnp.concatenate((positions,nf_chain),axis=1)
@@ -77,10 +78,10 @@ def sampling_loop(rng_keys_nf, rng_keys_mcmc, model, state, initial_position, lo
 
 
 def sample(rng_keys_nf, rng_keys_mcmc, sampling_loop, initial_position,
-           nf_model, state, run_mcmc, likelihood, params, d_likelihood=None,
+           nf_model, state, run_mcmc, likelihood, config, d_likelihood=None,
             # writer=None
            ):
-    n_loop = params['n_loop']
+    n_loop = config['n_loop']
     last_step = initial_position
     chains = []
     local_accs = []
@@ -88,7 +89,7 @@ def sample(rng_keys_nf, rng_keys_mcmc, sampling_loop, initial_position,
 
     for i in range(n_loop):
         rng_keys_nf, rng_keys_mcmc, state, positions, local_acceptance, global_acceptance = sampling_loop(
-            rng_keys_nf, rng_keys_mcmc, nf_model, state, last_step, run_mcmc, likelihood, params, d_likelihood, 
+            rng_keys_nf, rng_keys_mcmc, nf_model, state, last_step, run_mcmc, likelihood, config, d_likelihood, 
             # writer
             )
         last_step = positions[:,-1]
@@ -104,10 +105,9 @@ def sample(rng_keys_nf, rng_keys_mcmc, sampling_loop, initial_position,
                 
 
     chains = np.concatenate(chains, axis=1)
-    local_accs = np.concatenate(local_accs, axis=0)
-    global_accs = np.concatenate(global_accs, axis=0)
-
-    print('chains shape: ', chains.shape, 'local_accs shape: ', local_accs.shape, 'global_accs shape: ', global_accs.shape)
+    local_accs = jnp.stack(local_accs).transpose((1,0,2)).reshape(config['n_chains'], -1).mean(0)
+    # local_accs = np.concatenate(local_accs, axis=1)
+    # global_accs = np.concatenate(global_accs, axis=1)
 
     nf_samples = sample_nf(nf_model, state.params, rng_keys_nf, 10000)
     return chains, nf_samples, local_accs, global_accs
