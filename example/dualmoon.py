@@ -8,10 +8,6 @@ import numpy as np
 
 from nfsampler.nfmodel.utils import *
 
-# For debugging
-from jax.config import config
-config.update('jax_disable_jit', True)
-
 def dual_moon_pe(x):
     """
     Term 2 and 3 separate the distribution and smear it along the first and second dimension
