@@ -6,8 +6,11 @@ from nfsampler.utils import Sampler, initialize_rng_keys
 from jax.scipy.special import logsumexp
 import numpy as np  
 
-
 from nfsampler.nfmodel.utils import *
+
+# For debugging
+from jax.config import config
+config.update('jax_disable_jit', True)
 
 def dual_moon_pe(x):
     """
@@ -20,14 +23,14 @@ def dual_moon_pe(x):
 
 d_dual_moon = jax.grad(dual_moon_pe)
 
-n_dim = 5
-n_samples = 20
-nf_samples = 100
-n_chains = 100
-learning_rate = 0.01
-momentum = 0.9
-num_epochs = 100
-batch_size = 1000
+# n_dim = 5
+# n_samples = 20
+# nf_samples = 100
+# n_chains = 100
+# learning_rate = 0.01
+# momentum = 0.9
+# num_epochs = 100
+# batch_size = 1000
 
 
 config = {}
@@ -60,15 +63,20 @@ nf_sampler = Sampler(rng_key_set, config, model, run_mcmc, dual_moon_pe, d_dual_
 
 print("Sampling")
 
-chains, nf_samples = nf_sampler.sample(initial_position)
+chains, nf_samples, local_accs, global_accs = nf_sampler.sample(initial_position)
 
 import corner
 import matplotlib.pyplot as plt
 
 # Plot one chain to show the jump
+plt.figure()
 plt.plot(chains[70,:,0],chains[70,:,1])
-plt.show()
-plt.close()
+
+# plt.close()
 
 # Plot all chains
-corner.corner(chains.reshape(-1,n_dim), labels=["$x_1$", "$x_2$", "$x_3$", "$x_4$", "$x_5$"])
+figure = corner.corner(chains.reshape(-1,config['n_dim']), labels=["$x_1$", "$x_2$", "$x_3$", "$x_4$", "$x_5$"])
+figure.set_size_inches(7, 7)
+figure.suptitle('Visualize samples')
+
+plt.show(block=False)

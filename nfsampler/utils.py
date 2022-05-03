@@ -32,7 +32,7 @@ def initialize_rng_keys(n_chains, seed=42):
     return rng_key_init ,rng_keys_mcmc, rng_keys_nf, init_rng_keys_nf
 
 
-def sampling_loop(rng_keys_nf, rng_keys_mcmc, model, state, initial_position, local_sampler, likelihood, params, d_likelihood=None,writer=None):
+def sampling_loop(rng_keys_nf, rng_keys_mcmc, model, state, initial_position, local_sampler, likelihood, params, d_likelihood=None, writer=None):
 
     """
     Sampling loop for both the global sampler and the local sampler.
@@ -40,6 +40,9 @@ def sampling_loop(rng_keys_nf, rng_keys_mcmc, model, state, initial_position, lo
     Args:
         rng_keys_nf (Device Array): RNG keys for the normalizing flow global sampler.
         rng_keys_mcmc (Device Array): RNG keys for the local sampler.
+        d_likelihood ?
+        TODO: likelihood vs posterior?
+        TODO: nf_samples - sometime int, sometimes samples 
 
     """
 
@@ -51,40 +54,63 @@ def sampling_loop(rng_keys_nf, rng_keys_mcmc, model, state, initial_position, lo
     nf_samples = params['nf_samples']
 
     if d_likelihood is None:
+        # TODO: This is for the gaussian RW right? No global acceptance below? 
         rng_keys_mcmc, positions, log_prob, local_acceptance, global_acceptance = local_sampler(
             rng_keys_mcmc, n_samples, likelihood, initial_position, stepsize
             )
     else:
-        rng_keys_mcmc, positions, log_prob, local_acceptance = local_sampler(rng_keys_mcmc, n_samples, likelihood, d_likelihood, initial_position, stepsize)
-
+        rng_keys_mcmc, positions, log_prob, local_acceptance = local_sampler(
+            rng_keys_mcmc, n_samples, likelihood, d_likelihood, initial_position, stepsize
+            )
 
     flat_chain = positions.reshape(-1,n_dim)
-    rng_keys_nf, state = train_flow(rng_keys_nf, model, state, flat_chain, num_epochs, batch_size)
+    rng_keys_nf, state = train_flow(rng_keys_nf, model, state, flat_chain,
+                                    num_epochs, batch_size)
     likelihood_vec = jax.vmap(likelihood)
-    rng_keys_nf, nf_chain, log_prob, log_prob_nf, global_acceptance = nf_metropolis_sampler(rng_keys_nf, nf_samples, model, state.params , likelihood_vec, positions[:,-1])
+    rng_keys_nf, nf_chain, log_prob, log_prob_nf, global_acceptance = nf_metropolis_sampler(
+        rng_keys_nf, nf_samples, model, state.params , likelihood_vec, positions[:,-1]
+        )
 
     positions = jnp.concatenate((positions,nf_chain),axis=1)
+
     return rng_keys_nf, rng_keys_mcmc, state, positions, local_acceptance, global_acceptance
 
 
-def sample(rng_keys_nf, rng_keys_mcmc, sampling_loop, initial_position, nf_model, state, run_mcmc, likelihood, params, d_likelihood=None,writer=None):
+def sample(rng_keys_nf, rng_keys_mcmc, sampling_loop, initial_position,
+           nf_model, state, run_mcmc, likelihood, params, d_likelihood=None,
+            # writer=None
+           ):
     n_loop = params['n_loop']
     last_step = initial_position
     chains = []
+    local_accs = []
+    global_accs = []
+
     for i in range(n_loop):
-        rng_keys_nf, rng_keys_mcmc, state, positions, local_acceptance, global_acceptance = sampling_loop(rng_keys_nf, rng_keys_mcmc, nf_model, state, last_step, run_mcmc, likelihood, params, d_likelihood, writer)
+        rng_keys_nf, rng_keys_mcmc, state, positions, local_acceptance, global_acceptance = sampling_loop(
+            rng_keys_nf, rng_keys_mcmc, nf_model, state, last_step, run_mcmc, likelihood, params, d_likelihood, 
+            # writer
+            )
         last_step = positions[:,-1]
         chains.append(positions)
-        if writer is not None:
-            local_acceptance = dict(zip(np.arange(len(local_acceptance)).astype(str),local_acceptance))
-            global_acceptance = dict(zip(np.arange(len(global_acceptance)).astype(str),global_acceptance))
-            writer.add_scalars('local_acceptance',local_acceptance,i)
-            writer.add_scalars('global_acceptance',global_acceptance,i)
+        local_accs.append(local_acceptance)
+        global_accs.append(global_acceptance)
+
+        # if writer is not None:
+        #     local_acceptance = dict(zip(np.arange(len(local_acceptance)).astype(str),local_acceptance))
+        #     global_acceptance = dict(zip(np.arange(len(global_acceptance)).astype(str),global_acceptance))
+        #     writer.add_scalars('local_acceptance',local_acceptance,i)
+        #     writer.add_scalars('global_acceptance',global_acceptance,i)
                 
 
-    chains = np.concatenate(chains,axis=1)
+    chains = np.concatenate(chains, axis=1)
+    local_accs = np.concatenate(local_accs, axis=0)
+    global_accs = np.concatenate(global_accs, axis=0)
+
+    print('chains shape: ', chains.shape, 'local_accs shape: ', local_accs.shape, 'global_accs shape: ', global_accs.shape)
+
     nf_samples = sample_nf(nf_model, state.params, rng_keys_nf, 10000)
-    return chains, nf_samples
+    return chains, nf_samples, local_accs, global_accs
 
 
 class Sampler:
@@ -114,11 +140,17 @@ class Sampler:
         self.d_likelihood = d_likelihood
         self.rng_keys_nf = rng_keys_nf
         self.rng_keys_mcmc = rng_keys_mcmc
-        if 'logging' in config:
-            if config['logging'] == True:
-                self.writer = SummaryWriter('log_dir')
+        # if 'logging' in config:
+        #     if config['logging'] == True:
+        #         self.writer = SummaryWriter('log_dir')
 
 
     def sample(self, initial_position):
-        chains, nf_samples = sample(self.rng_keys_nf, self.rng_keys_mcmc, sampling_loop, initial_position, self.nf_model, self.state, self.local_sampler, self.likelihood, self.config, self.d_likelihood,self.writer)
-        return chains, nf_samples
+        chains, nf_samples, local_accs, global_accs = sample(self.rng_keys_nf, self.rng_keys_mcmc,
+                                    sampling_loop, initial_position,
+                                    self.nf_model, self.state, 
+                                    self.local_sampler, self.likelihood,
+                                    self.config, self.d_likelihood, 
+                                    # self.writer
+                                    )
+        return chains, nf_samples, local_accs, global_accs

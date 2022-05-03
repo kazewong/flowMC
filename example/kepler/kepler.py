@@ -7,6 +7,7 @@ from scipy.optimize import minimize
 import corner
 import tqdm
 import time
+import pickle
 
 from nfsampler.nfmodel.realNVP import RealNVP
 from nfsampler.sampler.MALA import mala_sampler
@@ -56,15 +57,15 @@ d_log_posterior = jax.grad(log_posterior)
 
 config = {}
 config['n_dim'] = 9
-config['n_loop'] = 10
-config['n_samples'] = 100
-config['nf_samples'] = 10
-config['n_chains'] = 100
+config['n_loop'] = 2
+config['n_samples'] = 5
+config['nf_samples'] = 2
+config['n_chains'] = 5
 config['learning_rate'] = 0.01
 config['momentum'] = 0.9
 config['num_epochs'] = 5
-config['batch_size'] = 100
-config['stepsize'] = 1e-2
+config['batch_size'] = 10
+config['stepsize'] = 1e-3
 config['logging'] = True
 
 print("Preparing RNG keys")
@@ -91,19 +92,18 @@ cov = init_centered.T @ init_centered / config['n_chains']
 
 model = RealNVP(10, config['n_dim'], 64, 1)
 
-run_mcmc = jax.vmap(mala_sampler, in_axes=(0, None, None, None, 0, None),
+run_mala = jax.vmap(mala_sampler, in_axes=(0, None, None, None, 0, None),
                     out_axes=0)
 
 print("Initializing sampler class")
 
-
-nf_sampler = Sampler(rng_key_set, config, model, run_mcmc, log_posterior, d_log_posterior)
+nf_sampler = Sampler(rng_key_set, config, model, run_mala, log_posterior, d_log_posterior)
 
 
 print("Sampling")
 
 start = time.time()
-chains, nf_samples = nf_sampler.sample(initial_position)
+chains, nf_samples, local_accs, global_accs = nf_sampler.sample(initial_position)
 print('Elapsed: ', time.time()-start, 's')
 
 print("Make plots")
@@ -112,7 +112,7 @@ value1 = true_params
 n_dim = config['n_dim']
 # Make the base corner plot
 figure = corner.corner(chains.reshape(-1,n_dim),
-                labels=['v0', 'log_s2', 'log_period', 'log_k', 'sin_phi_', 'cos_phi_', 'ecc_', 'sin_w_', 'cos_w_'])
+                labels=['v0', 'log_s2', 'log_period', 'log_k', 'sin_phi_', 'cos_phi_', 'ecc_', 'sin_w_', 'cos_w_'], title_kwargs={"fontsize": 12})
 figure.set_size_inches(7, 7)
 figure.suptitle('Visualize chains')
 # Extract the axes
@@ -163,7 +163,7 @@ value1 = true_params
 n_dim = config['n_dim']
 # Make the base corner plot
 figure = corner.corner(chains.reshape(-1,n_dim),
-                labels=['v0', 'log_s2', 'log_period', 'log_k', 'sin_phi_', 'cos_phi_', 'ecc_', 'sin_w_', 'cos_w_'])
+                labels=['v0', 'log_s2', 'log_period', 'log_k', 'sin_phi_', 'cos_phi_', 'ecc_', 'sin_w_', 'cos_w_'], title_kwargs={"fontsize": 12})
 figure.set_size_inches(7, 7)
 figure.suptitle('Visualize initializations')
 # Extract the axes
@@ -184,3 +184,19 @@ for yi in range(n_dim):
 plt.show(block=False)
 
 
+results = {
+    'chains': chains,
+    'nf_samples': nf_samples,
+    'prior_samples': kepler_params_ini,
+    'optimized_init': initial_position,
+    'config': config,
+    'true_params': true_params,
+    'rv_obs': rv_obs,
+    't': t,
+    'prior_kwargs': prior_kwargs,
+    'rv_err': rv_err
+}
+
+random_id = np.random.randint(10000)
+with open('results_{:d}.pkl'.format(random_id), 'wb') as f:
+    pickle.dump(results, f)
