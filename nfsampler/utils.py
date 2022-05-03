@@ -1,12 +1,10 @@
 import jax
 import jax.numpy as jnp
 import numpy as np
-import tensorboard
 from nfsampler.nfmodel.utils import sample_nf,train_flow
 from nfsampler.sampler.NF_proposal import nf_metropolis_sampler
 from flax.training import train_state  # Useful dataclass to keep train state
 import optax                           # Optimizers
-from tensorboardX import SummaryWriter
 
 def initialize_rng_keys(n_chains, seed=42):
     """
@@ -54,8 +52,7 @@ def sampling_loop(rng_keys_nf, rng_keys_mcmc, model, state, initial_position, lo
     n_global_steps = config['n_global_steps']
 
     if d_likelihood is None:
-        # TODO: This is for the gaussian RW right? No global acceptance below? 
-        rng_keys_mcmc, positions, log_prob, local_acceptance, global_acceptance = local_sampler(
+        rng_keys_mcmc, positions, log_prob, local_acceptance = local_sampler(
             rng_keys_mcmc, n_local_steps, likelihood, initial_position, stepsize
             )
     else:
@@ -79,7 +76,6 @@ def sampling_loop(rng_keys_nf, rng_keys_mcmc, model, state, initial_position, lo
 
 def sample(rng_keys_nf, rng_keys_mcmc, sampling_loop, initial_position,
            nf_model, state, run_mcmc, likelihood, config, d_likelihood=None,
-            # writer=None
            ):
     n_loop = config['n_loop']
     last_step = initial_position
@@ -90,24 +86,15 @@ def sample(rng_keys_nf, rng_keys_mcmc, sampling_loop, initial_position,
     for i in range(n_loop):
         rng_keys_nf, rng_keys_mcmc, state, positions, local_acceptance, global_acceptance = sampling_loop(
             rng_keys_nf, rng_keys_mcmc, nf_model, state, last_step, run_mcmc, likelihood, config, d_likelihood, 
-            # writer
             )
         last_step = positions[:,-1]
         chains.append(positions)
         local_accs.append(local_acceptance)
         global_accs.append(global_acceptance)
 
-        # if writer is not None:
-        #     local_acceptance = dict(zip(np.arange(len(local_acceptance)).astype(str),local_acceptance))
-        #     global_acceptance = dict(zip(np.arange(len(global_acceptance)).astype(str),global_acceptance))
-        #     writer.add_scalars('local_acceptance',local_acceptance,i)
-        #     writer.add_scalars('global_acceptance',global_acceptance,i)
-                
 
     chains = np.concatenate(chains, axis=1)
     local_accs = jnp.stack(local_accs).transpose((1,0,2)).reshape(config['n_chains'], -1).mean(0)
-    # local_accs = np.concatenate(local_accs, axis=1)
-    # global_accs = np.concatenate(global_accs, axis=1)
 
     nf_samples = sample_nf(nf_model, state.params, rng_keys_nf, 10000)
     return chains, nf_samples, local_accs, global_accs
@@ -140,9 +127,6 @@ class Sampler:
         self.d_likelihood = d_likelihood
         self.rng_keys_nf = rng_keys_nf
         self.rng_keys_mcmc = rng_keys_mcmc
-        # if 'logging' in config:
-        #     if config['logging'] == True:
-        #         self.writer = SummaryWriter('log_dir')
 
 
     def sample(self, initial_position):
@@ -151,6 +135,5 @@ class Sampler:
                                     self.nf_model, self.state, 
                                     self.local_sampler, self.likelihood,
                                     self.config, self.d_likelihood, 
-                                    # self.writer
                                     )
         return chains, nf_samples, local_accs, global_accs
