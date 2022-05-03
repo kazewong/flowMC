@@ -1,7 +1,6 @@
 import jax
 import jax.numpy as jnp
 from jax import grad
-from functools import partial
 
 def mala_kernel(rng_key, logpdf, d_logpdf, position, log_prob, dt=0.1):
 
