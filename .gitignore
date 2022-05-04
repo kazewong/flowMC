@@ -1,3 +1,7 @@
 *.pyc
 nfsampler/nfmodel/__pycache__/maf.cpython-37.pyc
 log_dir/
+*.pkl
+nfsampler/nfmodel/realNVP_white.py
+example/kepler/kepler_white.py
+example/kepler/kepler_analyse.py
