@@ -30,7 +30,7 @@ def initialize_rng_keys(n_chains, seed=42):
     return rng_key_init ,rng_keys_mcmc, rng_keys_nf, init_rng_keys_nf
 
 
-def sampling_loop(rng_keys_nf, rng_keys_mcmc, model, state, initial_position, local_sampler, likelihood, config, d_likelihood=None, writer=None):
+def sampling_loop(rng_keys_nf, rng_keys_mcmc, model, state, initial_position, local_sampler, likelihood, config, d_likelihood=None):
 
     """
     Sampling loop for both the global sampler and the local sampler.
@@ -50,6 +50,7 @@ def sampling_loop(rng_keys_nf, rng_keys_mcmc, model, state, initial_position, lo
     num_epochs = config['num_epochs']
     batch_size = config['batch_size']
     n_global_steps = config['n_global_steps']
+
 
     if d_likelihood is None:
         rng_keys_mcmc, positions, log_prob, local_acceptance = local_sampler(
@@ -93,8 +94,9 @@ def sample(rng_keys_nf, rng_keys_mcmc, sampling_loop, initial_position,
         global_accs.append(global_acceptance)
 
 
-    chains = np.concatenate(chains, axis=1)
-    local_accs = jnp.stack(local_accs).transpose((1,0,2)).reshape(config['n_chains'], -1).mean(0)
+    chains = jnp.concatenate(chains, axis=1)
+    local_accs = jnp.stack(local_accs,axis=0)
+    global_accs = jnp.stack(global_accs,axis=0)
 
     nf_samples = sample_nf(nf_model, state.params, rng_keys_nf, 10000)
     return chains, nf_samples, local_accs, global_accs

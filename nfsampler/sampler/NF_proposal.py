@@ -29,9 +29,7 @@ def nf_metropolis_sampler(rng_key, n_steps, nf_model, nf_param, target_pdf, init
             log_pdf_nf_proposal[i], log_prob, log_prob_nf
             )
         positions = positions.at[i].set(new_position)
-        print(i)
-        print(do_accept.shape)
-        print(acceptance.shape)
+
         acceptance = acceptance.at[i].set(do_accept)
 
         return (key, positions, new_log_prob, new_log_prob_nf, acceptance)
