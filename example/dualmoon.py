@@ -53,14 +53,16 @@ chains, nf_samples, local_accs, global_accs = nf_sampler.sample(initial_position
 
 print('chains shape: ', chains.shape, 'local_accs shape: ', local_accs.shape, 'global_accs shape: ', global_accs.shape)
 
+chains = np.array(chains)
+
 import corner
 import matplotlib.pyplot as plt
 
 # Plot one chain to show the jump
 plt.figure()
-plt.plot(chains[70,:,0],chains[70,:,1])
+plt.plot(chains[:,10,0],chains[:,10,1])
 
-# plt.close()
+plt.close()
 
 # Plot all chains
 figure = corner.corner(chains.reshape(-1,config['n_dim']), labels=["$x_1$", "$x_2$", "$x_3$", "$x_4$", "$x_5$"])
