@@ -77,7 +77,15 @@ def sampling_loop(rng_keys_nf, rng_keys_mcmc, model, state, initial_position, lo
 
 def sample(rng_keys_nf, rng_keys_mcmc, sampling_loop, initial_position,
            nf_model, state, run_mcmc, likelihood, config, d_likelihood=None,
-           ):
+           n_nf_samples=10000):
+    """
+
+    Returns:
+        chains (n_chains, n_steps, dim): Sampled positions.
+        nf_samples (n_nf_samples, dim): Samples from learned NF.
+        local_accs (n_chains, n_local_steps * n_loop): Table of acceptance.
+        global_accs (n_chains, n_global_steps * n_loop): Table of acceptance.
+    """
     n_loop = config['n_loop']
     last_step = initial_position
     chains = []
@@ -95,10 +103,10 @@ def sample(rng_keys_nf, rng_keys_mcmc, sampling_loop, initial_position,
 
 
     chains = jnp.concatenate(chains, axis=1)
-    local_accs = jnp.stack(local_accs,axis=0)
-    global_accs = jnp.stack(global_accs,axis=0)
+    local_accs = jnp.stack(local_accs,axis=1).reshape(chains.shape[0], -1)
+    global_accs = jnp.stack(global_accs,axis=1).reshape(chains.shape[0], -1)
 
-    nf_samples = sample_nf(nf_model, state.params, rng_keys_nf, 10000)
+    nf_samples = sample_nf(nf_model, state.params, rng_keys_nf, n_nf_samples)
     return chains, nf_samples, local_accs, global_accs
 
 
