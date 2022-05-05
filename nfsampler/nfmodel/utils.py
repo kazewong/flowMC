@@ -15,7 +15,7 @@ def train_step(model, state, batch):
     grad_fn = jax.value_and_grad(loss)
     value, grad = grad_fn(state.params)
     state = state.apply_gradients(grads=grad)
-    return value,state
+    return value, state
 
 train_step = jax.jit(train_step,static_argnums=(0,))
 
@@ -35,6 +35,7 @@ def train_flow(rng, model, state, data, num_epochs, batch_size):
 
         return value, state
 
+    loss_values = []
     for epoch in range(1, num_epochs + 1):
         #print('Epoch %d' % epoch)
         # Use a separate PRNG key to permute image data during shuffling
@@ -42,8 +43,9 @@ def train_flow(rng, model, state, data, num_epochs, batch_size):
         # Run an optimization step over a training batch
         value, state = train_epoch(state, data, batch_size, epoch, input_rng)
         #print('Train loss: %.3f' % value)
+        loss_values.append(value)
 
-    return rng, state
+    return rng, state, loss_values
 
 def sample_nf(model, param, rng_key, n_sample):
     rng_key, subkey = random.split(rng_key)

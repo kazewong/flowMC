@@ -62,7 +62,7 @@ def sampling_loop(rng_keys_nf, rng_keys_mcmc, model, state, initial_position, lo
             )
 
     flat_chain = positions.reshape(-1,n_dim)
-    rng_keys_nf, state = train_flow(rng_keys_nf, model, state, flat_chain,
+    rng_keys_nf, state, loss_values = train_flow(rng_keys_nf, model, state, flat_chain,
                                     num_epochs, batch_size)
     likelihood_vec = jax.vmap(likelihood)
     rng_keys_nf, nf_chain, log_prob, log_prob_nf, global_acceptance = nf_metropolis_sampler(
@@ -72,7 +72,8 @@ def sampling_loop(rng_keys_nf, rng_keys_mcmc, model, state, initial_position, lo
 
     positions = jnp.concatenate((positions,nf_chain),axis=1)
 
-    return rng_keys_nf, rng_keys_mcmc, state, positions, local_acceptance, global_acceptance
+    return rng_keys_nf, rng_keys_mcmc, state, positions, local_acceptance, \
+           global_acceptance, loss_values
 
 
 def sample(rng_keys_nf, rng_keys_mcmc, sampling_loop, initial_position,
@@ -91,23 +92,26 @@ def sample(rng_keys_nf, rng_keys_mcmc, sampling_loop, initial_position,
     chains = []
     local_accs = []
     global_accs = []
+    loss_vals = []
 
     for i in range(n_loop):
-        rng_keys_nf, rng_keys_mcmc, state, positions, local_acceptance, global_acceptance = sampling_loop(
+        rng_keys_nf, rng_keys_mcmc, state, positions, local_acceptance, global_acceptance, loss_values = sampling_loop(
             rng_keys_nf, rng_keys_mcmc, nf_model, state, last_step, run_mcmc, likelihood, config, d_likelihood, 
             )
         last_step = positions[:,-1]
         chains.append(positions)
         local_accs.append(local_acceptance)
         global_accs.append(global_acceptance)
+        loss_vals.append(loss_values)
 
 
     chains = jnp.concatenate(chains, axis=1)
-    local_accs = jnp.stack(local_accs,axis=1).reshape(chains.shape[0], -1)
-    global_accs = jnp.stack(global_accs,axis=1).reshape(chains.shape[0], -1)
+    local_accs = jnp.stack(local_accs, axis=1).reshape(chains.shape[0], -1)
+    global_accs = jnp.stack(global_accs, axis=1).reshape(chains.shape[0], -1)
+    loss_vals = jnp.concatenate(jnp.array(loss_vals))
 
     nf_samples = sample_nf(nf_model, state.params, rng_keys_nf, n_nf_samples)
-    return chains, nf_samples, local_accs, global_accs
+    return chains, nf_samples, local_accs, global_accs, loss_vals
 
 
 class Sampler:
@@ -140,10 +144,10 @@ class Sampler:
 
 
     def sample(self, initial_position):
-        chains, nf_samples, local_accs, global_accs = sample(self.rng_keys_nf, self.rng_keys_mcmc,
+        chains, nf_samples, local_accs, global_accs, loss_vals = sample(self.rng_keys_nf, self.rng_keys_mcmc,
                                     sampling_loop, initial_position,
                                     self.nf_model, self.state, 
                                     self.local_sampler, self.likelihood,
                                     self.config, self.d_likelihood, 
                                     )
-        return chains, nf_samples, local_accs, global_accs
+        return chains, nf_samples, local_accs, global_accs, loss_vals
