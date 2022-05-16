@@ -44,21 +44,22 @@ class Sampler:
         d_likelihood (Device Array): Derivative of the likelihood function.
     """
 
-    n_dim: int
-    n_loop: int = 2
-    n_local_steps: int = 5
-    n_global_steps: int = 5
-    n_chains: int = 5
-    n_epochs: int = 5
-    n_nf_samples: int = 10000
-    learning_rate: float = 0.01
-    momentum: float = 0.9
-    batch_size: int = 10
-    stepsize: float = 1e-3
-    logging: bool = True
 
-    def __init__(self, rng_key_set, nf_model, local_sampler,
-                 likelihood, d_likelihood=None):
+
+    def __init__(self, n_dim: int, rng_key_set, nf_model, local_sampler,
+                likelihood, 
+                d_likelihood = None,
+                n_loop: int = 2,
+                n_local_steps: int = 5,
+                n_global_steps: int = 5,
+                n_chains: int = 5,
+                n_epochs: int = 5,
+                n_nf_samples: int = 100,
+                learning_rate: float = 0.01,
+                momentum: float = 0.9,
+                batch_size: int = 10,
+                stepsize: float = 1e-3,
+                logging: bool = True):
         rng_key_init ,rng_keys_mcmc, rng_keys_nf, init_rng_keys_nf = rng_key_set
         self.nf_model = nf_model
         params = nf_model.init(init_rng_keys_nf, jnp.ones((self.batch_size,self.n_dim)))['params']
@@ -71,6 +72,18 @@ class Sampler:
         self.d_likelihood = d_likelihood
         self.rng_keys_nf = rng_keys_nf
         self.rng_keys_mcmc = rng_keys_mcmc
+        self.n_dim = n_dim
+        self.n_loop = n_loop
+        self.n_local_steps = n_local_steps
+        self.n_global_steps = n_global_steps
+        self.n_chains = n_chains
+        self.n_epochs = n_epochs
+        self.n_nf_samples = n_nf_samples
+        self.learning_rate = learning_rate
+        self.momentum = momentum
+        self.batch_size = batch_size
+        self.stepsize = stepsize
+        self.logging = logging
 
     def sample(self,initial_position):
         """
