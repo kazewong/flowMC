@@ -6,6 +6,8 @@
 
 # Parameters
 
+Here are the 
+
 | Name | Description |
 |------|-------------|
 |local_sampler | Local sampler to use. |
@@ -24,7 +26,6 @@
 |learning_rate | Learning rate to use when training the normalizing flow model. |
 |momentum | Momentum to use when training the normalizing flow model. |
 |batch_size | Batch size to use when training the normalizing flow model. |
-
 |logging | Whether we log or not. |
 
 

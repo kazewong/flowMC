@@ -20,46 +20,45 @@ def dual_moon_pe(x):
 d_dual_moon = jax.grad(dual_moon_pe)
 
 ### Demo config
-config = {}
-config['n_dim'] = 5
-config['n_loop'] = 25
-config['n_local_steps'] = 50
-config['n_global_steps'] = 10
-config['n_chains'] = 50
-config['learning_rate'] = 0.1
-config['momentum'] = 0.9
-config['num_epochs'] = 5
-config['batch_size'] = 50  # error if larger than combination of params above
-config['stepsize'] = 0.01
 
-# ### Dev config
-# config = {}
-# config['n_dim'] = 5
-# config['n_loop'] = 2
-# config['n_local_steps'] = 5
-# config['n_global_steps'] = 3
-# config['n_chains'] = 7
-# config['learning_rate'] = 0.1
-# config['momentum'] = 0.9
-# config['num_epochs'] = 5
-# config['batch_size'] = 3  # error if larger than combination of params above
-# config['stepsize'] = 0.01
+n_dim = 5
+n_chains = 10
+n_loop = 5
+n_local_steps = 10
+n_global_steps = 10
+learning_rate = 0.1
+momentum = 0.9
+num_epochs = 5
+batch_size = 50
+stepsize = 0.01
 
 print("Preparing RNG keys")
-rng_key_set = initialize_rng_keys(config['n_chains'],seed=42)
+rng_key_set = initialize_rng_keys(n_chains,seed=42)
 
 print("Initializing MCMC model and normalizing flow model.")
 
-initial_position = jax.random.normal(rng_key_set[0],shape=(config['n_chains'],config['n_dim'])) *  1
+initial_position = jax.random.normal(rng_key_set[0],shape=(n_chains,n_dim)) *  1
 
 
-model = RealNVP(10,config['n_dim'],64, 1)
+model = RealNVP(10,n_dim,64, 1)
 run_mcmc = jax.vmap(mala_sampler, in_axes=(0, None, None, None, 0, None),
                     out_axes=0)
 
 print("Initializing sampler class")
 
-nf_sampler = Sampler(rng_key_set, config, model, run_mcmc, dual_moon_pe, d_dual_moon)
+nf_sampler = Sampler(n_dim, rng_key_set, model, run_mcmc,
+                    dual_moon_pe,
+                    d_likelihood=d_dual_moon,
+                    n_loop=n_loop,
+                    n_local_steps=n_local_steps,
+                    n_global_steps=n_global_steps,
+                    n_chains=n_chains,
+                    n_epochs=num_epochs,
+                    n_nf_samples=100,
+                    learning_rate=learning_rate,
+                    momentum=momentum,
+                    batch_size=batch_size,
+                    stepsize=stepsize)
 
 print("Sampling")
 

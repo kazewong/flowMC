@@ -61,12 +61,7 @@ class Sampler:
                 stepsize: float = 1e-3,
                 logging: bool = True):
         rng_key_init ,rng_keys_mcmc, rng_keys_nf, init_rng_keys_nf = rng_key_set
-        self.nf_model = nf_model
-        params = nf_model.init(init_rng_keys_nf, jnp.ones((self.batch_size,self.n_dim)))['params']
 
-        tx = optax.adam(self.learning_rate, self.momentum)
-        self.state = train_state.TrainState.create(apply_fn=nf_model.apply,
-                                                   params=params, tx=tx)
         self.local_sampler = local_sampler
         self.likelihood = likelihood
         self.d_likelihood = d_likelihood
@@ -85,15 +80,25 @@ class Sampler:
         self.stepsize = stepsize
         self.logging = logging
 
+        self.nf_model = nf_model
+        params = nf_model.init(init_rng_keys_nf, jnp.ones((self.batch_size,self.n_dim)))['params']
+
+        tx = optax.adam(self.learning_rate, self.momentum)
+        self.state = train_state.TrainState.create(apply_fn=nf_model.apply,
+                                                   params=params, tx=tx)
+
     def sample(self,initial_position):
         """
+        Sample from the posterior using the local sampler.
+
+        Args:
+            initial_position (Device Array): Initial position.
 
         Returns:
-            chains (n_chains, n_steps, dim): Sampled positions.
-            nf_samples (n_nf_samples, dim): Samples from learned NF.
-            local_accs (n_chains, n_local_steps * n_loop): Table of acceptance.
-            global_accs (n_chains, n_global_steps * n_loop): Table of acceptance.
+            samples (Device Array): Samples from the posterior.
+            log_prob (Device Array): Log probability of the samples.
         """
+
         last_step = initial_position
         chains = []
         local_accs = []
