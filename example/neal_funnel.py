@@ -7,13 +7,15 @@ When we go to high dimension, the product term seems to dominate, and most of th
 I wonder whether this is well appercimated by the community.
 """
 
+import logging
 from nfsampler.nfmodel.realNVP import RealNVP
 from nfsampler.sampler.MALA import mala_sampler
 import jax
 import jax.numpy as jnp                # JAX NumPy
 import numpy as np  
 from jax.scipy.stats import norm
-from nfsampler.utils import Sampler, initialize_rng_keys
+from nfsampler.sampler import Sampler
+from nfsampler.utils.PRNG_keys import initialize_rng_keys
 
 def neal_funnel(x):
     y_pdf = norm.logpdf(x[0],loc=0,scale=3)
@@ -22,36 +24,45 @@ def neal_funnel(x):
 
 d_neal_funnel = jax.grad(neal_funnel)
 
-config = {}
-config['n_dim'] = 5 # Dimension of the problem
-config['n_loop'] = 5 # Number of sampling loop (global + local +/ training)
-config['n_local_steps'] = 20 # Number of samples per local sampling loop
-config['n_global_steps'] = 100 # Number of samples per global sampling loop
-config['n_chains'] = 100 # Number of chains
-config['stepsize'] = 0.01 # MALA step size
-config['learning_rate'] = 0.01 # Learning rate when training normalizing flow
-config['momentum'] = 0.9 # Momentum when training normalizing flow
-config['num_epochs'] = 100 # Number of epochs during training
-config['batch_size'] = 1000 # Batch size during training
-config['logging'] = True # Whether to log the training process
-
-
+n_dim = 5
+n_loop = 5
+n_local_steps = 20
+n_global_steps = 100
+n_chains = 100
+stepsize = 0.01
+learning_rate = 0.01
+momentum = 0.9
+num_epochs = 100
+batch_size = 1000
+logging = True
 
 print("Preparing RNG keys")
-rng_key_set = initialize_rng_keys(config['n_chains'],seed=42)
+rng_key_set = initialize_rng_keys(n_chains,seed=42)
 
 print("Initializing MCMC model and normalizing flow model.")
 
-initial_position = jax.random.normal(rng_key_set[0],shape=(config['n_chains'],config['n_dim'])) #(n_dim, n_chains)
+initial_position = jax.random.normal(rng_key_set[0],shape=(n_chains,n_dim)) #(n_dim, n_chains)
 
 
-model = RealNVP(10,config['n_dim'],64, 1)
+model = RealNVP(10,n_dim,64, 1)
 run_mcmc = jax.vmap(mala_sampler, in_axes=(0, None, None, None, 0, None),
                     out_axes=0)
 
 print("Initializing sampler class")
 
-nf_sampler = Sampler(rng_key_set, config, model, run_mcmc, neal_funnel, d_neal_funnel)
+nf_sampler = Sampler(n_dim, rng_key_set, model, run_mcmc,
+                    neal_funnel,
+                    d_likelihood=d_neal_funnel,
+                    n_loop=n_loop,
+                    n_local_steps=n_local_steps,
+                    n_global_steps=n_global_steps,
+                    n_chains=n_chains,
+                    n_epochs=num_epochs,
+                    n_nf_samples=100,
+                    learning_rate=learning_rate,
+                    momentum=momentum,
+                    batch_size=batch_size,
+                    stepsize=stepsize)
 
 print("Sampling")
 
@@ -66,4 +77,4 @@ plt.show()
 plt.close()
 
 # Plot all chains
-corner.corner(chains.reshape(-1,config['n_dim']), labels=["$x_1$", "$x_2$", "$x_3$", "$x_4$", "$x_5$"])
+corner.corner(chains.reshape(-1,n_dim), labels=["$x_1$", "$x_2$", "$x_3$", "$x_4$", "$x_5$"])
