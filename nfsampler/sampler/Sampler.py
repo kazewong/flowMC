@@ -70,8 +70,12 @@ class Sampler:
             initial_position (Device Array): Initial position.
 
         Returns:
-            samples (Device Array): Samples from the posterior.
-            log_prob (Device Array): Log probability of the samples.
+            chains (Device Array): Samples from the posterior.
+            nf_samples (Device Array): (n_nf_samples, n_dim) 
+                Samples from the trained NF model 
+            local_accs (Device Array): (n_chains, n_local_steps * n_loop)
+            global_accs (Device Array): (n_chains, n_global_steps * n_loop)
+            loss_vals (Device Array): (n_epoch * n_loop,)
         """
 
         last_step = initial_position
