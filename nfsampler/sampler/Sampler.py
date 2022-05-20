@@ -128,6 +128,7 @@ class Sampler:
                 rng_keys_mcmc, self.n_local_steps, self.likelihood, self.d_likelihood, initial_position, self.stepsize
                 )
 
+        log_prob_output = np.copy(log_prob)
         flat_chain = positions.reshape(-1, self.n_dim)
         rng_keys_nf, state, loss_values = train_flow(rng_keys_nf, self.nf_model, state, flat_chain,
                                         self.n_epochs, self.batch_size)
@@ -138,6 +139,7 @@ class Sampler:
             )
 
         positions = jnp.concatenate((positions,nf_chain),axis=1)
+        log_prob_output = jnp.concatenate((log_prob_output,log_prob),axis=1)
 
         return rng_keys_nf, rng_keys_mcmc, state, positions, local_acceptance, \
             global_acceptance, loss_values
