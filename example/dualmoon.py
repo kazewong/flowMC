@@ -2,7 +2,7 @@ from nfsampler.nfmodel.realNVP import RealNVP
 from nfsampler.sampler.MALA import mala_sampler
 import jax
 import jax.numpy as jnp                # JAX NumPy
-from nfsampler.sampler import Sampler
+from nfsampler.sampler.Sampler import Sampler
 from nfsampler.utils.PRNG_keys import initialize_rng_keys
 from jax.scipy.special import logsumexp
 import numpy as np  
@@ -92,7 +92,7 @@ plt.xlabel("iteration")
 plt.sca(axs[2])
 plt.title('Local Acceptance')
 plt.plot(local_accs.mean(0))
-plt.xlabel("iteration")
+.Samplerplt.xlabel("iteration")
 
 plt.sca(axs[3])
 plt.title('Global Acceptance')
@@ -102,7 +102,7 @@ plt.tight_layout()
 plt.show(block=False)
 
 # Plot all chains
-figure = corner.corner(chains.reshape(-1,config['n_dim']), labels=["$x_1$", "$x_2$", "$x_3$", "$x_4$", "$x_5$"])
+figure = corner.corner(chains.reshape(-1,n_dim), labels=["$x_1$", "$x_2$", "$x_3$", "$x_4$", "$x_5$"])
 figure.set_size_inches(7, 7)
 figure.suptitle('Visualize samples')
 plt.show(block=False)

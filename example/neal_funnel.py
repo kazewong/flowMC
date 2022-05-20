@@ -14,7 +14,7 @@ import jax
 import jax.numpy as jnp                # JAX NumPy
 import numpy as np  
 from jax.scipy.stats import norm
-from nfsampler.sampler import Sampler
+from nfsampler.sampler.Sampler import Sampler
 from nfsampler.utils.PRNG_keys import initialize_rng_keys
 
 def neal_funnel(x):
