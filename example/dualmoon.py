@@ -25,8 +25,8 @@ d_dual_moon = jax.grad(dual_moon_pe)
 n_dim = 5
 n_chains = 10
 n_loop = 5
-n_local_steps = 10
-n_global_steps = 10
+n_local_steps = 100
+n_global_steps = 100
 learning_rate = 0.1
 momentum = 0.9
 num_epochs = 5
@@ -92,7 +92,7 @@ plt.xlabel("iteration")
 plt.sca(axs[2])
 plt.title('Local Acceptance')
 plt.plot(local_accs.mean(0))
-.Samplerplt.xlabel("iteration")
+plt.xlabel("iteration")
 
 plt.sca(axs[3])
 plt.title('Global Acceptance')
