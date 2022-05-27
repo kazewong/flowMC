@@ -35,17 +35,19 @@ def nf_metropolis_sampler(rng_key, n_steps, nf_model, nf_param, target_pdf,
         sub_key = jnp.array(sub_key)
         new_position, new_log_prob, new_log_prob_nf, do_accept = nf_metropolis_kernel(
             sub_key, proposal_position[i], positions[i-1], log_pdf_proposal[i],
-            log_pdf_nf_proposal[i], log_prob, log_prob_nf
+            log_pdf_nf_proposal[i], log_prob[i-1], log_prob_nf[i-1]
             )
         positions = positions.at[i].set(new_position)
+        log_prob = log_prob.at[i].set(new_log_prob)
+        log_prob_nf = log_prob_nf.at[i].set(new_log_prob_nf)
 
         acceptance = acceptance.at[i].set(do_accept)
 
-        return (key, positions, new_log_prob, new_log_prob_nf, acceptance)
+        return (key, positions, log_prob, log_prob_nf, acceptance)
 
     rng_key, *subkeys = random.split(rng_key,3)
-    all_positions = jnp.zeros((n_steps,) + initial_position.shape) + \
-        initial_position
+
+
 
     proposal_position = nf_model.apply({'params': nf_param}, subkeys[0],
                                        initial_position.shape[0]*n_steps,
@@ -68,12 +70,22 @@ def nf_metropolis_sampler(rng_key, n_steps, nf_model, nf_param, target_pdf,
     log_pdf_nf_proposal = log_pdf_nf_proposal.reshape(n_steps,
                                                       initial_position.shape[0])
     log_pdf_proposal = log_pdf_proposal.reshape(n_steps, initial_position.shape[0])
-    acceptance = jnp.zeros((n_steps,)+(initial_position.shape[0],))
-    initial_state = (subkeys[1], all_positions, log_pdf_initial,
-                    log_pdf_nf_initial, acceptance)
-    rng_key, all_positions, log_prob, log_prob_nf, acceptance = jax.lax.fori_loop(1, n_steps, 
+    
+    all_positions = jnp.zeros((n_steps,) + initial_position.shape) + \
+        initial_position
+    all_logp = jnp.zeros((n_steps, initial_position.shape[0])) + log_pdf_initial
+    all_logp_nf = jnp.zeros((n_steps, initial_position.shape[0])) + log_pdf_nf_initial
+    acceptance = jnp.zeros((n_steps, initial_position.shape[0]))
+
+
+    initial_state = (subkeys[1], all_positions, all_logp,
+                    all_logp_nf, acceptance)
+    rng_key, all_positions, all_logp, all_logp_nf, acceptance = jax.lax.fori_loop(1, n_steps, 
                                                  mh_update_sol2, 
                                                  initial_state)
     all_positions = all_positions.swapaxes(0, 1)
+    all_logp = all_logp.swapaxes(0, 1)
+    all_logp_nf = all_logp_nf.swapaxes(0, 1)
     acceptance = acceptance.swapaxes(0, 1)
-    return rng_key, all_positions, log_prob, log_prob_nf, acceptance
+    
+    return rng_key, all_positions, all_logp, all_logp_nf, acceptance

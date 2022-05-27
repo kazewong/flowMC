@@ -80,6 +80,7 @@ class Sampler:
 
         last_step = initial_position
         chains = []
+        log_prob = []
         local_accs = []
         global_accs = []
         loss_vals = []
@@ -89,22 +90,24 @@ class Sampler:
         state = self.state
 
         for i in range(self.n_loop):
-            rng_keys_nf, rng_keys_mcmc, state, positions, local_acceptance, global_acceptance, loss_values = self.sampling_loop(
+            rng_keys_nf, rng_keys_mcmc, state, positions, log_prob_output, local_acceptance, global_acceptance, loss_values = self.sampling_loop(
                 rng_keys_nf, rng_keys_mcmc, state, last_step,)
             last_step = positions[:,-1]
             chains.append(positions)
+            log_prob.append(log_prob_output)
             local_accs.append(local_acceptance)
             global_accs.append(global_acceptance)
             loss_vals.append(loss_values)
 
 
         chains = jnp.concatenate(chains, axis=1)
+        log_prob = jnp.concatenate(log_prob, axis=1)
         local_accs = jnp.stack(local_accs, axis=1).reshape(chains.shape[0], -1)
         global_accs = jnp.stack(global_accs, axis=1).reshape(chains.shape[0], -1)
         loss_vals = jnp.concatenate(jnp.array(loss_vals))
 
         nf_samples = sample_nf(self.nf_model, state.params, rng_keys_nf, self.n_nf_samples)
-        return chains, nf_samples, local_accs, global_accs, loss_vals
+        return chains, log_prob, nf_samples, local_accs, global_accs, loss_vals
 
     def sampling_loop(self,rng_keys_nf,
                 rng_keys_mcmc,
@@ -132,6 +135,7 @@ class Sampler:
                 rng_keys_mcmc, self.n_local_steps, self.likelihood, self.d_likelihood, initial_position, self.stepsize
                 )
 
+        log_prob_output = np.copy(log_prob)
         flat_chain = positions.reshape(-1, self.n_dim)
         rng_keys_nf, state, loss_values = train_flow(rng_keys_nf, self.nf_model, state, flat_chain,
                                         self.n_epochs, self.batch_size)
@@ -142,8 +146,9 @@ class Sampler:
             )
 
         positions = jnp.concatenate((positions,nf_chain),axis=1)
+        log_prob_output = jnp.concatenate((log_prob_output,log_prob),axis=1)
 
-        return rng_keys_nf, rng_keys_mcmc, state, positions, local_acceptance, \
+        return rng_keys_nf, rng_keys_mcmc, state, positions, log_prob_output, local_acceptance, \
             global_acceptance, loss_values
 
 
