@@ -48,30 +48,27 @@ run_mcmc = jax.vmap(mala_sampler, in_axes=(0, None, None, None, 0, None), out_ax
 
 print("Initializing sampler class")
 
-nf_sampler = Sampler(
-    n_dim,
-    rng_key_set,
-    model,
-    run_mcmc,
-    dual_moon_pe,
-    d_likelihood=d_dual_moon,
-    n_loop=n_loop,
-    n_local_steps=n_local_steps,
-    n_global_steps=n_global_steps,
-    n_chains=n_chains,
-    n_epochs=num_epochs,
-    n_nf_samples=100,
-    learning_rate=learning_rate,
-    momentum=momentum,
-    batch_size=batch_size,
-    stepsize=stepsize,
-)
+nf_sampler = Sampler(n_dim, rng_key_set, model, run_mcmc,
+                    dual_moon_pe,
+                    d_likelihood=d_dual_moon,
+                    n_loop=n_loop,
+                    n_local_steps=n_local_steps,
+                    n_global_steps=n_global_steps,
+                    n_chains=n_chains,
+                    n_epochs=num_epochs,
+                    n_nf_samples=100,
+                    learning_rate=learning_rate,
+                    momentum=momentum,
+                    batch_size=batch_size,
+                    stepsize=stepsize,
+                    use_global=True,)
 
 print("Sampling")
 
-chains, log_prob, nf_samples, local_accs, global_accs, loss_vals = nf_sampler.sample(
-    initial_position
-)
+nf_sampler.sample(initial_position)
+
+chains, log_prob, local_accs, global_accs, loss_vals = nf_sampler.get_sampler_state()
+nf_samples = nf_sampler.sample_flow()
 
 print(
     "chains shape: ",
