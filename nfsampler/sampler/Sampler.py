@@ -34,6 +34,7 @@ class Sampler:
                 momentum: float = 0.9,
                 batch_size: int = 10,
                 stepsize: float = 1e-3,
+                use_global: bool = True,
                 logging: bool = True):
         rng_key_init ,rng_keys_mcmc, rng_keys_nf, init_rng_keys_nf = rng_key_set
 
@@ -53,6 +54,7 @@ class Sampler:
         self.momentum = momentum
         self.batch_size = batch_size
         self.stepsize = stepsize
+        self.use_global = use_global
         self.logging = logging
 
         self.nf_model = nf_model
@@ -61,6 +63,12 @@ class Sampler:
         tx = optax.adam(self.learning_rate, self.momentum)
         self.state = train_state.TrainState.create(apply_fn=nf_model.apply,
                                                    params=params, tx=tx)
+
+        self.chains = []
+        self.log_prob = []
+        self.local_accs = []
+        self.global_accs = []
+        self.loss_vals = []
 
     def sample(self,initial_position):
         """
@@ -79,12 +87,6 @@ class Sampler:
         """
 
         last_step = initial_position
-        chains = []
-        log_prob = []
-        local_accs = []
-        global_accs = []
-        loss_vals = []
-
         rng_keys_nf = self.rng_keys_nf
         rng_keys_mcmc = self.rng_keys_mcmc
         state = self.state
@@ -93,21 +95,21 @@ class Sampler:
             rng_keys_nf, rng_keys_mcmc, state, positions, log_prob_output, local_acceptance, global_acceptance, loss_values = self.sampling_loop(
                 rng_keys_nf, rng_keys_mcmc, state, last_step,)
             last_step = positions[:,-1]
-            chains.append(positions)
-            log_prob.append(log_prob_output)
-            local_accs.append(local_acceptance)
-            global_accs.append(global_acceptance)
-            loss_vals.append(loss_values)
+            self.chains.append(positions)
+            self.log_prob.append(log_prob_output)
+            self.local_accs.append(local_acceptance)
+            self.global_accs.append(global_acceptance)
+            self.loss_vals.append(loss_values)
 
 
-        chains = jnp.concatenate(chains, axis=1)
-        log_prob = jnp.concatenate(log_prob, axis=1)
-        local_accs = jnp.stack(local_accs, axis=1).reshape(chains.shape[0], -1)
-        global_accs = jnp.stack(global_accs, axis=1).reshape(chains.shape[0], -1)
-        loss_vals = jnp.concatenate(jnp.array(loss_vals))
+        self.chains = jnp.concatenate(self.chains, axis=1)
+        self.log_prob = jnp.concatenate(self.log_prob, axis=1)
+        self.local_accs = jnp.stack(self.local_accs, axis=1).reshape(self.chains.shape[0], -1)
+        self.global_accs = jnp.stack(self.global_accs, axis=1).reshape(self.chains.shape[0], -1)
+        self.loss_vals = jnp.concatenate(jnp.array(self.loss_vals))
 
         nf_samples = sample_nf(self.nf_model, state.params, rng_keys_nf, self.n_nf_samples)
-        return chains, log_prob, nf_samples, local_accs, global_accs, loss_vals
+        # return chains, log_prob, nf_samples, self.local_accs, global_accs, loss_vals
 
     def sampling_loop(self,rng_keys_nf,
                 rng_keys_mcmc,
@@ -137,19 +139,23 @@ class Sampler:
 
         log_prob_output = np.copy(log_prob)
         flat_chain = positions.reshape(-1, self.n_dim)
-        rng_keys_nf, state, loss_values = train_flow(rng_keys_nf, self.nf_model, state, flat_chain,
-                                        self.n_epochs, self.batch_size)
-        likelihood_vec = jax.vmap(self.likelihood)
-        rng_keys_nf, nf_chain, log_prob, log_prob_nf, global_acceptance = nf_metropolis_sampler(
-            rng_keys_nf, self.n_global_steps, self.nf_model, state.params , likelihood_vec,
-            positions[:,-1]
-            )
+        if self.use_global == True:
+            rng_keys_nf, state, loss_values = train_flow(rng_keys_nf, self.nf_model, state, flat_chain,
+                                            self.n_epochs, self.batch_size)
+            likelihood_vec = jax.vmap(self.likelihood)
+            rng_keys_nf, nf_chain, log_prob, log_prob_nf, global_acceptance = nf_metropolis_sampler(
+                rng_keys_nf, self.n_global_steps, self.nf_model, state.params , likelihood_vec,
+                positions[:,-1]
+                )
 
-        positions = jnp.concatenate((positions,nf_chain),axis=1)
-        log_prob_output = jnp.concatenate((log_prob_output,log_prob),axis=1)
+            positions = jnp.concatenate((positions,nf_chain),axis=1)
+            log_prob_output = jnp.concatenate((log_prob_output,log_prob),axis=1)
 
         return rng_keys_nf, rng_keys_mcmc, state, positions, log_prob_output, local_acceptance, \
             global_acceptance, loss_values
+
+    def get_sampler_state(self):
+        return self.chains, self.log_prob, self.nf_samples, self.local_accs, self.global_accs, self.loss_vals
 
 
 
