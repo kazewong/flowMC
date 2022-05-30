@@ -66,6 +66,7 @@ print("Sampling")
 nf_sampler.sample(initial_position)
 
 chains, log_prob, local_accs, global_accs, loss_vals = nf_sampler.get_sampler_state()
+nf_samples = nf_sampler.sample_flow()
 
 print('chains shape: ', chains.shape, 'local_accs shape: ', local_accs.shape, 'global_accs shape: ', global_accs.shape)
 
