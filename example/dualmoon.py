@@ -59,11 +59,13 @@ nf_sampler = Sampler(n_dim, rng_key_set, model, run_mcmc,
                     learning_rate=learning_rate,
                     momentum=momentum,
                     batch_size=batch_size,
-                    stepsize=stepsize)
+                    stepsize=stepsize,)
 
 print("Sampling")
 
-chains, log_prob, nf_samples, local_accs, global_accs, loss_vals = nf_sampler.sample(initial_position)
+nf_sampler.sample(initial_position)
+
+chains, log_prob, local_accs, global_accs, loss_vals = nf_sampler.get_sampler_state()
 
 print('chains shape: ', chains.shape, 'local_accs shape: ', local_accs.shape, 'global_accs shape: ', global_accs.shape)
 

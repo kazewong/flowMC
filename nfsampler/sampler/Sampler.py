@@ -108,7 +108,6 @@ class Sampler:
         self.global_accs = jnp.stack(self.global_accs, axis=1).reshape(self.chains.shape[0], -1)
         self.loss_vals = jnp.concatenate(jnp.array(self.loss_vals))
 
-        nf_samples = sample_nf(self.nf_model, state.params, rng_keys_nf, self.n_nf_samples)
         # return chains, log_prob, nf_samples, self.local_accs, global_accs, loss_vals
 
     def sampling_loop(self,rng_keys_nf,
@@ -155,7 +154,10 @@ class Sampler:
             global_acceptance, loss_values
 
     def get_sampler_state(self):
-        return self.chains, self.log_prob, self.nf_samples, self.local_accs, self.global_accs, self.loss_vals
+        return self.chains, self.log_prob, self.local_accs, self.global_accs, self.loss_vals
 
+    def sample_flow(self):
+        nf_samples = sample_nf(self.nf_model, self.state.params, self.rng_keys_nf, self.n_nf_samples)
+        return nf_samples
 
 
