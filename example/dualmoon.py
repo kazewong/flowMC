@@ -59,7 +59,8 @@ nf_sampler = Sampler(n_dim, rng_key_set, model, run_mcmc,
                     learning_rate=learning_rate,
                     momentum=momentum,
                     batch_size=batch_size,
-                    stepsize=stepsize,)
+                    stepsize=stepsize,
+                    use_global=True,)
 
 print("Sampling")
 

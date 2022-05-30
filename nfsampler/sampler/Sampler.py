@@ -1,3 +1,4 @@
+from logging import lastResort
 import jax
 import jax.numpy as jnp
 import numpy as np
@@ -92,22 +93,10 @@ class Sampler:
         state = self.state
 
         for i in range(self.n_loop):
-            rng_keys_nf, rng_keys_mcmc, state, positions, log_prob_output, local_acceptance, global_acceptance, loss_values = self.sampling_loop(
+            rng_keys_nf, rng_keys_mcmc, state, last_step = self.sampling_loop(
                 rng_keys_nf, rng_keys_mcmc, state, last_step,)
-            last_step = positions[:,-1]
-            self.chains.append(positions)
-            self.log_prob.append(log_prob_output)
-            self.local_accs.append(local_acceptance)
-            self.global_accs.append(global_acceptance)
-            self.loss_vals.append(loss_values)
 
-
-        self.chains = jnp.concatenate(self.chains, axis=1)
-        self.log_prob = jnp.concatenate(self.log_prob, axis=1)
-        self.local_accs = jnp.stack(self.local_accs, axis=1).reshape(self.chains.shape[0], -1)
-        self.global_accs = jnp.stack(self.global_accs, axis=1).reshape(self.chains.shape[0], -1)
-        self.loss_vals = jnp.concatenate(jnp.array(self.loss_vals))
-
+  
         # return chains, log_prob, nf_samples, self.local_accs, global_accs, loss_vals
 
     def sampling_loop(self,rng_keys_nf,
@@ -149,12 +138,29 @@ class Sampler:
 
             positions = jnp.concatenate((positions,nf_chain),axis=1)
             log_prob_output = jnp.concatenate((log_prob_output,log_prob),axis=1)
+        
+        self.chains.append(positions)
+        self.log_prob.append(log_prob_output)
+        self.local_accs.append(local_acceptance)
+        if self.use_global == True:
+            self.global_accs.append(global_acceptance)
+            self.loss_vals.append(loss_values)
 
-        return rng_keys_nf, rng_keys_mcmc, state, positions, log_prob_output, local_acceptance, \
-            global_acceptance, loss_values
+        last_step = positions[:, -1]
+
+        return rng_keys_nf, rng_keys_mcmc, state, last_step
+
 
     def get_sampler_state(self):
-        return self.chains, self.log_prob, self.local_accs, self.global_accs, self.loss_vals
+        chains = jnp.concatenate(self.chains, axis=1)
+        log_prob = jnp.concatenate(self.log_prob, axis=1)
+        local_accs = jnp.stack(self.local_accs, axis=1).reshape(chains.shape[0], -1)
+        if self.use_global == True:
+            global_accs = jnp.stack(self.global_accs, axis=1).reshape(chains.shape[0], -1)
+            loss_vals = jnp.stack(self.loss_vals, axis=1).reshape(chains.shape[0], -1)
+            return chains, log_prob, local_accs, global_accs, loss_vals
+        else:
+            return chains, log_prob, local_accs, jnp.zeros(0), jnp.zeros(0)
 
     def sample_flow(self):
         nf_samples = sample_nf(self.nf_model, self.state.params, self.rng_keys_nf, self.n_nf_samples)
