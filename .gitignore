@@ -8,3 +8,4 @@ example/kepler/kepler_analyse.py
 dist
 *egg-info*
 docs/build/*
+*_autosummary
