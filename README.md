@@ -4,6 +4,13 @@
 
 # Documentation
 
+## Requirements
+
+    * Python 3.8+
+    * Jax
+    * Jaxlib
+    * Flax
+
 # Parameters
 
 Here are the 
@@ -30,6 +37,7 @@ Here are the
 
 
 # Attribution
+
 A Jax implementation of methods described in: 
 > *Efficient Bayesian Sampling Using Normalizing Flows to Assist Markov Chain Monte Carlo Methods* Gabrié M., Rotskoff G. M., Vanden-Eijnden E. - ICML INNF+ workshop 2021 - [pdf](https://openreview.net/pdf?id=mvtooHbjOwx)
 
