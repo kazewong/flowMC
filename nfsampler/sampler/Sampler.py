@@ -5,9 +5,9 @@ import numpy as np
 from nfsampler.nfmodel.utils import sample_nf,train_flow
 from nfsampler.sampler.NF_proposal import nf_metropolis_sampler
 from flax.training import train_state  # Useful dataclass to keep train state
-import optax                           # Optimizers
-
-class Sampler:
+import optax          
+                 # Optimizers
+class Sampler(object):
     """
     Sampler class that host configuration parameters, NF model, and local sampler
 
@@ -81,7 +81,6 @@ class Sampler:
         Returns:
             chains (Device Array): Samples from the posterior.
             nf_samples (Device Array): (n_nf_samples, n_dim) 
-                Samples from the trained NF model 
             local_accs (Device Array): (n_chains, n_local_steps * n_loop)
             global_accs (Device Array): (n_chains, n_global_steps * n_loop)
             loss_vals (Device Array): (n_epoch * n_loop,)

@@ -2,12 +2,12 @@ Welcome to NFSampler's documentation!
 =====================================
 
 .. toctree::
-   :maxdepth: 8
+   :maxdepth: 1
    :caption: Contents:
    
    intro
    examples
-   modules
+   api/modules
 
 
 
