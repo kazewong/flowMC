@@ -1,12 +1,13 @@
+from logging import lastResort
 import jax
 import jax.numpy as jnp
 import numpy as np
 from nfsampler.nfmodel.utils import sample_nf,train_flow
 from nfsampler.sampler.NF_proposal import nf_metropolis_sampler
 from flax.training import train_state  # Useful dataclass to keep train state
-import optax                           # Optimizers
-
-class Sampler:
+import optax          
+                 # Optimizers
+class Sampler(object):
     """
     Sampler class that host configuration parameters, NF model, and local sampler
 
@@ -34,6 +35,7 @@ class Sampler:
                 momentum: float = 0.9,
                 batch_size: int = 10,
                 stepsize: float = 1e-3,
+                use_global: bool = True,
                 logging: bool = True):
         rng_key_init ,rng_keys_mcmc, rng_keys_nf, init_rng_keys_nf = rng_key_set
 
@@ -53,6 +55,7 @@ class Sampler:
         self.momentum = momentum
         self.batch_size = batch_size
         self.stepsize = stepsize
+        self.use_global = use_global
         self.logging = logging
 
         self.nf_model = nf_model
@@ -61,6 +64,12 @@ class Sampler:
         tx = optax.adam(self.learning_rate, self.momentum)
         self.state = train_state.TrainState.create(apply_fn=nf_model.apply,
                                                    params=params, tx=tx)
+
+        self.chains = []
+        self.log_prob = []
+        self.local_accs = []
+        self.global_accs = []
+        self.loss_vals = []
 
     def sample(self,initial_position):
         """
@@ -72,42 +81,22 @@ class Sampler:
         Returns:
             chains (Device Array): Samples from the posterior.
             nf_samples (Device Array): (n_nf_samples, n_dim) 
-                Samples from the trained NF model 
             local_accs (Device Array): (n_chains, n_local_steps * n_loop)
             global_accs (Device Array): (n_chains, n_global_steps * n_loop)
             loss_vals (Device Array): (n_epoch * n_loop,)
         """
 
         last_step = initial_position
-        chains = []
-        log_prob = []
-        local_accs = []
-        global_accs = []
-        loss_vals = []
-
         rng_keys_nf = self.rng_keys_nf
         rng_keys_mcmc = self.rng_keys_mcmc
         state = self.state
 
         for i in range(self.n_loop):
-            rng_keys_nf, rng_keys_mcmc, state, positions, log_prob_output, local_acceptance, global_acceptance, loss_values = self.sampling_loop(
+            rng_keys_nf, rng_keys_mcmc, state, last_step = self.sampling_loop(
                 rng_keys_nf, rng_keys_mcmc, state, last_step,)
-            last_step = positions[:,-1]
-            chains.append(positions)
-            log_prob.append(log_prob_output)
-            local_accs.append(local_acceptance)
-            global_accs.append(global_acceptance)
-            loss_vals.append(loss_values)
 
-
-        chains = jnp.concatenate(chains, axis=1)
-        log_prob = jnp.concatenate(log_prob, axis=1)
-        local_accs = jnp.stack(local_accs, axis=1).reshape(chains.shape[0], -1)
-        global_accs = jnp.stack(global_accs, axis=1).reshape(chains.shape[0], -1)
-        loss_vals = jnp.concatenate(jnp.array(loss_vals))
-
-        nf_samples = sample_nf(self.nf_model, state.params, rng_keys_nf, self.n_nf_samples)
-        return chains, log_prob, nf_samples, local_accs, global_accs, loss_vals
+  
+        # return chains, log_prob, nf_samples, self.local_accs, global_accs, loss_vals
 
     def sampling_loop(self,rng_keys_nf,
                 rng_keys_mcmc,
@@ -137,19 +126,43 @@ class Sampler:
 
         log_prob_output = np.copy(log_prob)
         flat_chain = positions.reshape(-1, self.n_dim)
-        rng_keys_nf, state, loss_values = train_flow(rng_keys_nf, self.nf_model, state, flat_chain,
-                                        self.n_epochs, self.batch_size)
-        likelihood_vec = jax.vmap(self.likelihood)
-        rng_keys_nf, nf_chain, log_prob, log_prob_nf, global_acceptance = nf_metropolis_sampler(
-            rng_keys_nf, self.n_global_steps, self.nf_model, state.params , likelihood_vec,
-            positions[:,-1]
-            )
+        if self.use_global == True:
+            rng_keys_nf, state, loss_values = train_flow(rng_keys_nf, self.nf_model, state, flat_chain,
+                                            self.n_epochs, self.batch_size)
+            likelihood_vec = jax.vmap(self.likelihood)
+            rng_keys_nf, nf_chain, log_prob, log_prob_nf, global_acceptance = nf_metropolis_sampler(
+                rng_keys_nf, self.n_global_steps, self.nf_model, state.params , likelihood_vec,
+                positions[:,-1]
+                )
 
-        positions = jnp.concatenate((positions,nf_chain),axis=1)
-        log_prob_output = jnp.concatenate((log_prob_output,log_prob),axis=1)
+            positions = jnp.concatenate((positions,nf_chain),axis=1)
+            log_prob_output = jnp.concatenate((log_prob_output,log_prob),axis=1)
+        
+        self.chains.append(positions)
+        self.log_prob.append(log_prob_output)
+        self.local_accs.append(local_acceptance)
+        if self.use_global == True:
+            self.global_accs.append(global_acceptance)
+            self.loss_vals.append(loss_values)
 
-        return rng_keys_nf, rng_keys_mcmc, state, positions, log_prob_output, local_acceptance, \
-            global_acceptance, loss_values
+        last_step = positions[:, -1]
 
+        return rng_keys_nf, rng_keys_mcmc, state, last_step
+
+
+    def get_sampler_state(self):
+        chains = jnp.concatenate(self.chains, axis=1)
+        log_prob = jnp.concatenate(self.log_prob, axis=1)
+        local_accs = jnp.stack(self.local_accs, axis=1).reshape(chains.shape[0], -1)
+        if self.use_global == True:
+            global_accs = jnp.stack(self.global_accs, axis=1).reshape(chains.shape[0], -1)
+            loss_vals = jnp.stack(self.loss_vals, axis=1).reshape(chains.shape[0], -1)
+            return chains, log_prob, local_accs, global_accs, loss_vals
+        else:
+            return chains, log_prob, local_accs, jnp.zeros(0), jnp.zeros(0)
+
+    def sample_flow(self):
+        nf_samples = sample_nf(self.nf_model, self.state.params, self.rng_keys_nf, self.n_nf_samples)
+        return nf_samples
 
 

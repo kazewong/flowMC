@@ -5,3 +5,7 @@ log_dir/
 nfsampler/nfmodel/realNVP_white.py
 example/kepler/kepler_white.py
 example/kepler/kepler_analyse.py
+dist
+*egg-info*
+docs/build/*
+*_autosummary
