@@ -4,9 +4,10 @@
 
 # Documentation
 
-<a href="https://kazewong.github.io/NFSampler/">
+<a href="https://nfsampler.readthedocs.io/en/latest/?">
 <img src="https://badgen.net/badge/read/the doc/blue" alt="doc"/>
 </a>
+
 ## Requirements
 
     * Python 3.8+

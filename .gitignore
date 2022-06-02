@@ -9,3 +9,4 @@ dist
 *egg-info*
 docs/build/*
 *_autosummary
+README.md
