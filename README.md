@@ -8,6 +8,10 @@
 <img src="https://badgen.net/badge/read/the doc/blue" alt="doc"/>
 </a>
 
+<a href="https://github.com/kazewong/NFSampler/blob/Packaging/LICENSE">
+<img src="https://badgen.net/badge/License/MIT/blue" alt="doc"/>
+</a>
+
 ## Requirements
 
     * Python 3.8+
