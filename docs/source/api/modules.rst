@@ -1,5 +1,5 @@
-nfsampler
-=========
+API
+===
 
 .. toctree::
    :maxdepth: 4

@@ -8,6 +8,8 @@ Welcome to NFSampler's documentation!
    intro
    examples
    api/modules
+   configuration
+   analysis
 
 
 
