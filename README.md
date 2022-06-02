@@ -2,15 +2,30 @@
 
 **Normalizing-flow enhanced sampling package for probabilistic inference**
 
-# Documentation
-
 <a href="https://nfsampler.readthedocs.io/en/latest/?">
-<img src="https://badgen.net/badge/read/the doc/blue" alt="doc"/>
+<img src="https://badgen.net/badge/Read/the doc/blue" alt="doc"/>
 </a>
-
 <a href="https://github.com/kazewong/NFSampler/blob/Packaging/LICENSE">
 <img src="https://badgen.net/badge/License/MIT/blue" alt="doc"/>
 </a>
+
+
+NFSampler is a Jax-based python package for normalizing-flow enhanced Markov chain Monte Carlo (MCMC) sampling.
+The code is open source under MIT license, and it is under active development.
+
+- Just-in-time compilation is supported.
+- Native support for GPU acceleration.
+- Suit for multi-model sampling.
+- Minimal tuning.
+
+# Installation 
+
+Our package is still in development stage, so it has not reached the official PyPi index yet.
+To install our package, run the following command:
+
+```
+pip install -i https://test.pypi.org/simple/ NFSampler
+```
 
 ## Requirements
 
