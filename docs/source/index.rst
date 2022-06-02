@@ -3,15 +3,19 @@ Welcome to NFSampler's documentation!
 
 .. toctree::
    :maxdepth: 1
-   :caption: Contents:
+   :caption: Contents
    
    intro
-   examples
-   api/modules
    configuration
    analysis
+   api/modules
 
 
+.. toctree::
+   :maxdepth: 1
+   :caption: Tutorial
+
+   examples
 
 Indices and tables
 ==================
