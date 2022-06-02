@@ -15,7 +15,7 @@ The code is open source under MIT license, and it is under active development.
 
 - Just-in-time compilation is supported.
 - Native support for GPU acceleration.
-- Suit for multi-model sampling.
+- Suit for problems with multi-modality.
 - Minimal tuning.
 
 # Installation 
