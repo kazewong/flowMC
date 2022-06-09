@@ -150,7 +150,7 @@ class RealNVP(nn.Module):
         mean = jnp.repeat(self.base_mean.value, n_samples, axis=0)
         cov = jnp.repeat(self.base_cov.value, n_samples, axis=0)
         gaussian = jax.random.multivariate_normal(rng_key, mean, cov)
-        samples = gaussian#self.inverse(gaussian)
+        samples = self.inverse(gaussian)
         return samples
 
     def log_prob(self, x):
