@@ -129,8 +129,8 @@ class RealNVP(nn.Module):
             affine_coupling.append(AffineCoupling(self.n_features, self.n_hidden, mask, dt=self.dt))
         self.affine_coupling = affine_coupling
 
-        self.base_mean = self.variable('statistics','mean',jnp.zeros,((1, self.n_features)))
-        self.base_cov = self.variable('statistics','cov',jnp.eye,(self.n_features))
+        self.base_mean = self.variable('variables','base_mean',jnp.zeros,((1, self.n_features)))
+        self.base_cov = self.variable('variables','base_cov',jnp.eye,(self.n_features))
 
     def __call__(self, x):
         log_det = jnp.zeros(x.shape[0])
@@ -147,7 +147,6 @@ class RealNVP(nn.Module):
         return x, log_det
 
     def sample(self, rng_key, n_samples):
-        print(self.base_mean.value,self.base_cov.value)
         mean = jnp.repeat(self.base_mean.value, n_samples, axis=0)
         cov = jnp.repeat(self.base_cov.value, n_samples, axis=0)
         gaussian = jax.random.multivariate_normal(rng_key, mean, cov)
