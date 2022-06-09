@@ -155,7 +155,7 @@ class RealNVP(nn.Module):
 
     def log_prob(self, x):
         y, log_det = self.__call__(x)
-        mean = jnp.repeat(self.base_mean, x.shape[0], axis=0)
-        cov = jnp.repeat(self.base_cov, x.shape[0], axis=0)
-        log_det = log_det + jax.scipy.stats.multivariate_normal.logpdf(y, mean,cov)
+        mean = jnp.repeat(self.base_mean.value, x.shape[0], axis=0)
+        cov = jnp.repeat(self.base_cov.value, x.shape[0], axis=0)
+        log_det = log_det + jax.scipy.stats.multivariate_normal.logpdf(y, mean, cov)
         return log_det
