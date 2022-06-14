@@ -156,7 +156,7 @@ class Sampler(object):
         local_accs = jnp.stack(self.local_accs, axis=1).reshape(chains.shape[0], -1)
         if self.use_global == True:
             global_accs = jnp.stack(self.global_accs, axis=1).reshape(chains.shape[0], -1)
-            loss_vals = jnp.stack(self.loss_vals, axis=1).reshape(chains.shape[0], -1)
+            loss_vals = jnp.stack(self.loss_vals, axis=1).reshape(self.n_loop, self.n_epochs)
             return chains, log_prob, local_accs, global_accs, loss_vals
         else:
             return chains, log_prob, local_accs, jnp.zeros(0), jnp.zeros(0)
