@@ -16,9 +16,9 @@ def train_step(model, batch, state, variables):
 
 train_step = jax.jit(train_step,static_argnums=(0,))
 
-def train_flow(rng, model, state, data, num_epochs, batch_size):
+def train_flow(rng, model, state, data, num_epochs, batch_size, variables):
 
-    def train_epoch(state, train_ds, batch_size, epoch, rng):
+    def train_epoch(state, train_ds, batch_size, epoch, rng, variables):
         """Train for a single epoch."""
         train_ds_size = len(train_ds)
         steps_per_epoch = train_ds_size // batch_size
@@ -28,9 +28,10 @@ def train_flow(rng, model, state, data, num_epochs, batch_size):
         perms = perms.reshape((steps_per_epoch, batch_size))
         for perm in perms:
             batch = train_ds[perm, ...]
-            value, state = train_step(model, state, batch)
+            value, state = train_step(model, state, batch, variables)
 
         return value, state
+
 
     loss_values = []
     for epoch in range(1, num_epochs + 1):
@@ -38,7 +39,7 @@ def train_flow(rng, model, state, data, num_epochs, batch_size):
         # Use a separate PRNG key to permute image data during shuffling
         rng, input_rng = jax.random.split(rng)
         # Run an optimization step over a training batch
-        value, state = train_epoch(state, data, batch_size, epoch, input_rng)
+        value, state = train_epoch(state, data, batch_size, epoch, input_rng, variables)
         #print('Train loss: %.3f' % value)
         loss_values.append(value)
 
