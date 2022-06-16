@@ -17,7 +17,7 @@ import jax.numpy as jnp
 from jax.scipy.stats import norm, multivariate_normal
 from jax.scipy.special import logsumexp
 from functools import partial
-from nfsampler.sampler.MALA import mala_kernel,mala_sampler
+from flowMC.sampler.MALA import mala_kernel,mala_sampler
 
 
 def mixture_logpdf(x):

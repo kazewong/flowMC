@@ -1,4 +1,4 @@
-Welcome to NFSampler's documentation!
+Welcome to flowMC's documentation!
 =====================================
 
 .. toctree::

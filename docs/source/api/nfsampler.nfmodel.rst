@@ -1,29 +1,29 @@
-nfsampler.nfmodel package
+flowMC.nfmodel package
 =========================
 
 Submodules
 ----------
 
-nfsampler.nfmodel.maf module
+flowMC.nfmodel.maf module
 ----------------------------
 
-.. automodule:: nfsampler.nfmodel.maf
+.. automodule:: flowMC.nfmodel.maf
    :members:
    :undoc-members:
    :show-inheritance:
 
-nfsampler.nfmodel.realNVP module
+flowMC.nfmodel.realNVP module
 --------------------------------
 
-.. automodule:: nfsampler.nfmodel.realNVP
+.. automodule:: flowMC.nfmodel.realNVP
    :members:
    :undoc-members:
    :show-inheritance:
 
-nfsampler.nfmodel.utils module
+flowMC.nfmodel.utils module
 ------------------------------
 
-.. automodule:: nfsampler.nfmodel.utils
+.. automodule:: flowMC.nfmodel.utils
    :members:
    :undoc-members:
    :show-inheritance:
@@ -31,7 +31,7 @@ nfsampler.nfmodel.utils module
 Module contents
 ---------------
 
-.. automodule:: nfsampler.nfmodel
+.. automodule:: flowMC.nfmodel
    :members:
    :undoc-members:
    :show-inheritance:

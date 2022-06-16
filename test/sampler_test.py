@@ -1,7 +1,7 @@
 import jax
 import jax.numpy as jnp
-from nfsampler.sampler.MALA import mala_kernel
-from nfsampler.sampler.Gaussian_random_walk import rw_metropolis_kernel
+from flowMC.sampler.MALA import mala_kernel
+from flowMC.sampler.Gaussian_random_walk import rw_metropolis_kernel
 
 def test_mala_kernel():
     rng_key = jax.random.PRNGKey(0)

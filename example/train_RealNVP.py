@@ -1,5 +1,5 @@
 
-from nfsampler.nfmodel.realNVP import RealNVP
+from flowMC.nfmodel.realNVP import RealNVP
 import jax
 import jax.numpy as jnp                # JAX NumPy
 import jax.random as random            # JAX random

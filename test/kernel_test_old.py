@@ -1,12 +1,12 @@
-from nfsampler.nfmodel.realNVP import RealNVP
+from flowMC.nfmodel.realNVP import RealNVP
 import jax
 import jax.numpy as jnp                # JAX NumPy
-from nfsampler.utils import Sampler, initialize_rng_keys
+from flowMC.utils import Sampler, initialize_rng_keys
 from jax.scipy.special import logsumexp
 import numpy as np  
 
 
-from nfsampler.nfmodel.utils import *
+from flowMC.nfmodel.utils import *
 
 
 def mala_kernel(rng_key, logpdf, d_logpdf, position, log_prob, kernal_size=0.1):

@@ -2,8 +2,8 @@ from logging import lastResort
 import jax
 import jax.numpy as jnp
 import numpy as np
-from nfsampler.nfmodel.utils import sample_nf,train_flow
-from nfsampler.sampler.NF_proposal import nf_metropolis_sampler
+from flowMC.nfmodel.utils import sample_nf,train_flow
+from flowMC.sampler.NF_proposal import nf_metropolis_sampler
 from flax.training import train_state  # Useful dataclass to keep train state
 import optax          
                  # Optimizers

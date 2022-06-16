@@ -1,21 +1,21 @@
-nfsampler.utils package
+flowMC.utils package
 =======================
 
 Submodules
 ----------
 
-nfsampler.utils.Analysis module
+flowMC.utils.Analysis module
 -------------------------------
 
-.. automodule:: nfsampler.utils.Analysis
+.. automodule:: flowMC.utils.Analysis
    :members:
    :undoc-members:
    :show-inheritance:
 
-nfsampler.utils.PRNG\_keys module
+flowMC.utils.PRNG\_keys module
 ---------------------------------
 
-.. automodule:: nfsampler.utils.PRNG_keys
+.. automodule:: flowMC.utils.PRNG_keys
    :members:
    :undoc-members:
    :show-inheritance:
@@ -23,7 +23,7 @@ nfsampler.utils.PRNG\_keys module
 Module contents
 ---------------
 
-.. automodule:: nfsampler.utils
+.. automodule:: flowMC.utils
    :members:
    :undoc-members:
    :show-inheritance:
