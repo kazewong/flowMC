@@ -2,8 +2,8 @@ from logging import lastResort
 import jax
 import jax.numpy as jnp
 import numpy as np
-from nfsampler.nfmodel.utils import sample_nf,train_flow
-from nfsampler.sampler.NF_proposal import nf_metropolis_sampler
+from flowMC.nfmodel.utils import sample_nf,train_flow
+from flowMC.sampler.NF_proposal import nf_metropolis_sampler
 from flax.training import train_state  # Useful dataclass to keep train state
 import optax          
                  # Optimizers
@@ -156,7 +156,7 @@ class Sampler(object):
         local_accs = jnp.stack(self.local_accs, axis=1).reshape(chains.shape[0], -1)
         if self.use_global == True:
             global_accs = jnp.stack(self.global_accs, axis=1).reshape(chains.shape[0], -1)
-            loss_vals = jnp.stack(self.loss_vals, axis=1).reshape(chains.shape[0], -1)
+            loss_vals = jnp.stack(self.loss_vals, axis=1).reshape(self.n_loop, self.n_epochs)
             return chains, log_prob, local_accs, global_accs, loss_vals
         else:
             return chains, log_prob, local_accs, jnp.zeros(0), jnp.zeros(0)

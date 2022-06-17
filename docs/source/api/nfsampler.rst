@@ -1,4 +1,4 @@
-nfsampler package
+flowMC package
 =================
 
 Subpackages
@@ -7,14 +7,14 @@ Subpackages
 .. toctree::
    :maxdepth: 4
 
-   nfsampler.nfmodel
-   nfsampler.sampler
-   nfsampler.utils
+   flowMC.nfmodel
+   flowMC.sampler
+   flowMC.utils
 
 Module contents
 ---------------
 
-.. automodule:: nfsampler
+.. automodule:: flowMC
    :members:
    :undoc-members:
    :show-inheritance:

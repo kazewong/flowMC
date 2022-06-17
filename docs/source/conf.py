@@ -18,7 +18,7 @@ sys.path.append(os.path.abspath('..'))
 
 # -- Project information -----------------------------------------------------
 
-project = 'NFSampler'
+project = 'flowMC'
 copyright = '2022, Kaze Wong, Marylou Gabrié'
 author = 'Kaze Wong, Marylou Gabrié'
 

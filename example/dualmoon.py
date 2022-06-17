@@ -1,13 +1,13 @@
-from nfsampler.nfmodel.realNVP import RealNVP
-from nfsampler.sampler.MALA import mala_sampler
+from flowMC.nfmodel.realNVP import RealNVP
+from flowMC.sampler.MALA import mala_sampler
 import jax
 import jax.numpy as jnp  # JAX NumPy
-from nfsampler.sampler.Sampler import Sampler
-from nfsampler.utils.PRNG_keys import initialize_rng_keys
+from flowMC.sampler.Sampler import Sampler
+from flowMC.utils.PRNG_keys import initialize_rng_keys
 from jax.scipy.special import logsumexp
 import numpy as np
 
-from nfsampler.nfmodel.utils import *
+from flowMC.nfmodel.utils import *
 
 
 def dual_moon_pe(x):

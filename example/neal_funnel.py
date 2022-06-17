@@ -8,14 +8,14 @@ I wonder whether this is well appercimated by the community.
 """
 
 import logging
-from nfsampler.nfmodel.realNVP import RealNVP
-from nfsampler.sampler.MALA import mala_sampler
+from flowMC.nfmodel.realNVP import RealNVP
+from flowMC.sampler.MALA import mala_sampler
 import jax
 import jax.numpy as jnp                # JAX NumPy
 import numpy as np  
 from jax.scipy.stats import norm
-from nfsampler.sampler.Sampler import Sampler
-from nfsampler.utils.PRNG_keys import initialize_rng_keys
+from flowMC.sampler.Sampler import Sampler
+from flowMC.utils.PRNG_keys import initialize_rng_keys
 
 def neal_funnel(x):
     y_pdf = norm.logpdf(x[0],loc=0,scale=3)

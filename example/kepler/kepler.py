@@ -9,13 +9,13 @@ import tqdm
 import time
 import pickle
 
-from nfsampler.nfmodel.realNVP import RealNVP
-from nfsampler.sampler.MALA import mala_sampler
-from nfsampler.nfmodel.utils import *
+from flowMC.nfmodel.realNVP import RealNVP
+from flowMC.sampler.MALA import mala_sampler
+from flowMC.nfmodel.utils import *
 
 from utils import rv_model, log_likelihood, log_prior, sample_prior, get_kepler_params_and_log_jac
-from nfsampler.sampler.Sampler import Sampler
-from nfsampler.utils.PRNG_keys import initialize_rng_keys
+from flowMC.sampler.Sampler import Sampler
+from flowMC.utils.PRNG_keys import initialize_rng_keys
 
 jax.config.update("jax_enable_x64", True)
 

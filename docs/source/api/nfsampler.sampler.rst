@@ -1,37 +1,37 @@
-nfsampler.sampler package
+flowMC.sampler package
 =========================
 
 Submodules
 ----------
 
-nfsampler.sampler.Gaussian\_random\_walk module
+flowMC.sampler.Gaussian\_random\_walk module
 -----------------------------------------------
 
-.. automodule:: nfsampler.sampler.Gaussian_random_walk
+.. automodule:: flowMC.sampler.Gaussian_random_walk
    :members:
    :undoc-members:
    :show-inheritance:
 
-nfsampler.sampler.MALA module
+flowMC.sampler.MALA module
 -----------------------------
 
-.. automodule:: nfsampler.sampler.MALA
+.. automodule:: flowMC.sampler.MALA
    :members:
    :undoc-members:
    :show-inheritance:
 
-nfsampler.sampler.NF\_proposal module
+flowMC.sampler.NF\_proposal module
 -------------------------------------
 
-.. automodule:: nfsampler.sampler.NF_proposal
+.. automodule:: flowMC.sampler.NF_proposal
    :members:
    :undoc-members:
    :show-inheritance:
 
-nfsampler.sampler.Sampler module
+flowMC.sampler.Sampler module
 --------------------------------
 
-.. automodule:: nfsampler.sampler.Sampler
+.. automodule:: flowMC.sampler.Sampler
    :members:
    :undoc-members:
    :show-inheritance:
@@ -39,7 +39,7 @@ nfsampler.sampler.Sampler module
 Module contents
 ---------------
 
-.. automodule:: nfsampler.sampler
+.. automodule:: flowMC.sampler
    :members:
    :undoc-members:
    :show-inheritance:
