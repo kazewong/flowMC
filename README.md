@@ -29,10 +29,18 @@ pip install FlowMC
 
 ## Requirements
 
+Here is a list of packages we use in the main library
+
     * Python 3.8+
     * Jax
     * Jaxlib
     * Flax
+
+To visualize the inference results in the examples, we requrie the following packages in addtion to the above:
+
+    * matplotlib
+    * corner
+    * arviz
 
 
 
