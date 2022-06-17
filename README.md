@@ -24,7 +24,7 @@ Our package is still in development stage, so it has not reached the official Py
 To install our package, run the following command:
 
 ```
-pip install -i https://test.pypi.org/simple/ FlowMC
+pip install FlowMC
 ```
 
 ## Requirements
