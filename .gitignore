@@ -10,3 +10,4 @@ dist
 docs/build/*
 *_autosummary
 README.md
+*settings.json
