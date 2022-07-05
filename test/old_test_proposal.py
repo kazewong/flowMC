@@ -1,8 +1,8 @@
 
-from nfsampler.nfmodel.maf import MaskedAutoregressiveFlow
-from nfsampler.nfmodel.realNVP import RealNVP
-from nfsampler.sampler.Gaussian_random_walk import rw_metropolis_sampler
-from nfsampler.sampler.NF_proposal import nf_metropolis_sampler, nf_metropolis_kernel
+from flowMC.nfmodel.maf import MaskedAutoregressiveFlow
+from flowMC.nfmodel.realNVP import RealNVP
+from flowMC.sampler.Gaussian_random_walk import rw_metropolis_sampler
+from flowMC.sampler.NF_proposal import nf_metropolis_sampler, nf_metropolis_kernel
 import jax
 import jax.numpy as jnp                # JAX NumPy
 import jax.random as random            # JAX random

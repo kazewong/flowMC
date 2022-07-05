@@ -32,8 +32,7 @@ def train_flow(rng, model, state, data, num_epochs, batch_size, variables):
 
         return value, state
 
-
-    loss_values = []
+    loss_values = jnp.array([])
     for epoch in range(1, num_epochs + 1):
         #print('Epoch %d' % epoch)
         # Use a separate PRNG key to permute image data during shuffling
@@ -41,7 +40,8 @@ def train_flow(rng, model, state, data, num_epochs, batch_size, variables):
         # Run an optimization step over a training batch
         value, state = train_epoch(state, data, batch_size, epoch, input_rng, variables)
         #print('Train loss: %.3f' % value)
-        loss_values.append(value)
+        loss_values = jnp.append(loss_values,value)
+    
 
     return rng, state, loss_values
 
