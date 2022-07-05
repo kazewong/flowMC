@@ -65,11 +65,11 @@ class Sampler(object):
         self.state = train_state.TrainState.create(apply_fn=nf_model.apply,
                                                    params=params, tx=tx)
 
-        self.chains = []
-        self.log_prob = []
-        self.local_accs = []
-        self.global_accs = []
-        self.loss_vals = []
+        self.chains = jnp.empty((self.n_chains, 0 , self.n_dim))
+        self.log_prob = jnp.empty((self.n_chains, 0))
+        self.local_accs = jnp.empty((self.n_chains, 0))
+        self.global_accs = jnp.empty((self.n_chains, 0))
+        self.loss_vals = jnp.empty((0, self.n_epochs))
 
     def sample(self,initial_position):
         """
@@ -138,12 +138,13 @@ class Sampler(object):
             positions = jnp.concatenate((positions,nf_chain),axis=1)
             log_prob_output = jnp.concatenate((log_prob_output,log_prob),axis=1)
         
-        self.chains.append(positions)
-        self.log_prob.append(log_prob_output)
-        self.local_accs.append(local_acceptance)
+        self.chains = jnp.append(self.chains, positions, axis=1)
+        self.log_prob = jnp.append(self.log_prob, log_prob_output, axis=1)
+        self.local_accs = jnp.append(self.local_accs, local_acceptance, axis=1)
         if self.use_global == True:
-            self.global_accs.append(global_acceptance)
-            self.loss_vals.append(loss_values)
+            self.global_accs = jnp.append(self.global_accs, global_acceptance, axis=1)
+            self.loss_vals = jnp.append(self.loss_vals, loss_values.reshape(1,-1), axis=0)
+
 
         last_step = positions[:, -1]
 
@@ -151,15 +152,7 @@ class Sampler(object):
 
 
     def get_sampler_state(self):
-        chains = jnp.concatenate(self.chains, axis=1)
-        log_prob = jnp.concatenate(self.log_prob, axis=1)
-        local_accs = jnp.stack(self.local_accs, axis=1).reshape(chains.shape[0], -1)
-        if self.use_global == True:
-            global_accs = jnp.stack(self.global_accs, axis=1).reshape(chains.shape[0], -1)
-            loss_vals = jnp.stack(self.loss_vals, axis=0)
-            return chains, log_prob, local_accs, global_accs, loss_vals
-        else:
-            return chains, log_prob, local_accs, jnp.zeros(0), jnp.zeros(0)
+        return self.chains, self.log_prob, self.local_accs, self.global_accs, self.loss_vals
 
     def sample_flow(self):
         nf_samples = sample_nf(self.nf_model, self.state.params, self.rng_keys_nf, self.n_nf_samples)
