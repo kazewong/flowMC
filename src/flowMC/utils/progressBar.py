@@ -9,16 +9,20 @@ def progress_bar_scan(num_samples, message=None):
     if message is None:
             message = f"Running for {num_samples:,} iterations"
     tqdm_bars = tqdm(range(num_samples))
+    tqdm_bars.set_description(message)
+
 
     if num_samples > 20:
         print_rate = int(num_samples / 20)
     else:
         print_rate = 1 # if you run the sampler for less than 20 iterations
+
+    print_rate = 1
     remainder = num_samples % print_rate
 
     def _define_tqdm(arg, transform):
         tqdm_bars = tqdm(range(num_samples))
-        tqdm_bars.set_description(message, refresh=False)
+        tqdm_bars.set_description(message)
 
     def _update_tqdm(arg, transform):
         tqdm_bars.update(arg)
@@ -77,7 +81,7 @@ def progress_bar_scan(num_samples, message=None):
     return _progress_bar_scan
 
 
-@progress_bar_scan(10000)
-def loop_body(i, s):
-  s += 1
-  return s
+# @progress_bar_scan(10000)
+# def loop_body(i, s):
+#   s += 1
+#   return s
