@@ -8,7 +8,7 @@ def progress_bar_scan(num_samples, message=None):
     "Progress bar for a JAX scan"
     if message is None:
             message = f"Running for {num_samples:,} iterations"
-    tqdm_bars = {}
+    tqdm_bars = tqdm(range(num_samples))
 
     if num_samples > 20:
         print_rate = int(num_samples / 20)
@@ -17,11 +17,11 @@ def progress_bar_scan(num_samples, message=None):
     remainder = num_samples % print_rate
 
     def _define_tqdm(arg, transform):
-        tqdm_bars[0] = tqdm(range(num_samples))
-        tqdm_bars[0].set_description(message, refresh=False)
+        tqdm_bars = tqdm(range(num_samples))
+        tqdm_bars.set_description(message, refresh=False)
 
     def _update_tqdm(arg, transform):
-        tqdm_bars[0].update(arg)
+        tqdm_bars.update(arg)
 
     def _update_progress_bar(iter_num):
         "Updates tqdm progress bar of a JAX scan or loop"
@@ -49,7 +49,7 @@ def progress_bar_scan(num_samples, message=None):
         )
 
     def _close_tqdm(arg, transform):
-        tqdm_bars[0].close()
+        tqdm_bars.close()
 
     def close_tqdm(result, iter_num):
         return lax.cond(
@@ -67,13 +67,9 @@ def progress_bar_scan(num_samples, message=None):
         This means that `iter_num` is the current iteration number
         """
 
-        def wrapper_progress_bar(carry, x):
-            if type(x) is tuple:
-                iter_num, *_ = x
-            else:
-                iter_num = x   
+        def wrapper_progress_bar(iter_num, state):
             _update_progress_bar(iter_num)
-            result = func(carry, x)
+            result = func(iter_num, state)
             return close_tqdm(result, iter_num)
 
         return wrapper_progress_bar
@@ -81,7 +77,7 @@ def progress_bar_scan(num_samples, message=None):
     return _progress_bar_scan
 
 
-# @progress_bar_scan(10000)
-# def loop_body(i, s):
-#   s += 1
-#   return s
+@progress_bar_scan(10000)
+def loop_body(i, s):
+  s += 1
+  return s
