@@ -2,7 +2,7 @@ import jax
 import jax.numpy as jnp
 from functools import partial
 
-@partial(jax.jit, static_argnums=(1,))
+# @partial(jax.jit, static_argnums=(1,))
 def rw_metropolis_kernel(rng_key, logpdf, position, log_prob):
     """Moves the chains by one step using the Random Walk Metropolis algorithm.
     Attributes
@@ -33,7 +33,7 @@ def rw_metropolis_kernel(rng_key, logpdf, position, log_prob):
     return position, log_prob, do_accept.astype(jnp.int8)
 
 
-@partial(jax.jit, static_argnums=(1, 2))
+# @partial(jax.jit, static_argnums=(1, 2))
 def rw_metropolis_sampler(rng_key, n_samples, logpdf, initial_position):
 
     def mh_update_sol2(i, state):

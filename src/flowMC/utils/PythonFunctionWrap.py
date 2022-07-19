@@ -48,12 +48,14 @@ def wrap_python_log_prob_fn(
         result_shape = jax.ShapeDtypeStruct(
             (flat_params.shape[0],), flat_params.dtype
         )
-        return (
-            host_callback.call(
+
+        result = host_callback.call(
                 lambda y: np.stack([eval_one(x) for x in y]),
                 flat_params,
                 result_shape=result_shape,
-            ),
+            )
+        return (
+            result,
             True,
         )
 
