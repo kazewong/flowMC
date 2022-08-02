@@ -87,13 +87,11 @@ class Sampler(object):
         """
 
         last_step = initial_position
-        rng_keys_nf = self.rng_keys_nf
-        rng_keys_mcmc = self.rng_keys_mcmc
         state = self.state
 
         for i in range(self.n_loop):
-            rng_keys_nf, rng_keys_mcmc, state, last_step = self.sampling_loop(
-                rng_keys_nf, rng_keys_mcmc, state, last_step,)
+            self.rng_keys_nf, self.rng_keys_mcmc, state, last_step = self.sampling_loop(
+                self.rng_keys_nf, self.rng_keys_mcmc, state, last_step)
 
   
         # return chains, log_prob, nf_samples, self.local_accs, global_accs, loss_vals
@@ -117,14 +115,14 @@ class Sampler(object):
 
         if self.d_likelihood is None:
             rng_keys_mcmc, positions, log_prob, local_acceptance = self.local_sampler(
-                rng_keys_mcmc, self.n_local_steps, self.likelihood, initial_position, self.stepsize
-                )
+                rng_keys_mcmc, self.n_local_steps, self.likelihood, initial_position)
         else:
             rng_keys_mcmc, positions, log_prob, local_acceptance = self.local_sampler(
                 rng_keys_mcmc, self.n_local_steps, self.likelihood, self.d_likelihood, initial_position, self.stepsize
                 )
 
         log_prob_output = np.copy(log_prob)
+
         flat_chain = positions.reshape(-1, self.n_dim)
         if self.use_global == True:
             rng_keys_nf, state, loss_values = train_flow(rng_keys_nf, self.nf_model, state, flat_chain,
