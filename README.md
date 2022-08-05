@@ -20,12 +20,13 @@ The code is open source under MIT license, and it is under active development.
 
 # Installation 
 
-Our package is still in development stage, so it has not reached the official PyPi index yet.
-To install our package, run the following command:
+The simplest way to install the package is to do it through pip
 
 ```
 pip install flowMC
 ```
+
+
 
 ## Requirements
 
