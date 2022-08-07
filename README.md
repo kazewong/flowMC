@@ -2,7 +2,7 @@
 
 **Normalizing-flow enhanced sampling package for probabilistic inference**
 
-<a href="https://FlowMC.readthedocs.io/en/latest/?">
+<a href="https://flowmc.readthedocs.io/en/latest/">
 <img src="https://badgen.net/badge/Read/the doc/blue" alt="doc"/>
 </a>
 <a href="https://github.com/kazewong/FlowMC/blob/Packaging/LICENSE">
@@ -20,12 +20,13 @@ The code is open source under MIT license, and it is under active development.
 
 # Installation 
 
-Our package is still in development stage, so it has not reached the official PyPi index yet.
-To install our package, run the following command:
+The simplest way to install the package is to do it through pip
 
 ```
-pip install FlowMC
+pip install flowMC
 ```
+
+
 
 ## Requirements
 

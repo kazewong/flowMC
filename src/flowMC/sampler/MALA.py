@@ -1,6 +1,7 @@
 import jax
 import jax.numpy as jnp
 from jax import grad
+from flowMC.utils.progressBar import progress_bar_scan
 
 def mala_kernel(rng_key, logpdf, d_logpdf, position, log_prob, dt=0.1):
 
@@ -60,6 +61,7 @@ def mala_sampler(rng_key, n_steps, logpdf, d_logpdf, initial_position, dt=1e-5):
         acceptance: acceptance rate of the chain 
     """
 
+    @progress_bar_scan(n_steps, message="Running MALA sampler")
     def mh_update_sol2(i, state):
         key, positions, log_prob, acceptance = state
         _, key = jax.random.split(key)
