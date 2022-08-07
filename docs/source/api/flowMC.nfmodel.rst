@@ -1,11 +1,11 @@
 flowMC.nfmodel package
-=========================
+======================
 
 Submodules
 ----------
 
 flowMC.nfmodel.maf module
-----------------------------
+-------------------------
 
 .. automodule:: flowMC.nfmodel.maf
    :members:
@@ -13,7 +13,7 @@ flowMC.nfmodel.maf module
    :show-inheritance:
 
 flowMC.nfmodel.realNVP module
---------------------------------
+-----------------------------
 
 .. automodule:: flowMC.nfmodel.realNVP
    :members:
@@ -21,7 +21,7 @@ flowMC.nfmodel.realNVP module
    :show-inheritance:
 
 flowMC.nfmodel.utils module
-------------------------------
+---------------------------
 
 .. automodule:: flowMC.nfmodel.utils
    :members:
