@@ -1,4 +1,6 @@
-src
+.. _api-section-top:
+
+API
 ===
 
 .. toctree::

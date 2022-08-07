@@ -1,10 +1,9 @@
+.. _configuration-section-top:
 Configuration
 =============
 
 
 # Parameters
-
-
 
 ===============================    ===================================
 Name                               Description
