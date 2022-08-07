@@ -60,7 +60,11 @@ A minimum example to sample a N dimensional Gaussian, you would do something lik
 
     nf_sampler.sample(initial_position)
 
+For more realistic test case, see the examples on `github <https://github.com/kazewong/FlowMC/tree/main/example>`_.
+In particular, currently the best engineered test case is `dualmoon.py <https://github.com/kazewong/FlowMC/blob/main/example/dualmoon.py>`_.
+
 In the ideal case, the only two things you will have to do is:
 
 #. Write down the function you want to sample in the form of :code:`p(x)`, where :code:`p` is the log probability density function and :code:`x` is the vector of variables of interest.
 #. Configure the sampler.
+
