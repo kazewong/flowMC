@@ -36,7 +36,8 @@ class Sampler(object):
                 batch_size: int = 10,
                 stepsize: float = 1e-3,
                 use_global: bool = True,
-                logging: bool = True):
+                logging: bool = True,
+                nf_variable = None):
         rng_key_init ,rng_keys_mcmc, rng_keys_nf, init_rng_keys_nf = rng_key_set
 
         self.local_sampler = local_sampler
@@ -60,6 +61,12 @@ class Sampler(object):
 
         self.nf_model = nf_model
         params = nf_model.init(init_rng_keys_nf, jnp.ones((self.batch_size,self.n_dim)))['params']
+        # self.variables = model_init['variables']
+        # model_init = nf_model.init(init_rng_keys_nf, jnp.ones((self.batch_size,self.n_dim)))
+        # params = model_init['params']
+        # self.variables = model_init['variables']
+        # if nf_variable is not None:
+        #     self.variables = self.variables
 
         tx = optax.adam(self.learning_rate, self.momentum)
         self.state = train_state.TrainState.create(apply_fn=nf_model.apply,
@@ -125,11 +132,12 @@ class Sampler(object):
 
         flat_chain = positions.reshape(-1, self.n_dim)
         if self.use_global == True:
+            
             rng_keys_nf, state, loss_values = train_flow(rng_keys_nf, self.nf_model, state, flat_chain,
-                                            self.n_epochs, self.batch_size)
+                                            self.n_epochs, self.batch_size, self.variables)
             likelihood_vec = jax.vmap(self.likelihood)
             rng_keys_nf, nf_chain, log_prob, log_prob_nf, global_acceptance = nf_metropolis_sampler(
-                rng_keys_nf, self.n_global_steps, self.nf_model, state.params , likelihood_vec,
+                rng_keys_nf, self.n_global_steps, self.nf_model, state.params, self.variables, likelihood_vec,
                 positions[:,-1]
                 )
 
