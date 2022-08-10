@@ -6,14 +6,14 @@ Quick Start
 Installation
 ------------
 
-The recommended way to install FlowMC is using pip
+The recommended way to install flowMC is using pip
 
 .. code-block::
 
     pip install flowMC
 
 This will install the latest stable release and its dependencies.
-FlowMC is based on `Jax <https://github.com/google/jax>`_ and `Flax <https://github.com/google/flax>`_.
+flowMC is based on `Jax <https://github.com/google/jax>`_ and `Flax <https://github.com/google/flax>`_.
 By default, installing flowMC will automatically install Jax and Flax available on `PyPI <https://pypi.org/>`_.
 Jax does not install GPU support by default.
 If you want to use GPU with Jax, you need to install Jax with GPU support according to `their document <pip install --upgrade "jax[cuda]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html>`_.
@@ -60,8 +60,8 @@ A minimum example to sample a N dimensional Gaussian, you would do something lik
 
     nf_sampler.sample(initial_position)
 
-For more realistic test case, see the examples on `github <https://github.com/kazewong/FlowMC/tree/main/example>`_.
-In particular, currently the best engineered test case is `dualmoon.py <https://github.com/kazewong/FlowMC/blob/main/example/dualmoon.py>`_.
+For more realistic test case, see the examples on `github <https://github.com/kazewong/flowMC/tree/main/example>`_.
+In particular, currently the best engineered test case is `dualmoon.py <https://github.com/kazewong/flowMC/blob/main/example/dualmoon.py>`_.
 
 In the ideal case, the only two things you will have to do is:
 
