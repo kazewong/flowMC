@@ -40,51 +40,61 @@ def mala_kernel(rng_key, logpdf, d_logpdf, position, log_prob, dt=0.1):
 
 mala_kernel_vec = jax.vmap(mala_kernel, in_axes=(0, None, None, 0, 0, None))
 
-def mala_sampler(rng_key, n_steps, logpdf, d_logpdf, initial_position, dt=1e-5):
 
-    """
-    Metropolis-adjusted Langevin algorithm sampler.
-    This function do n step with the MALA kernel.
-
-    Args:
-        rng_key (n_chains, 2): random key for the sampler 
-        n_steps (int): number of local steps 
-        logpdf (function): log-density function
-        d_logpdf (function): gradient of log-density function
-        initial_position (n_chains, n_dim): initial position of the chain
-        dt (float): step size of the MALA step
-
-    Returns:
-        rng_key (n_chains, 2): random key for the sampler after the sampling
-        all_positions (n_chains, n_steps, n_dim): all the positions of the chain
-        log_probs (n_chains, ): log probability at the end of the chain
-        acceptance: acceptance rate of the chain 
-    """
-
-    @progress_bar_scan(n_steps, message="Running MALA sampler")
-    def mh_update_sol2(i, state):
+def make_mala_update(logpdf, d_logpdf, dt):
+    def mala_update(i,state):
         key, positions, log_prob, acceptance = state
         _, key = jax.random.split(key)
         new_position, new_log_prob, do_accept = mala_kernel(key, logpdf,
-                                                               d_logpdf,
-                                                               positions[i-1],
-                                                               log_prob[i-1],
-                                                               dt)
+                                                                d_logpdf,
+                                                                positions[i-1],
+                                                                log_prob[i-1],
+                                                                dt)
         positions = positions.at[i].set(new_position)
         log_prob = log_prob.at[i].set(new_log_prob)
         acceptance = acceptance.at[i].set(do_accept)
         return (key, positions, log_prob, acceptance)
 
+    mala_update = jax.jit(jax.vmap(mala_update, in_axes=(None,(0,0,0,0))))
 
-    logp = logpdf(initial_position)
-     # local sampler are vmapped outside, so the chain dimension is 1
-    acceptance = jnp.zeros((n_steps,))
-    all_positions = jnp.zeros((n_steps,)+initial_position.shape) + initial_position
-    all_logp = jnp.zeros((n_steps,)) + logp
-    initial_state = (rng_key,all_positions, all_logp, acceptance)
-    rng_key, all_positions, all_logp, acceptance = jax.lax.fori_loop(1, n_steps, 
-                                                   mh_update_sol2, 
-                                                   initial_state)
-    
-    
-    return rng_key, all_positions, all_logp, acceptance
+    return mala_update
+
+def make_mala_sampler(n_steps, logpdf, d_logpdf, initial_position, dt=1e-5):
+    mala_update = make_mala_update(logpdf, d_logpdf, dt)
+    # mala_update = progress_bar_scan(n_steps, message="Running MALA sampler")(mala_update)
+    logp = jax.vmap(logpdf)(initial_position)
+
+    def mala_sampler(rng_key, n_steps, logpdf, d_logpdf, initial_position, dt=1e-5):
+
+        """
+        Metropolis-adjusted Langevin algorithm sampler.
+        This function do n step with the MALA kernel.
+
+        Args:
+            rng_key (n_chains, 2): random key for the sampler 
+            n_steps (int): number of local steps 
+            logpdf (function): log-density function
+            d_logpdf (function): gradient of log-density function
+            initial_position (n_chains, n_dim): initial position of the chain
+            dt (float): step size of the MALA step
+
+        Returns:
+            rng_key (n_chains, 2): random key for the sampler after the sampling
+            all_positions (n_chains, n_steps, n_dim): all the positions of the chain
+            log_probs (n_chains, ): log probability at the end of the chain
+            acceptance: acceptance rate of the chain 
+        """
+
+        n_chains = rng_key.shape[0]
+        acceptance = jnp.zeros((n_chains,n_steps,))
+        all_positions = jnp.zeros((n_chains, n_steps,)+initial_position.shape[-1:]) + initial_position[:,None]
+        all_logp = jnp.zeros((n_chains,n_steps,)) + logp[:,None]
+        initial_state = (rng_key, all_positions, all_logp, acceptance)
+        rng_key, all_positions, all_logp, acceptance = jax.lax.fori_loop(1, n_steps, 
+                                                    mala_update,
+                                                    initial_state)
+        
+        
+        return rng_key, all_positions, all_logp, acceptance
+
+    return mala_sampler
