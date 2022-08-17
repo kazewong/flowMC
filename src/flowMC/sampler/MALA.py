@@ -1,6 +1,7 @@
 import jax
 import jax.numpy as jnp
 from jax import grad
+from tqdm import tqdm
 from flowMC.utils.progressBar import progress_bar_scan
 
 def mala_kernel(rng_key, logpdf, d_logpdf, position, log_prob, dt=0.1):
@@ -59,12 +60,12 @@ def make_mala_update(logpdf, d_logpdf, dt):
 
     return mala_update
 
-def make_mala_sampler(n_steps, logpdf, d_logpdf, initial_position, dt=1e-5):
+def make_mala_sampler(logpdf, d_logpdf, dt=1e-5):
     mala_update = make_mala_update(logpdf, d_logpdf, dt)
-    # mala_update = progress_bar_scan(n_steps, message="Running MALA sampler")(mala_update)
-    logp = jax.vmap(logpdf)(initial_position)
+    # Somehow if I define the function inside the other function,
+    # I think it doesn't use the cache and recompile everytime.
 
-    def mala_sampler(rng_key, n_steps, logpdf, d_logpdf, initial_position, dt=1e-5):
+    def mala_sampler(rng_key, n_steps, logpdf, d_logpdf, initial_position):
 
         """
         Metropolis-adjusted Langevin algorithm sampler.
@@ -85,14 +86,18 @@ def make_mala_sampler(n_steps, logpdf, d_logpdf, initial_position, dt=1e-5):
             acceptance: acceptance rate of the chain 
         """
 
+        logp = jax.vmap(logpdf)(initial_position)
         n_chains = rng_key.shape[0]
         acceptance = jnp.zeros((n_chains,n_steps,))
         all_positions = jnp.zeros((n_chains, n_steps,)+initial_position.shape[-1:]) + initial_position[:,None]
         all_logp = jnp.zeros((n_chains,n_steps,)) + logp[:,None]
-        initial_state = (rng_key, all_positions, all_logp, acceptance)
-        rng_key, all_positions, all_logp, acceptance = jax.lax.fori_loop(1, n_steps, 
-                                                    mala_update,
-                                                    initial_state)
+        state = (rng_key, all_positions, all_logp, acceptance)
+        # Lax for loop takes a long time to compile and end up being slower
+        for i in tqdm(range(1, n_steps),miniters=int(n_steps/10)):
+            state = mala_update(i, state)
+        # rng_key, all_positions, all_logp, acceptance = jax.lax.fori_loop(1, n_steps, 
+        #                                             mala_update,
+        #                                             initial_state)
         
         
         return rng_key, all_positions, all_logp, acceptance
