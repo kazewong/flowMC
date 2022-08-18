@@ -65,7 +65,7 @@ def make_mala_sampler(logpdf, d_logpdf, dt=1e-5):
     # Somehow if I define the function inside the other function,
     # I think it doesn't use the cache and recompile everytime.
 
-    def mala_sampler(rng_key, n_steps, logpdf, d_logpdf, initial_position):
+    def mala_sampler(rng_key, n_steps, logpdf, d_logpdf, initial_position,dt):
 
         """
         Metropolis-adjusted Langevin algorithm sampler.
@@ -93,13 +93,13 @@ def make_mala_sampler(logpdf, d_logpdf, dt=1e-5):
         all_logp = jnp.zeros((n_chains,n_steps,)) + logp[:,None]
         state = (rng_key, all_positions, all_logp, acceptance)
         # Lax for loop takes a long time to compile and end up being slower
-        for i in tqdm(range(1, n_steps),miniters=int(n_steps/10)):
+        for i in tqdm(range(1, n_steps),desc='Sampling Locally',miniters=int(n_steps/10)):
             state = mala_update(i, state)
         # rng_key, all_positions, all_logp, acceptance = jax.lax.fori_loop(1, n_steps, 
         #                                             mala_update,
         #                                             initial_state)
         
         
-        return rng_key, all_positions, all_logp, acceptance
+        return state
 
     return mala_sampler
