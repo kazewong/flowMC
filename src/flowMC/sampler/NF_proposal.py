@@ -51,7 +51,7 @@ def nf_metropolis_sampler(rng_key, n_steps, nf_model, nf_param, nf_variables, ta
 
     proposal_position = nf_model.apply({'params': nf_param, 'variables': nf_variables}, subkeys[0],
                                        initial_position.shape[0]*n_steps,
-                                       nf_param, method=nf_model.sample)[0]
+                                       method=nf_model.sample)[0]
 
     log_pdf_nf_proposal = nf_model.apply({'params': nf_param, 'variables': nf_variables},
                                          proposal_position,

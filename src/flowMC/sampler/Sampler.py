@@ -5,6 +5,7 @@ import numpy as np
 from flowMC.nfmodel.utils import sample_nf,train_flow
 from flowMC.sampler.NF_proposal import nf_metropolis_sampler
 from flax.training import train_state  # Useful dataclass to keep train state
+import flax
 import optax          
                  # Optimizers
 class Sampler(object):
@@ -32,6 +33,7 @@ class Sampler(object):
                 n_epochs: int = 5,
                 n_nf_samples: int = 100,
                 learning_rate: float = 0.01,
+                max_samples: int = 10000,
                 momentum: float = 0.9,
                 batch_size: int = 10,
                 stepsize: float = 1e-3,
@@ -53,6 +55,7 @@ class Sampler(object):
         self.n_epochs = n_epochs
         self.n_nf_samples = n_nf_samples
         self.learning_rate = learning_rate
+        self.max_samples = max_samples
         self.momentum = momentum
         self.batch_size = batch_size
         self.stepsize = stepsize
@@ -60,13 +63,12 @@ class Sampler(object):
         self.logging = logging
 
         self.nf_model = nf_model
-        params = nf_model.init(init_rng_keys_nf, jnp.ones((self.batch_size,self.n_dim)))['params']
-        # self.variables = model_init['variables']
-        # model_init = nf_model.init(init_rng_keys_nf, jnp.ones((self.batch_size,self.n_dim)))
-        # params = model_init['params']
-        # self.variables = model_init['variables']
-        # if nf_variable is not None:
-        #     self.variables = self.variables
+        # params = nf_model.init(init_rng_keys_nf, jnp.ones((self.batch_size,self.n_dim)))['params']
+        model_init = nf_model.init(init_rng_keys_nf, jnp.ones((self.batch_size,self.n_dim)))
+        params = model_init['params']
+        self.variables = model_init['variables']
+        if nf_variable is not None:
+            self.variables = self.variables
 
         tx = optax.adam(self.learning_rate, self.momentum)
         self.state = train_state.TrainState.create(apply_fn=nf_model.apply,
@@ -94,11 +96,10 @@ class Sampler(object):
         """
 
         last_step = initial_position
-        state = self.state
 
         for i in range(self.n_loop):
-            self.rng_keys_nf, self.rng_keys_mcmc, state, last_step = self.sampling_loop(
-                self.rng_keys_nf, self.rng_keys_mcmc, state, last_step)
+            self.rng_keys_nf, self.rng_keys_mcmc, self.state, last_step = self.sampling_loop(
+                self.rng_keys_nf, self.rng_keys_mcmc, self.state, last_step)
 
   
         # return chains, log_prob, nf_samples, self.local_accs, global_accs, loss_vals
@@ -130,9 +131,20 @@ class Sampler(object):
 
         log_prob_output = np.copy(log_prob)
 
-        flat_chain = positions.reshape(-1, self.n_dim)
-        if self.use_global == True:
+
             
+        if self.use_global == True:
+            chain_size = positions.shape[0]*positions.shape[1]
+            if chain_size > self.max_samples:
+                flat_chain = positions[:,-int(self.max_samples/self.n_chains):].reshape(-1,self.n_dim)
+            else:
+                flat_chain = positions.reshape(-1, self.n_dim)
+
+            variables = self.variables.unfreeze()
+            variables['base_mean'] = jnp.mean(flat_chain, axis=0)
+            variables['base_cov'] = jnp.cov(flat_chain.T)
+            self.variables = flax.core.freeze(variables)
+
             rng_keys_nf, state, loss_values = train_flow(rng_keys_nf, self.nf_model, state, flat_chain,
                                             self.n_epochs, self.batch_size, self.variables)
             likelihood_vec = jax.vmap(self.likelihood)
@@ -160,8 +172,10 @@ class Sampler(object):
     def get_sampler_state(self):
         return self.chains, self.log_prob, self.local_accs, self.global_accs, self.loss_vals
 
-    def sample_flow(self):
-        nf_samples = sample_nf(self.nf_model, self.state.params, self.rng_keys_nf, self.n_nf_samples)
+    def sample_flow(self, n_samples=None):
+        if n_samples is None:
+            n_samples = self.n_nf_samples
+        nf_samples = sample_nf(self.nf_model, self.state.params, self.rng_keys_nf, n_samples, self.variables)
         return nf_samples
 
 
