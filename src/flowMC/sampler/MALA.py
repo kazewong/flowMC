@@ -103,3 +103,31 @@ def make_mala_sampler(logpdf, d_logpdf, dt=1e-5):
         return state
 
     return mala_sampler
+
+################### Scan API ##############################
+
+# dt = 1e-7
+# def mala_kernel(carry, data):
+#     rng_key, position, log_prob, do_accept = carry
+#     rng_key, key1, key2 = jax.random.split(rng_key,3)
+#     proposal = position + dt * d_logpdf(position)
+#     proposal += dt * jnp.sqrt(2/dt) * jax.random.normal(key1, shape=position.shape)
+#     ratio = logpdf(proposal) - logpdf(position)
+#     ratio -= ((position - proposal - dt * d_logpdf(proposal)) ** 2 / (4 * dt)).sum()
+#     ratio += ((proposal - position - dt * d_logpdf(position)) ** 2 / (4 * dt)).sum()
+#     proposal_log_prob = logpdf(proposal)
+
+#     log_uniform = jnp.log(jax.random.uniform(key2))
+#     do_accept = log_uniform < ratio
+
+#     position = jax.lax.cond(do_accept, lambda: proposal, lambda: position)
+#     log_prob = jax.lax.cond(do_accept, lambda: proposal_log_prob, lambda: log_prob)
+#     return (rng_key, position, log_prob, do_accept), (position, log_prob, do_accept)
+
+# mala_kernel = jax.jit(mala_kernel)
+# state = (jax.random.PRNGKey(1),theta_ripple, logpdf(theta_ripple), False)
+# # jax.lax.scan(mala_kernel, state, jax.random.split(jax.random.PRNGKey(1),10))
+# def mala_update(rng_key, position, logpdf, n_steps=100):
+#     carry = (rng_key, position, logpdf, False)
+#     y = jax.lax.scan(mala_kernel, carry, jax.random.split(rng_key,n_steps))
+#     return y
