@@ -26,7 +26,7 @@ def mala_kernel(rng_key, logpdf, d_logpdf, position, log_prob, dt=0.1):
     """
     key1, key2 = jax.random.split(rng_key)
     proposal = position + dt * d_logpdf(position)
-    proposal += dt * jnp.sqrt(2/dt) * jax.random.normal(key1, shape=position.shape)
+    proposal +=  jnp.sqrt(2 * dt) * jax.random.normal(key1, shape=position.shape)
     ratio = logpdf(proposal) - logpdf(position)
     ratio -= ((position - proposal - dt * d_logpdf(proposal)) ** 2 / (4 * dt)).sum()
     ratio += ((proposal - position - dt * d_logpdf(position)) ** 2 / (4 * dt)).sum()
