@@ -126,8 +126,7 @@ class Sampler(object):
                 rng_keys_mcmc, self.n_local_steps, self.likelihood, initial_position)
         else:
             rng_keys_mcmc, positions, log_prob, local_acceptance = self.local_sampler(
-                rng_keys_mcmc, self.n_local_steps, self.likelihood, self.d_likelihood, initial_position, self.stepsize
-                )
+                rng_keys_mcmc, self.n_local_steps, initial_position)
 
         log_prob_output = np.copy(log_prob)
 
@@ -178,4 +177,9 @@ class Sampler(object):
         nf_samples = sample_nf(self.nf_model, self.state.params, self.rng_keys_nf, n_samples, self.variables)
         return nf_samples
 
-
+    def reset(self):
+        self.chains = jnp.empty((self.n_chains, 0 , self.n_dim))
+        self.log_prob = jnp.empty((self.n_chains, 0))
+        self.local_accs = jnp.empty((self.n_chains, 0))
+        self.global_accs = jnp.empty((self.n_chains, 0))
+        self.loss_vals = jnp.empty((0, self.n_epochs))
