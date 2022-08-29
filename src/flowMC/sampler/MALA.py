@@ -73,6 +73,9 @@ def make_mala_sampler(logpdf, d_logpdf, dt=1e-5, jit=False):
     # I think it doesn't use the cache and recompile everytime.
     if jit:
         mala_update = jax.jit(mala_update)
+        mk = jax.jit(mk)
+        lp = jax.jit(lp)
+        dlp = jax.jit(dlp)
 
     def mala_sampler(rng_key, n_steps, initial_position):
 
@@ -105,7 +108,7 @@ def make_mala_sampler(logpdf, d_logpdf, dt=1e-5, jit=False):
             state = mala_update(i, state)
         return state
 
-    return mala_sampler, mk, lp, dlp
+    return mala_sampler, mala_update, mk, lp, dlp
 
 ################### Scan API ##############################
 
