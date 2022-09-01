@@ -1,5 +1,5 @@
 from flowMC.nfmodel.realNVP import RealNVP
-from flowMC.sampler.MALA import mala_sampler
+from flowMC.sampler.MALA import make_mala_sampler
 import jax
 import jax.numpy as jnp  # JAX NumPy
 from flowMC.sampler.Sampler import Sampler
@@ -25,9 +25,9 @@ d_dual_moon = jax.grad(dual_moon_pe)
 ### Demo config
 
 n_dim = 5
-n_chains = 10
+n_chains = 100
 n_loop = 5
-n_local_steps = 100
+n_local_steps = 1000
 n_global_steps = 100
 learning_rate = 0.1
 momentum = 0.9
@@ -44,11 +44,12 @@ initial_position = jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 
 
 
 model = RealNVP(10, n_dim, 64, 1)
-run_mcmc = jax.vmap(mala_sampler, in_axes=(0, None, None, None, 0, None), out_axes=0)
+local_sampler,updater, kernel,logp,dlogp = make_mala_sampler(dual_moon_pe, d_dual_moon,1e-1, jit=True, M=jnp.eye(n_dim))
+
 
 print("Initializing sampler class")
 
-nf_sampler = Sampler(n_dim, rng_key_set, model, run_mcmc,
+nf_sampler = Sampler(n_dim, rng_key_set, model, local_sampler,
                     dual_moon_pe,
                     d_likelihood=d_dual_moon,
                     n_loop=n_loop,
@@ -61,7 +62,7 @@ nf_sampler = Sampler(n_dim, rng_key_set, model, run_mcmc,
                     momentum=momentum,
                     batch_size=batch_size,
                     stepsize=stepsize,
-                    use_global=True,)
+                    use_global=False,)
 
 print("Sampling")
 
@@ -80,7 +81,7 @@ print(
 )
 
 chains = np.array(chains)
-nf_samples = np.array(nf_samples[1])
+nf_samples = np.array(nf_samples)
 loss_vals = np.array(loss_vals)
 
 import corner
