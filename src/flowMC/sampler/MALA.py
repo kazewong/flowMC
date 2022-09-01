@@ -1,11 +1,12 @@
-from re import L
 import jax
 import jax.numpy as jnp
-from jax import grad
+from jax.scipy.stats import multivariate_normal
 from tqdm import tqdm
-from flowMC.utils.progressBar import progress_bar_scan
 
-def make_mala_kernel(logpdf, d_logpdf, dt):
+def make_mala_kernel(logpdf, d_logpdf, dt, M=None):
+
+    if M != None:
+        dt  = dt*jnp.sqrt(M)
     def mala_kernel(rng_key, position, log_prob):
 
         """
@@ -27,13 +28,16 @@ def make_mala_kernel(logpdf, d_logpdf, dt):
 
         """
         key1, key2 = jax.random.split(rng_key)
-        proposal = position + dt * d_logpdf(position)
-        proposal +=  jnp.sqrt(2 * dt) * jax.random.normal(key1, shape=position.shape)
-        ratio = logpdf(proposal) - logpdf(position)
-        ratio -= ((position - proposal - dt * d_logpdf(proposal)) ** 2 / (4 * dt)).sum()
-        ratio += ((proposal - position - dt * d_logpdf(position)) ** 2 / (4 * dt)).sum()
+
+        d_log_current = d_logpdf(position)
+        proposal = position + jnp.dot(dt*dt,d_log_current)/2
+        proposal +=  jnp.dot(dt,jax.random.normal(key1, shape=position.shape))
         proposal_log_prob = logpdf(proposal)
 
+        ratio = proposal_log_prob - logpdf(position)
+        ratio -= multivariate_normal.logpdf(proposal, jnp.dot(dt*dt,d_logpdf(proposal))/2,dt)
+        ratio += multivariate_normal.logpdf(position, jnp.dot(dt*dt,d_log_current)/2,dt)
+        
         log_uniform = jnp.log(jax.random.uniform(key2))
         do_accept = log_uniform < ratio
 
@@ -43,8 +47,8 @@ def make_mala_kernel(logpdf, d_logpdf, dt):
     return mala_kernel
 
 
-def make_mala_update(logpdf, d_logpdf, dt):
-    mala_kernel = make_mala_kernel(logpdf, d_logpdf, dt)
+def make_mala_update(logpdf, d_logpdf, dt, M=None):
+    mala_kernel = make_mala_kernel(logpdf, d_logpdf, dt, M)
     def mala_update(i,state):
         key, positions, log_prob, acceptance = state
         _, key = jax.random.split(key)
@@ -62,13 +66,13 @@ def make_mala_update(logpdf, d_logpdf, dt):
 
     # Apperantly jitting after vmap will make compilation much slower.
     # Output the kernel, logpdf, and dlogpdf for warmup jitting.
-    # Apperantly passing in a warmedup function will still trigger recompilation.
+    # Apperantly passing in a warmed up function will still trigger recompilation.
     # so the warmup need to be done with the output function
 
     return mala_update, mala_kernel_vec, logpdf, d_logpdf
 
-def make_mala_sampler(logpdf, d_logpdf, dt=1e-5, jit=False):
-    mala_update, mk, lp, dlp = make_mala_update(logpdf, d_logpdf, dt)
+def make_mala_sampler(logpdf, d_logpdf, dt=1e-5, jit=False, M=None):
+    mala_update, mk, lp, dlp = make_mala_update(logpdf, d_logpdf, dt, M)
     # Somehow if I define the function inside the other function,
     # I think it doesn't use the cache and recompile everytime.
     if jit:
