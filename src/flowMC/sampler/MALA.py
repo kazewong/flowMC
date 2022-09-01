@@ -29,14 +29,17 @@ def make_mala_kernel(logpdf, d_logpdf, dt, M=None):
         """
         key1, key2 = jax.random.split(rng_key)
 
+        dt2 = dt*dt
+
         d_log_current = d_logpdf(position)
-        proposal = position + jnp.dot(dt*dt,d_log_current)/2
+        proposal = position + jnp.dot(dt2,d_log_current)/2
         proposal +=  jnp.dot(dt,jax.random.normal(key1, shape=position.shape))
         proposal_log_prob = logpdf(proposal)
 
+
         ratio = proposal_log_prob - logpdf(position)
-        ratio -= multivariate_normal.logpdf(position, proposal+jnp.dot(dt*dt,d_logpdf(proposal))/2,dt)
-        ratio += multivariate_normal.logpdf(proposal, position+jnp.dot(dt*dt,d_log_current)/2,dt)
+        ratio -= multivariate_normal.logpdf(position, proposal+jnp.dot(dt2,d_logpdf(proposal))/2,dt2)
+        ratio += multivariate_normal.logpdf(proposal, position+jnp.dot(dt2,d_log_current)/2,dt2)
         
         log_uniform = jnp.log(jax.random.uniform(key2))
         do_accept = log_uniform < ratio
