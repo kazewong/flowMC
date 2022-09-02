@@ -8,8 +8,7 @@ def nf_metropolis_kernel(rng_key, proposal_position, initial_position,
 
     rng_key, subkeys = random.split(rng_key,2)
     ratio = (proposal_pdf - initial_pdf) - (proposal_nf_pdf - initial_nf_pdf)
-    ratio = jnp.exp(ratio)
-    u = jax.random.uniform(subkeys, ratio.shape)
+    u = jnp.log(jax.random.uniform(subkeys, ratio.shape))
     do_accept = u < ratio
     position = jnp.where(do_accept, proposal_position, initial_position)
     log_prob = jnp.where(do_accept, proposal_pdf, initial_pdf)
