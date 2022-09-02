@@ -38,8 +38,8 @@ def make_mala_kernel(logpdf, d_logpdf, dt, M=None):
 
 
         ratio = proposal_log_prob - logpdf(position)
-        ratio -= multivariate_normal.logpdf(position, proposal+jnp.dot(dt2,d_logpdf(proposal))/2,dt2)
-        ratio += multivariate_normal.logpdf(proposal, position+jnp.dot(dt2,d_log_current)/2,dt2)
+        ratio -= multivariate_normal.logpdf(proposal, position+jnp.dot(dt2,d_log_current)/2,dt2)
+        ratio += multivariate_normal.logpdf(position, proposal+jnp.dot(dt2,d_logpdf(proposal))/2,dt2)
         
         log_uniform = jnp.log(jax.random.uniform(key2))
         do_accept = log_uniform < ratio
