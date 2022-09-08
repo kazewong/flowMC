@@ -7,6 +7,15 @@ def make_mala_kernel(logpdf, d_logpdf, dt, M=None):
 
     if M != None:
         dt  = dt*jnp.sqrt(M)
+
+    dt2 = dt*dt
+
+    def body(this_position, this_key):
+        this_log_prob,this_d_log = jax.value_and_grad(logpdf)(this_position)
+        proposal = this_position + jnp.dot(dt2, this_d_log)/2
+        proposal +=  jnp.dot(dt, jax.random.normal(this_key, shape=this_position.shape))
+        return proposal, (proposal, this_log_prob, this_d_log)
+
     def mala_kernel(rng_key, position, log_prob):
 
         """
@@ -28,24 +37,18 @@ def make_mala_kernel(logpdf, d_logpdf, dt, M=None):
 
         """
         key1, key2 = jax.random.split(rng_key)
+        
+        _, (position, logprob, d_logprob) = jax.lax.scan(body, position, jnp.array([key1, key1]))
 
-        dt2 = dt*dt
-
-        d_log_current = d_logpdf(position)
-        proposal = position + jnp.dot(dt2,d_log_current)/2
-        proposal +=  jnp.dot(dt,jax.random.normal(key1, shape=position.shape))
-        proposal_log_prob = logpdf(proposal)
-
-
-        ratio = proposal_log_prob - logpdf(position)
-        ratio -= multivariate_normal.logpdf(proposal, position+jnp.dot(dt2,d_log_current)/2,dt2)
-        ratio += multivariate_normal.logpdf(position, proposal+jnp.dot(dt2,d_logpdf(proposal))/2,dt2)
+        ratio = logprob[1] - logprob[0]
+        ratio -= multivariate_normal.logpdf(position[0], position+jnp.dot(dt2,d_logprob[0])/2,dt2)
+        ratio += multivariate_normal.logpdf(position, position[0]+jnp.dot(dt2,d_logprob[1])/2,dt2)
         
         log_uniform = jnp.log(jax.random.uniform(key2))
         do_accept = log_uniform < ratio
 
-        position = jnp.where(do_accept, proposal, position)
-        log_prob = jnp.where(do_accept, proposal_log_prob, log_prob)
+        position = jnp.where(do_accept, position[0], position)
+        log_prob = jnp.where(do_accept, logprob[1], logprob[0])
         return position, log_prob, do_accept
     return mala_kernel
 
