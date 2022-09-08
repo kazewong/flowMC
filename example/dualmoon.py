@@ -1,5 +1,5 @@
 from flowMC.nfmodel.realNVP import RealNVP
-from flowMC.sampler.MALA import mala_sampler
+from flowMC.sampler.MALA import make_mala_sampler
 import jax
 import jax.numpy as jnp  # JAX NumPy
 from flowMC.sampler.Sampler import Sampler
@@ -25,14 +25,15 @@ d_dual_moon = jax.grad(dual_moon_pe)
 ### Demo config
 
 n_dim = 5
-n_chains = 10
+n_chains = 100
 n_loop = 5
 n_local_steps = 100
 n_global_steps = 100
-learning_rate = 0.1
+learning_rate = 0.01
+max_samples = 10000
 momentum = 0.9
-num_epochs = 5
-batch_size = 50
+num_epochs = 100
+batch_size = 10000
 stepsize = 0.01
 
 print("Preparing RNG keys")
@@ -44,11 +45,12 @@ initial_position = jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 
 
 
 model = RealNVP(10, n_dim, 64, 1)
-run_mcmc = jax.vmap(mala_sampler, in_axes=(0, None, None, None, 0, None), out_axes=0)
+local_sampler,updater, kernel,logp,dlogp = make_mala_sampler(dual_moon_pe, d_dual_moon,1e-1, jit=True, M=jnp.eye(n_dim))
+
 
 print("Initializing sampler class")
 
-nf_sampler = Sampler(n_dim, rng_key_set, model, run_mcmc,
+nf_sampler = Sampler(n_dim, rng_key_set, model, local_sampler,
                     dual_moon_pe,
                     d_likelihood=d_dual_moon,
                     n_loop=n_loop,
@@ -56,6 +58,7 @@ nf_sampler = Sampler(n_dim, rng_key_set, model, run_mcmc,
                     n_global_steps=n_global_steps,
                     n_chains=n_chains,
                     n_epochs=num_epochs,
+                    max_samples=max_samples,
                     n_nf_samples=100,
                     learning_rate=learning_rate,
                     momentum=momentum,
@@ -68,7 +71,7 @@ print("Sampling")
 nf_sampler.sample(initial_position)
 
 chains, log_prob, local_accs, global_accs, loss_vals = nf_sampler.get_sampler_state()
-nf_samples = nf_sampler.sample_flow()
+nf_samples = nf_sampler.sample_flow(10000)
 
 print(
     "chains shape: ",
@@ -80,7 +83,7 @@ print(
 )
 
 chains = np.array(chains)
-nf_samples = np.array(nf_samples[1])
+nf_samples = np.array(nf_samples[1][0])
 loss_vals = np.array(loss_vals)
 
 import corner
