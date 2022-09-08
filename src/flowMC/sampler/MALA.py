@@ -62,17 +62,12 @@ def make_mala_update(logpdf, d_logpdf, dt, M=None):
         acceptance = acceptance.at[i].set(do_accept)
         return (key, positions, log_prob, acceptance)
 
-    mala_update = jax.vmap(mala_update, in_axes=(None,(0,0,0,0)))
-    mala_kernel_vec = jax.vmap(mala_kernel, in_axes=(0, 0, 0))
-    logpdf = jax.vmap(logpdf)
-    d_logpdf = jax.vmap(d_logpdf)
-
     # Apperantly jitting after vmap will make compilation much slower.
     # Output the kernel, logpdf, and dlogpdf for warmup jitting.
     # Apperantly passing in a warmed up function will still trigger recompilation.
     # so the warmup need to be done with the output function
 
-    return mala_update, mala_kernel_vec, logpdf, d_logpdf
+    return mala_update, mala_kernel, logpdf, d_logpdf
 
 def make_mala_sampler(logpdf, d_logpdf, dt=1e-5, jit=False, M=None):
     mala_update, mk, lp, dlp = make_mala_update(logpdf, d_logpdf, dt, M)
@@ -83,6 +78,11 @@ def make_mala_sampler(logpdf, d_logpdf, dt=1e-5, jit=False, M=None):
         mk = jax.jit(mk)
         lp = jax.jit(lp)
         dlp = jax.jit(dlp)
+
+    mala_update = jax.vmap(mala_update, in_axes=(None,(0,0,0,0)))
+    mk = jax.vmap(mk, in_axes=(0, 0, 0))
+    lp = jax.vmap(lp)
+    dlp = jax.vmap(dlp)
 
     def mala_sampler(rng_key, n_steps, initial_position):
 
