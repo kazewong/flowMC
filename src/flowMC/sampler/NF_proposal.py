@@ -8,8 +8,7 @@ def nf_metropolis_kernel(rng_key, proposal_position, initial_position,
 
     rng_key, subkeys = random.split(rng_key,2)
     ratio = (proposal_pdf - initial_pdf) - (proposal_nf_pdf - initial_nf_pdf)
-    ratio = jnp.exp(ratio)
-    u = jax.random.uniform(subkeys, ratio.shape)
+    u = jnp.log(jax.random.uniform(subkeys, ratio.shape))
     do_accept = u < ratio
     position = jnp.where(do_accept, proposal_position, initial_position)
     log_prob = jnp.where(do_accept, proposal_pdf, initial_pdf)
@@ -18,7 +17,7 @@ def nf_metropolis_kernel(rng_key, proposal_position, initial_position,
 
 nf_metropolis_kernel = vmap(jit(nf_metropolis_kernel))
 
-def nf_metropolis_sampler(rng_key, n_steps, nf_model, nf_param, target_pdf,
+def nf_metropolis_sampler(rng_key, n_steps, nf_model, nf_param, nf_variables, target_pdf,
                           initial_position):
     """
     Returns:
@@ -49,15 +48,15 @@ def nf_metropolis_sampler(rng_key, n_steps, nf_model, nf_param, target_pdf,
 
 
 
-    proposal_position = nf_model.apply({'params': nf_param}, subkeys[0],
+    proposal_position = nf_model.apply({'params': nf_param, 'variables': nf_variables}, subkeys[0],
                                        initial_position.shape[0]*n_steps,
-                                       nf_param, method=nf_model.sample)[0]
+                                       method=nf_model.sample)[0]
 
-    log_pdf_nf_proposal = nf_model.apply({'params': nf_param},
+    log_pdf_nf_proposal = nf_model.apply({'params': nf_param, 'variables': nf_variables},
                                          proposal_position,
                                          method=nf_model.log_prob)
 
-    log_pdf_nf_initial = nf_model.apply({'params': nf_param}, initial_position,
+    log_pdf_nf_initial = nf_model.apply({'params': nf_param, 'variables': nf_variables}, initial_position,
                                         method=nf_model.log_prob)
     
     log_pdf_proposal = target_pdf(proposal_position)

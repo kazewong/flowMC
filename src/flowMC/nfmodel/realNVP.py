@@ -129,8 +129,8 @@ class RealNVP(nn.Module):
             affine_coupling.append(AffineCoupling(self.n_features, self.n_hidden, mask, dt=self.dt))
         self.affine_coupling = affine_coupling
 
-        self.base_mean = jnp.zeros((1, self.n_features))
-        self.base_cov = jnp.eye(self.n_features)[None, :]
+        self.base_mean = self.variable('variables','base_mean',jnp.zeros,((self.n_features)))
+        self.base_cov = self.variable('variables','base_cov',jnp.eye,(self.n_features))
 
     def __call__(self, x):
         log_det = jnp.zeros(x.shape[0])
@@ -146,16 +146,12 @@ class RealNVP(nn.Module):
             log_det += log_det_i
         return x, log_det
 
-    def sample(self, rng_key, n_samples, params):
-        mean = jnp.repeat(self.base_mean, n_samples, axis=0)
-        cov = jnp.repeat(self.base_cov, n_samples, axis=0)
-        gaussian = jax.random.multivariate_normal(rng_key, mean, cov)
+    def sample(self, rng_key, n_samples):
+        gaussian = jax.random.multivariate_normal(rng_key, self.base_mean.value, self.base_cov.value,shape=(n_samples,))
         samples = self.inverse(gaussian)
         return samples
 
     def log_prob(self, x):
         y, log_det = self.__call__(x)
-        mean = jnp.repeat(self.base_mean, x.shape[0], axis=0)
-        cov = jnp.repeat(self.base_cov, x.shape[0], axis=0)
-        log_det = log_det + jax.scipy.stats.multivariate_normal.logpdf(y, mean,cov)
+        log_det = log_det + jax.scipy.stats.multivariate_normal.logpdf(y, self.base_mean.value, self.base_cov.value)
         return log_det
