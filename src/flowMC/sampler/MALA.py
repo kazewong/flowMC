@@ -38,16 +38,16 @@ def make_mala_kernel(logpdf, d_logpdf, dt, M=None):
         """
         key1, key2 = jax.random.split(rng_key)
         
-        _, (position, logprob, d_logprob) = jax.lax.scan(body, position, jnp.array([key1, key1]))
+        _, (proposal, logprob, d_logprob) = jax.lax.scan(body, position, jnp.array([key1, key1]))
 
         ratio = logprob[1] - logprob[0]
-        ratio -= multivariate_normal.logpdf(position[0], position+jnp.dot(dt2,d_logprob[0])/2,dt2)
-        ratio += multivariate_normal.logpdf(position, position[0]+jnp.dot(dt2,d_logprob[1])/2,dt2)
+        ratio -= multivariate_normal.logpdf(proposal[0], position+jnp.dot(dt2,d_logprob[0])/2,dt2)
+        ratio += multivariate_normal.logpdf(position, proposal[0]+jnp.dot(dt2,d_logprob[1])/2,dt2)
         
         log_uniform = jnp.log(jax.random.uniform(key2))
         do_accept = log_uniform < ratio
 
-        position = jnp.where(do_accept, position[0], position)
+        position = jnp.where(do_accept, proposal[0], position)
         log_prob = jnp.where(do_accept, logprob[1], logprob[0])
         return position, log_prob, do_accept
     return mala_kernel
