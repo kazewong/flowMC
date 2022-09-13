@@ -1,7 +1,7 @@
-from threading import local
 import jax
 import jax.numpy as jnp
 from jax import random, jit, vmap
+from tqdm import tqdm
 
 n_sample_max = 100000
 
@@ -70,24 +70,26 @@ def make_nf_metropolis_sampler(nf_model):
 
         total_sample = initial_position.shape[0]*n_steps
 
+        log_pdf_nf_initial = eval_nf_logprob(initial_position, nf_param, nf_variables)
+        log_pdf_initial = target_pdf(initial_position)
+
+
         if total_sample > n_sample_max:
-            proposal_position = jnp.zeros(
-                (total_sample, initial_position.shape[-1]))
+            proposal_position = jnp.zeros((total_sample, initial_position.shape[-1]))
+            log_pdf_nf_proposal = jnp.zeros((total_sample,))
+            log_pdf_proposal = jnp.zeros((total_sample,))
             local_key, subkey = random.split(subkeys[0], 2)
-            for i in range(total_sample//n_sample_max):
+            for i in tqdm(range(total_sample//n_sample_max), desc='Sampling Globally',miniters=(total_sample//n_sample_max)//10):
                 local_samples = sample_nf(subkey, n_sample_max, nf_param, nf_variables)
                 proposal_position = proposal_position.at[i*n_sample_max:(i+1)*n_sample_max].set(local_samples)
+                log_pdf_nf_proposal = log_pdf_nf_proposal.at[i*n_sample_max:(i+1)*n_sample_max].set(eval_nf_logprob(local_samples, nf_param, nf_variables))
+                log_pdf_proposal = log_pdf_proposal.at[i*n_sample_max:(i+1)*n_sample_max].set(target_pdf(local_samples))
                 local_key, subkey = random.split(local_key, 2)
+
         else:
             proposal_position = sample_nf(subkeys[0], total_sample, nf_param, nf_variables)
-
-        log_pdf_nf_proposal = eval_nf_logprob(
-            proposal_position, nf_param, nf_variables)
-        log_pdf_nf_initial = eval_nf_logprob(
-            initial_position, nf_param, nf_variables)
-
-        log_pdf_proposal = target_pdf(proposal_position)
-        log_pdf_initial = target_pdf(initial_position)
+            log_pdf_nf_proposal = eval_nf_logprob(proposal_position, nf_param, nf_variables)
+            log_pdf_proposal = target_pdf(proposal_position)
 
         proposal_position = proposal_position.reshape(n_steps,
                                                       initial_position.shape[0],
@@ -99,10 +101,8 @@ def make_nf_metropolis_sampler(nf_model):
 
         all_positions = jnp.zeros((n_steps,) + initial_position.shape) + \
             initial_position
-        all_logp = jnp.zeros(
-            (n_steps, initial_position.shape[0])) + log_pdf_initial
-        all_logp_nf = jnp.zeros(
-            (n_steps, initial_position.shape[0])) + log_pdf_nf_initial
+        all_logp = jnp.zeros((n_steps, initial_position.shape[0])) + log_pdf_initial
+        all_logp_nf = jnp.zeros((n_steps, initial_position.shape[0])) + log_pdf_nf_initial
         acceptance = jnp.zeros((n_steps, initial_position.shape[0]))
 
         initial_state = (subkeys[1], all_positions, proposal_position, all_logp,
