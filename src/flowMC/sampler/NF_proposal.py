@@ -1,3 +1,4 @@
+from threading import local
 import jax
 import jax.numpy as jnp
 from jax import random, jit, vmap
@@ -21,6 +22,7 @@ def nf_metropolis_kernel(rng_key, proposal_position, initial_position,
 nf_metropolis_kernel = vmap(jit(nf_metropolis_kernel))
 
 
+@jax.jit
 def nf_metropolis_update(i, state):
     key, positions, proposal, log_prob, log_prob_nf, log_prob_proposal, log_prob_nf_proposal, acceptance = state
     key, *sub_key = jax.random.split(key, positions.shape[1]+1)
@@ -38,70 +40,81 @@ def nf_metropolis_update(i, state):
     return (key, positions, proposal, log_prob, log_prob_nf, log_prob_proposal, log_prob_nf_proposal, acceptance)
 
 
+def make_nf_metropolis_sampler(nf_model):
 
+    @jax.jit
+    def eval_nf_logprob(position, nf_params, nf_variables):
+        return nf_model.apply({'params': nf_params, 'variables': nf_variables},
+                              position,
+                              method=nf_model.log_prob)
 
+    def sample_nf(rng_key, n_samples, nf_params, nf_variables):
+        return nf_model.apply({'params': nf_params, 'variables': nf_variables}, rng_key,
+                              n_samples,
+                              method=nf_model.sample)[0]
 
-def nf_metropolis_sampler(rng_key, n_steps, nf_model, nf_param, nf_variables, target_pdf,
-                          initial_position):
-    """
-    Returns:
-        rng_key: current state of random key
-        all_positions (n_steps, dim): all the positions of the chain
-        log_prob (): log probability at the end of the chain
-        log_prob_nf (): log probability at the end of the chain
-        acceptance (n_steps, ): acceptance table of the chains
-    """
+    sample_nf = jax.jit(sample_nf, static_argnums=(1))
 
-    rng_key, *subkeys = random.split(rng_key, 3)
+    def nf_metropolis_sampler(rng_key, n_steps, nf_param, nf_variables, target_pdf,
+                              initial_position):
+        """
+        Returns:
+            rng_key: current state of random key
+            all_positions (n_steps, dim): all the positions of the chain
+            log_prob (): log probability at the end of the chain
+            log_prob_nf (): log probability at the end of the chain
+            acceptance (n_steps, ): acceptance table of the chains
+        """
 
-    total_sample = initial_position.shape[0]*n_steps
+        rng_key, *subkeys = random.split(rng_key, 3)
 
-    if total_sample > n_sample_max:
-        proposal_position = jnp.zeros(
-            (total_sample, initial_position.shape[-1]))
-        for i in range(total_sample//n_sample_max):
-            local_samples = nf_model.apply({'params': nf_param, 'variables': nf_variables}, subkeys[0],
-                                           n_sample_max, method=nf_model.sample)[0]
-            proposal_position = proposal_position.at[i * n_sample_max:(i+1)*n_sample_max].set(local_samples)
-    else:
-        proposal_position = nf_model.apply({'params': nf_param, 'variables': nf_variables}, subkeys[0],
-                                           total_sample,
-                                           method=nf_model.sample)[0]
+        total_sample = initial_position.shape[0]*n_steps
 
-    log_pdf_nf_proposal = nf_model.apply({'params': nf_param, 'variables': nf_variables},
-                                         proposal_position,
-                                         method=nf_model.log_prob)
+        if total_sample > n_sample_max:
+            proposal_position = jnp.zeros(
+                (total_sample, initial_position.shape[-1]))
+            local_key, subkey = random.split(subkeys[0], 2)
+            for i in range(total_sample//n_sample_max):
+                local_samples = sample_nf(subkey, n_sample_max, nf_param, nf_variables)
+                proposal_position = proposal_position.at[i*n_sample_max:(i+1)*n_sample_max].set(local_samples)
+                local_key, subkey = random.split(local_key, 2)
+        else:
+            proposal_position = sample_nf(subkeys[0], total_sample, nf_param, nf_variables)
 
-    log_pdf_nf_initial = nf_model.apply({'params': nf_param, 'variables': nf_variables}, initial_position,
-                                        method=nf_model.log_prob)
+        log_pdf_nf_proposal = eval_nf_logprob(
+            proposal_position, nf_param, nf_variables)
+        log_pdf_nf_initial = eval_nf_logprob(
+            initial_position, nf_param, nf_variables)
 
-    log_pdf_proposal = target_pdf(proposal_position)
-    log_pdf_initial = target_pdf(initial_position)
+        log_pdf_proposal = target_pdf(proposal_position)
+        log_pdf_initial = target_pdf(initial_position)
 
-    proposal_position = proposal_position.reshape(n_steps,
-                                                  initial_position.shape[0],
-                                                  initial_position.shape[1])
-    log_pdf_nf_proposal = log_pdf_nf_proposal.reshape(n_steps,
-                                                      initial_position.shape[0])
-    log_pdf_proposal = log_pdf_proposal.reshape(
-        n_steps, initial_position.shape[0])
+        proposal_position = proposal_position.reshape(n_steps,
+                                                      initial_position.shape[0],
+                                                      initial_position.shape[1])
+        log_pdf_nf_proposal = log_pdf_nf_proposal.reshape(n_steps,
+                                                          initial_position.shape[0])
+        log_pdf_proposal = log_pdf_proposal.reshape(
+            n_steps, initial_position.shape[0])
 
-    all_positions = jnp.zeros((n_steps,) + initial_position.shape) + \
-        initial_position
-    all_logp = jnp.zeros(
-        (n_steps, initial_position.shape[0])) + log_pdf_initial
-    all_logp_nf = jnp.zeros(
-        (n_steps, initial_position.shape[0])) + log_pdf_nf_initial
-    acceptance = jnp.zeros((n_steps, initial_position.shape[0]))
+        all_positions = jnp.zeros((n_steps,) + initial_position.shape) + \
+            initial_position
+        all_logp = jnp.zeros(
+            (n_steps, initial_position.shape[0])) + log_pdf_initial
+        all_logp_nf = jnp.zeros(
+            (n_steps, initial_position.shape[0])) + log_pdf_nf_initial
+        acceptance = jnp.zeros((n_steps, initial_position.shape[0]))
 
-    initial_state = (subkeys[1], all_positions, proposal_position, all_logp,
-                     all_logp_nf, log_pdf_proposal, log_pdf_nf_proposal, acceptance)
-    rng_key, all_positions, proposal_position, all_logp, all_logp_nf, log_pdf_proposal, log_pdf_nf_proposal, acceptance = jax.lax.fori_loop(1, n_steps,
-                                                                                                                                            nf_metropolis_update,
-                                                                                                                                            initial_state)
-    all_positions = all_positions.swapaxes(0, 1)
-    all_logp = all_logp.swapaxes(0, 1)
-    all_logp_nf = all_logp_nf.swapaxes(0, 1)
-    acceptance = acceptance.swapaxes(0, 1)
+        initial_state = (subkeys[1], all_positions, proposal_position, all_logp,
+                         all_logp_nf, log_pdf_proposal, log_pdf_nf_proposal, acceptance)
+        rng_key, all_positions, proposal_position, all_logp, all_logp_nf, log_pdf_proposal, log_pdf_nf_proposal, acceptance = jax.lax.fori_loop(1, n_steps,
+                                                                                                                                                nf_metropolis_update,
+                                                                                                                                                initial_state)
+        all_positions = all_positions.swapaxes(0, 1)
+        all_logp = all_logp.swapaxes(0, 1)
+        all_logp_nf = all_logp_nf.swapaxes(0, 1)
+        acceptance = acceptance.swapaxes(0, 1)
 
-    return rng_key, all_positions, all_logp, all_logp_nf, acceptance
+        return rng_key, all_positions, all_logp, all_logp_nf, acceptance
+
+    return nf_metropolis_sampler
