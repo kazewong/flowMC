@@ -44,6 +44,7 @@ class Sampler(object):
 
         self.local_sampler = local_sampler
         self.likelihood = likelihood
+        self.likelihood_vec = jax.jit(jax.vmap(self.likelihood))
         self.d_likelihood = d_likelihood
         self.rng_keys_nf = rng_keys_nf
         self.rng_keys_mcmc = rng_keys_mcmc
@@ -148,9 +149,8 @@ class Sampler(object):
 
             rng_keys_nf, state, loss_values = train_flow(rng_keys_nf, self.nf_model, state, flat_chain,
                                             self.n_epochs, self.batch_size, self.variables)
-            likelihood_vec = jax.jit(jax.vmap(self.likelihood))
             rng_keys_nf, nf_chain, log_prob, log_prob_nf, global_acceptance = self.global_sampler(
-                rng_keys_nf, self.n_global_steps, state.params, self.variables, likelihood_vec,
+                rng_keys_nf, self.n_global_steps, state.params, self.variables, self.likelihood_vec,
                 positions[:,-1])
 
             positions = jnp.concatenate((positions,nf_chain),axis=1)
