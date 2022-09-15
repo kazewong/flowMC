@@ -3,7 +3,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 from flowMC.nfmodel.utils import sample_nf,train_flow
-from flowMC.sampler.NF_proposal import nf_metropolis_sampler
+from flowMC.sampler.NF_proposal import make_nf_metropolis_sampler
 from flax.training import train_state  # Useful dataclass to keep train state
 import flax
 import optax          
@@ -44,6 +44,7 @@ class Sampler(object):
 
         self.local_sampler = local_sampler
         self.likelihood = likelihood
+        self.likelihood_vec = jax.jit(jax.vmap(self.likelihood))
         self.d_likelihood = d_likelihood
         self.rng_keys_nf = rng_keys_nf
         self.rng_keys_mcmc = rng_keys_mcmc
@@ -69,6 +70,8 @@ class Sampler(object):
         self.variables = model_init['variables']
         if nf_variable is not None:
             self.variables = self.variables
+
+        self.global_sampler = make_nf_metropolis_sampler(self.nf_model)
 
         tx = optax.adam(self.learning_rate, self.momentum)
         self.state = train_state.TrainState.create(apply_fn=nf_model.apply,
@@ -146,11 +149,9 @@ class Sampler(object):
 
             rng_keys_nf, state, loss_values = train_flow(rng_keys_nf, self.nf_model, state, flat_chain,
                                             self.n_epochs, self.batch_size, self.variables)
-            likelihood_vec = jax.vmap(self.likelihood)
-            rng_keys_nf, nf_chain, log_prob, log_prob_nf, global_acceptance = nf_metropolis_sampler(
-                rng_keys_nf, self.n_global_steps, self.nf_model, state.params, self.variables, likelihood_vec,
-                positions[:,-1]
-                )
+            rng_keys_nf, nf_chain, log_prob, log_prob_nf, global_acceptance = self.global_sampler(
+                rng_keys_nf, self.n_global_steps, state.params, self.variables, self.likelihood_vec,
+                positions[:,-1])
 
             positions = jnp.concatenate((positions,nf_chain),axis=1)
             log_prob_output = jnp.concatenate((log_prob_output,log_prob),axis=1)
