@@ -54,7 +54,7 @@ class Scalar(nn.Module):
         return self.scale, self.shift
 
 def bijector_fn(params: jnp.ndarray):
-    return distrax.RationalQuadraticSpline(params, range_min=-3., range_max=3.)
+    return distrax.RationalQuadraticSpline(params, range_min=-10., range_max=10.)
 
 def scalar_affine(params: jnp.ndarray):
     return distrax.ScalarAffine(scale=params[0],shift=params[1])
@@ -94,7 +94,7 @@ class RQSpline(nn.Module):
 
         flow = distrax.Inverse(distrax.Chain(layers))
         base_dist = distrax.Independent(distrax.MultivariateNormalFullCovariance(
-            loc=self.base_mean.value, covariance_matrix=self.base_cov.value))
+            loc=jnp.zeros(self.n_features), covariance_matrix=jnp.eye(self.n_features)))
 
         return base_dist, flow
 
@@ -104,7 +104,8 @@ class RQSpline(nn.Module):
 
     def sample(self, rng, num_samples):
         base_dist, flow = self.make_flow()
-        return distrax.Transformed(base_dist, flow).sample(seed=rng, sample_shape=(num_samples))
+        samples = distrax.Transformed(base_dist, flow).sample(seed=rng, sample_shape=(num_samples))
+        return samples*jnp.sqrt(jnp.diag(self.base_cov.value))+self.base_mean.value
 
 
     def log_prob(self,x):
