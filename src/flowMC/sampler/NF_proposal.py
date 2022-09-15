@@ -51,7 +51,7 @@ def make_nf_metropolis_sampler(nf_model):
     def sample_nf(rng_key, n_samples, nf_params, nf_variables):
         return nf_model.apply({'params': nf_params, 'variables': nf_variables}, rng_key,
                               n_samples,
-                              method=nf_model.sample)[0]
+                              method=nf_model.sample)
 
     sample_nf = jax.jit(sample_nf, static_argnums=(1))
 
