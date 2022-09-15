@@ -1,7 +1,7 @@
 import jax
 import jax.numpy as jnp                # JAX NumPy
 import jax.random as random            # JAX random
-from tqdm import tqdm
+from tqdm import trange
 
 
 def make_training_loop(model):
@@ -33,15 +33,23 @@ def make_training_loop(model):
 
     def train_flow(rng, state, variables, data, num_epochs, batch_size):
         loss_values = jnp.zeros(num_epochs)
-        for epoch in tqdm(range(1, num_epochs + 1),desc='Training NF',miniters=int(num_epochs/10)):
+        best_state = state
+        best_loss = 1e9
+        pbar = trange(num_epochs, desc="Training NF",miniters=int(num_epochs/10))
+        for epoch in pbar:
             # Use a separate PRNG key to permute image data during shuffling
             rng, input_rng = jax.random.split(rng)
             # Run an optimization step over a training batch
             value, state = train_epoch(input_rng, state, variables, data, batch_size)
             #print('Train loss: %.3f' % value)
             loss_values = loss_values.at[epoch].set(value)
+            if loss_values[epoch] < best_loss:
+                best_state = state
+                best_loss = loss_values[epoch]
+            if epoch % int(num_epochs/10) == 0:
+                pbar.set_description(f"Training NF, current loss: {value:.3f}")
         
-        return rng, state, loss_values
+        return rng, best_state, loss_values
 
     return train_flow, train_epoch, train_step
 
