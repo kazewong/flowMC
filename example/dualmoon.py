@@ -1,4 +1,5 @@
 from flowMC.nfmodel.realNVP import RealNVP
+from flowMC.nfmodel.rqSpline import RQSpline
 from flowMC.sampler.MALA import make_mala_sampler
 import jax
 import jax.numpy as jnp  # JAX NumPy
@@ -44,7 +45,9 @@ print("Initializing MCMC model and normalizing flow model.")
 initial_position = jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
 
 
-model = RealNVP(10, n_dim, 64, 1)
+# model = RealNVP(10, n_dim, 64, 1)
+model = RQSpline(n_dim, 10, [128,128], 8)
+
 local_sampler,updater, kernel,logp,dlogp = make_mala_sampler(dual_moon_pe, d_dual_moon,1e-1, jit=True, M=jnp.eye(n_dim))
 
 
@@ -67,7 +70,7 @@ nf_sampler = Sampler(n_dim, rng_key_set, model, local_sampler,
                     use_global=True,)
 
 print("Sampling")
-
+    
 nf_sampler.sample(initial_position)
 
 chains, log_prob, local_accs, global_accs, loss_vals = nf_sampler.get_sampler_state()
