@@ -32,23 +32,23 @@ class Reshape(nn.Module):
 
 
 class Conditioner(nn.Module):
-    input_size: int
+    n_features: int
     hidden_size: Sequence[int]
     num_bijector_params: int
 
     def setup(self):
-        self.conditioner = nn.Sequential([MLP([self.input_size]+list(self.hidden_size)), nn.tanh, nn.Dense(
-            self.input_size * self.num_bijector_params, kernel_init=jax.nn.initializers.zeros, bias_init=jax.nn.initializers.zeros), Reshape((self.input_size, self.num_bijector_params))])
+        self.conditioner = nn.Sequential([MLP([self.n_features]+list(self.hidden_size)), nn.tanh, nn.Dense(
+            self.n_features * self.num_bijector_params, kernel_init=jax.nn.initializers.zeros, bias_init=jax.nn.initializers.zeros), Reshape((self.n_features, self.num_bijector_params))])
 
     def __call__(self, x):
         return self.conditioner(x)
 
 class Scalar(nn.Module):
-    input_size: int
+    n_features: int
 
     def setup(self):
-        self.shift = self.param('shifts',lambda rng, shape: jnp.zeros(shape), (self.input_size))
-        self.scale = self.param('scales',lambda rng, shape: jnp.ones(shape), (self.input_size))
+        self.shift = self.param('shifts',lambda rng, shape: jnp.zeros(shape), (self.n_features))
+        self.scale = self.param('scales',lambda rng, shape: jnp.ones(shape), (self.n_features))
 
     def __call__(self, x):
         return self.scale, self.shift
@@ -61,7 +61,7 @@ def scalar_affine(params: jnp.ndarray):
 
 
 class RQSpline(nn.Module):
-    input_size: int
+    n_features: int
     num_layers: int
     hidden_size: Sequence[int]
     num_bins: int
@@ -70,15 +70,20 @@ class RQSpline(nn.Module):
         conditioner = []
         scalar = []
         for i in range(self.num_layers):
-            conditioner.append(Conditioner(self.input_size, self.hidden_size, 3*self.num_bins+1))
-            scalar.append(Scalar(self.input_size))
+            conditioner.append(Conditioner(self.n_features, self.hidden_size, 3*self.num_bins+1))
+            scalar.append(Scalar(self.n_features))
 
         self.conditioner = conditioner
         self.scalar = scalar
 
+        self.base_mean = self.variable('variables','base_mean',jnp.zeros,((self.n_features)))
+        self.base_cov = self.variable('variables','base_cov',jnp.eye,(self.n_features))
+
+        self.vmap_call = jax.jit(jax.vmap(self.__call__))
+
     def make_flow(self):
-        mask = (jnp.arange(0, self.input_size) % 2).astype(bool)
-        mask_all = (jnp.zeros(self.input_size)).astype(bool)
+        mask = (jnp.arange(0, self.n_features) % 2).astype(bool)
+        mask_all = (jnp.zeros(self.n_features)).astype(bool)
         layers = []
         for i in range(self.num_layers):
             layers.append(distrax.MaskedCoupling(
@@ -88,8 +93,8 @@ class RQSpline(nn.Module):
             mask = jnp.logical_not(mask)
 
         flow = distrax.Inverse(distrax.Chain(layers))
-        base_dist = distrax.Independent(distrax.MultivariateNormalDiag(
-            loc=jnp.zeros(self.input_size), scale_diag=jnp.ones(self.input_size)))
+        base_dist = distrax.Independent(distrax.MultivariateNormalFullCovariance(
+            loc=self.base_mean.value, covariance_matrix=self.base_cov.value))
 
         return base_dist, flow
 
@@ -101,5 +106,6 @@ class RQSpline(nn.Module):
         base_dist, flow = self.make_flow()
         return distrax.Transformed(base_dist, flow).sample(seed=rng, sample_shape=(num_samples))
 
+
     def log_prob(self,x):
-        return self.__call__(x)
+        return self.vmap_call(x)
