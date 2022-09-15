@@ -2,7 +2,7 @@ from logging import lastResort
 import jax
 import jax.numpy as jnp
 import numpy as np
-from flowMC.nfmodel.utils import sample_nf,train_flow
+from flowMC.nfmodel.utils import sample_nf, make_training_loop
 from flowMC.sampler.NF_proposal import make_nf_metropolis_sampler
 from flax.training import train_state  # Useful dataclass to keep train state
 import flax
@@ -65,12 +65,13 @@ class Sampler(object):
 
         self.nf_model = nf_model
         # params = nf_model.init(init_rng_keys_nf, jnp.ones((self.batch_size,self.n_dim)))['params']
-        model_init = nf_model.init(init_rng_keys_nf, jnp.ones((self.batch_size,self.n_dim)))
+        model_init = nf_model.init(init_rng_keys_nf, jnp.ones((1,self.n_dim)))
         params = model_init['params']
         self.variables = model_init['variables']
         if nf_variable is not None:
             self.variables = self.variables
 
+        self.nf_training_loop, train_epoch, train_step = make_training_loop(self.nf_model) 
         self.global_sampler = make_nf_metropolis_sampler(self.nf_model)
 
         tx = optax.adam(self.learning_rate, self.momentum)
@@ -147,8 +148,8 @@ class Sampler(object):
             variables['base_cov'] = jnp.cov(flat_chain.T)
             self.variables = flax.core.freeze(variables)
 
-            rng_keys_nf, state, loss_values = train_flow(rng_keys_nf, self.nf_model, state, flat_chain,
-                                            self.n_epochs, self.batch_size, self.variables)
+            rng_keys_nf, state, loss_values = self.nf_training_loop(rng_keys_nf, state, self.variables, flat_chain,
+                                                                    self.n_epochs, self.batch_size)
             rng_keys_nf, nf_chain, log_prob, log_prob_nf, global_acceptance = self.global_sampler(
                 rng_keys_nf, self.n_global_steps, state.params, self.variables, self.likelihood_vec,
                 positions[:,-1])
