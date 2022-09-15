@@ -53,9 +53,6 @@ class Scalar(nn.Module):
     def __call__(self, x):
         return self.scale, self.shift
 
-def bijector_fn(params: jnp.ndarray):
-    return distrax.RationalQuadraticSpline(params, range_min=-10., range_max=10.)
-
 def scalar_affine(params: jnp.ndarray):
     return distrax.ScalarAffine(scale=params[0],shift=params[1])
 
@@ -65,6 +62,7 @@ class RQSpline(nn.Module):
     num_layers: int
     hidden_size: Sequence[int]
     num_bins: int
+    spline_range: Sequence[float] = (-10., 10.)
 
     def setup(self):
         conditioner = []
@@ -80,6 +78,11 @@ class RQSpline(nn.Module):
         self.base_cov = self.variable('variables','base_cov',jnp.eye,(self.n_features))
 
         self.vmap_call = jax.jit(jax.vmap(self.__call__))
+        
+        def bijector_fn(params: jnp.ndarray):
+            return distrax.RationalQuadraticSpline(params, range_min=self.spline_range[0], range_max=self.spline_range[1])
+
+        self.bijector_fn = bijector_fn
 
     def make_flow(self):
         mask = (jnp.arange(0, self.n_features) % 2).astype(bool)
@@ -89,7 +92,7 @@ class RQSpline(nn.Module):
             layers.append(distrax.MaskedCoupling(
                 mask=mask_all, bijector=scalar_affine, conditioner=self.scalar[i]))
             layers.append(distrax.MaskedCoupling(
-                mask=mask, bijector=bijector_fn, conditioner=self.conditioner[i]))
+                mask=mask, bijector=self.bijector_fn, conditioner=self.conditioner[i]))
             mask = jnp.logical_not(mask)
 
         flow = distrax.Inverse(distrax.Chain(layers))

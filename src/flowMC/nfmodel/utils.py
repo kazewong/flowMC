@@ -21,13 +21,16 @@ def make_training_loop(model):
         """Train for a single epoch."""
         train_ds_size = len(train_ds)
         steps_per_epoch = train_ds_size // batch_size
+        if steps_per_epoch >0:
+            perms = jax.random.permutation(rng, train_ds_size)
 
-        perms = jax.random.permutation(rng, train_ds_size)
-        perms = perms[:steps_per_epoch * batch_size]  # skip incomplete batch
-        perms = perms.reshape((steps_per_epoch, batch_size))
-        for perm in perms:
-            batch = train_ds[perm, ...]
-            value, state = train_step(batch, state, variables)
+            perms = perms[:steps_per_epoch * batch_size]  # skip incomplete batch
+            perms = perms.reshape((steps_per_epoch, batch_size))
+            for perm in perms:
+                batch = train_ds[perm, ...]
+                value, state = train_step(batch, state, variables)
+        else:
+            value, state = train_step(train_ds, state, variables)
 
         return value, state
 
