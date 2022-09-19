@@ -45,7 +45,11 @@ Models in many scientific fields are growing more complex with more tuning param
 While gradient-based sampler such as MALA and HMC are powerful in decorrelating random variables with a problem, their capability are limited to global correlation.
 Posterior distribution of many real-world problems can have non-trivial geometry such as multi-modality and local correlation, which could drastically slow down the convergence of the sampler.
 To address this problem, we combine gradient-based sampler with normalizing flow, which is a class of generative model that can learn the geometry of the posterior distribution, as the proposal distribution.
+As individual chains are exploring their local neighbor, multiple chains can be combined and fed to the normalizing flow, such that the normalizing flow learn the global landscape of the posterior distribution.
+Since we are only using the normalizing flow as a proposal distribution, the entire algorithm is still essentially a MCMC method, meaning one assess the robustness of the inference result using diagnostics one would use to assess other MCMC methods.
+This means we do not have to worry about validation of the normalizing flow model, which is a common problem in deep learning.
 The normalizing flow is trained in parallel to the sampling process, so no pre-training is required.
+The mathematical detail of the method are explained in (cite)
 
 ***Use of Accelerator***
 Modern accelerators such as GPU and TPU are designed to execute dense computation in parallel.
