@@ -38,10 +38,21 @@ bibliography: paper.bib
 
 # Statement of need
 
+***Gradient-based sampler***
 Models in many scientific fields are growing more complex with more tuning parameters
 
-Modern accelerators such as GPU and TPU are designed to execute dense computation in parallel.
+***Learned reparameterization with normalizing flow***
 
+***Use of Accelerator***
+Modern accelerators such as GPU and TPU are designed to execute dense computation in parallel.
+Due to the sequential nature of MCMC, a common approach in leveraging accelerators is to run multiple chains in parallel, then combine their results to obtain the posterior distribution.
+However, large portion of the computation comes from the burn-in phase, and simply by parallelizing over many chains do not help speed up the burn-in.
+To fully leverage the benefit from having many chains, ensemble methods such as (Cite) are often implemented.
+This comes with its own set of challenges, and implementing such class of methods on accelerators require careful consideration.
+Because the benefit from accelerators is not clear ahead of time and the hefty cost of implementation, 
+there are not many MCMC libraries that are designed to take advantage on accelerators.
+
+***Simplicity***
 
 # Acknowledgements
 
