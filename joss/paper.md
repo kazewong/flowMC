@@ -1,11 +1,10 @@
 ---
-title: 'Gala: A Python package for galactic dynamics'
+title: 'FlowMC'
 tags:
   - Python
-  - astronomy
-  - dynamics
-  - galactic dynamics
-  - milky way
+  - Normalizing Flows
+  - Jax
+  - 
 authors:
   - name: Adrian M. Price-Whelan
     orcid: 0000-0000-0000-0000
