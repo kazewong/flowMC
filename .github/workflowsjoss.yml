@@ -2,6 +2,7 @@ on:
   push:
     branches:
       - 40-joss-paper
+      - main
 
 jobs:
   paper:
