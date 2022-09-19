@@ -42,6 +42,10 @@ bibliography: paper.bib
 Models in many scientific fields are growing more complex with more tuning parameters
 
 ***Learned reparameterization with normalizing flow***
+While gradient-based sampler such as MALA and HMC are powerful in decorrelating random variables with a problem, their capability are limited to global correlation.
+Posterior distribution of many real-world problems can have non-trivial geometry such as multi-modality and local correlation, which could drastically slow down the convergence of the sampler.
+To address this problem, we combine gradient-based sampler with normalizing flow, which is a class of generative model that can learn the geometry of the posterior distribution, as the proposal distribution.
+The normalizing flow is trained in parallel to the sampling process, so no pre-training is required.
 
 ***Use of Accelerator***
 Modern accelerators such as GPU and TPU are designed to execute dense computation in parallel.
@@ -52,7 +56,8 @@ This comes with its own set of challenges, and implementing such class of method
 Because the benefit from accelerators is not clear ahead of time and the hefty cost of implementation, 
 there are not many MCMC libraries that are designed to take advantage on accelerators.
 
-***Simplicity***
+***Simplicity and extensibility***
+
 
 # Acknowledgements
 
