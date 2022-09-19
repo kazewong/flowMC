@@ -1,3 +1,5 @@
+name: Update-Joss
+
 on: 
   push:
     branches:
