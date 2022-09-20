@@ -15,6 +15,9 @@ authors:
     orcid: 0000-0002-5989-1018
     equal-contrib: true 
     affiliation: 2
+  - name: Dan Foreman-Mackey
+    orcid: 0000-0002-9328-5652
+    affiliation: 1
 affiliations:
  - name: Center for Computational Astrophysics, Flatiron Institute, New York, NY 10010, US
    index: 1
@@ -39,7 +42,10 @@ bibliography: paper.bib
 # Statement of need
 
 ***Gradient-based sampler***
-Models in many scientific fields are growing more complex with more tuning parameters
+Models in many scientific fields are growing more complex to capture complicated physical processes.
+One common way to increase the complexity of a model is to introduce more parameters.
+This increases the flexibility in the model, but it makes downstream data analysis tasks such as parameter estimation more challenging.
+One difficulty 
 
 ***Learned reparameterization with normalizing flow***
 While gradient-based sampler such as MALA and HMC are powerful in decorrelating random variables with a problem, their capability are limited to global correlation.
@@ -59,8 +65,14 @@ To fully leverage the benefit from having many chains, ensemble methods such as 
 This comes with its own set of challenges, and implementing such class of methods on accelerators require careful consideration.
 Because the benefit from accelerators is not clear ahead of time and the hefty cost of implementation, 
 there are not many MCMC libraries that are designed to take advantage on accelerators.
+Since `FlowMC` is built on top of `Jax`, it supports the use of accelerators by default.
+Users can code in the same way as they would on a CPU, and the library will automatically detect the available accelerators and use them in run time.
+Furthermore, the library leverage Just-In-Time compilations to further improve the performance of the sampler.
 
 ***Simplicity and extensibility***
+Since we anticipate most of the users would like to spend most of their time building model instead of optimize the performance of the sampler,
+we provide a black-box interface with a few tuning parameters for users who intend to use `FlowMC` without too much customization on the sampler side.
+<!-- Mention something related to auto tune -->
 
 
 # Acknowledgements
