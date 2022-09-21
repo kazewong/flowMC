@@ -29,6 +29,8 @@ bibliography: paper.bib
 # Summary
 
 `FlowMC` is a Python library for accelerated Markov Chain Monte Carlo (MCMC) building on top of `Jax` and `Flax`.
+At it cores, it uses a combination of normalizing flows and traditional sampler to efficiently sample posterior distributions with non-trivial geometry,
+such as multimode
 
 
 # Key features
@@ -44,8 +46,8 @@ bibliography: paper.bib
 ***Gradient-based sampler***
 Models in many scientific fields are growing more complex to capture complicated physical processes.
 One common way to increase the complexity of a model is to introduce more parameters.
-This increases the flexibility in the model, but it makes downstream data analysis tasks such as parameter estimation more challenging.
-One difficulty 
+This increases the flexibility in the model, but it makes downstream data analysis tasks such as parameter estimation more challenging since introducing new parameters increase the dimension of problem.
+We 
 
 ***Learned reparameterization with normalizing flow***
 While gradient-based sampler such as MALA and HMC are powerful in decorrelating random variables with a problem, their capability are limited to global correlation.
@@ -72,8 +74,11 @@ Furthermore, the library leverage Just-In-Time compilations to further improve t
 ***Simplicity and extensibility***
 Since we anticipate most of the users would like to spend most of their time building model instead of optimize the performance of the sampler,
 we provide a black-box interface with a few tuning parameters for users who intend to use `FlowMC` without too much customization on the sampler side.
+The only inputs we require from the users are the log-likelihood function, the log-prior function, and initial position of the chains.
 <!-- Mention something related to auto tune -->
 
+While we provide a high-level API for most of the users, the code is also designed to be extensible.
+<!-- Say something about extensibility like custom proposal -->
 
 # Acknowledgements
 
