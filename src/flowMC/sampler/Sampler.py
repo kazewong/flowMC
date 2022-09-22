@@ -2,8 +2,8 @@ from logging import lastResort
 import jax
 import jax.numpy as jnp
 import numpy as np
-from flowMC.nfmodel.utils import sample_nf,train_flow
-from flowMC.sampler.NF_proposal import nf_metropolis_sampler
+from flowMC.nfmodel.utils import sample_nf, make_training_loop
+from flowMC.sampler.NF_proposal import make_nf_metropolis_sampler
 from flax.training import train_state  # Useful dataclass to keep train state
 import flax
 import optax          
@@ -39,11 +39,13 @@ class Sampler(object):
                 stepsize: float = 1e-3,
                 use_global: bool = True,
                 logging: bool = True,
-                nf_variable = None):
+                nf_variable = None,
+                keep_quantile=0):
         rng_key_init ,rng_keys_mcmc, rng_keys_nf, init_rng_keys_nf = rng_key_set
 
         self.local_sampler = local_sampler
         self.likelihood = likelihood
+        self.likelihood_vec = jax.jit(jax.vmap(self.likelihood))
         self.d_likelihood = d_likelihood
         self.rng_keys_nf = rng_keys_nf
         self.rng_keys_mcmc = rng_keys_mcmc
@@ -64,11 +66,15 @@ class Sampler(object):
 
         self.nf_model = nf_model
         # params = nf_model.init(init_rng_keys_nf, jnp.ones((self.batch_size,self.n_dim)))['params']
-        model_init = nf_model.init(init_rng_keys_nf, jnp.ones((self.batch_size,self.n_dim)))
+        model_init = nf_model.init(init_rng_keys_nf, jnp.ones((1,self.n_dim)))
         params = model_init['params']
         self.variables = model_init['variables']
         if nf_variable is not None:
             self.variables = self.variables
+
+        self.keep_quantile = keep_quantile
+        self.nf_training_loop, train_epoch, train_step = make_training_loop(self.nf_model) 
+        self.global_sampler = make_nf_metropolis_sampler(self.nf_model)
 
         tx = optax.adam(self.learning_rate, self.momentum)
         self.state = train_state.TrainState.create(apply_fn=nf_model.apply,
@@ -133,24 +139,30 @@ class Sampler(object):
 
             
         if self.use_global == True:
-            chain_size = positions.shape[0]*positions.shape[1]
-            if chain_size > self.max_samples:
-                flat_chain = positions[:,-int(self.max_samples/self.n_chains):].reshape(-1,self.n_dim)
+            if self.keep_quantile > 0:
+                max_log_prob = jnp.max(log_prob_output, axis=1)
+                cut = jnp.quantile(max_log_prob, self.keep_quantile)
+                cut_chains = positions[max_log_prob > cut]
             else:
-                flat_chain = positions.reshape(-1, self.n_dim)
+                cut_chains = positions
+            chain_size = cut_chains.shape[0]*cut_chains.shape[1]
+            if chain_size > self.max_samples:
+                flat_chain = cut_chains[:,-int(self.max_samples/self.n_chains):].reshape(-1,self.n_dim)
+            else:
+                flat_chain = cut_chains.reshape(-1, self.n_dim)
 
             variables = self.variables.unfreeze()
             variables['base_mean'] = jnp.mean(flat_chain, axis=0)
             variables['base_cov'] = jnp.cov(flat_chain.T)
             self.variables = flax.core.freeze(variables)
 
-            rng_keys_nf, state, loss_values = train_flow(rng_keys_nf, self.nf_model, state, flat_chain,
-                                            self.n_epochs, self.batch_size, self.variables)
-            likelihood_vec = jax.vmap(self.likelihood)
-            rng_keys_nf, nf_chain, log_prob, log_prob_nf, global_acceptance = nf_metropolis_sampler(
-                rng_keys_nf, self.n_global_steps, self.nf_model, state.params, self.variables, likelihood_vec,
-                positions[:,-1]
-                )
+            flat_chain = (flat_chain-variables['base_mean'])/jnp.sqrt(jnp.diag(variables['base_cov']))
+
+            rng_keys_nf, state, loss_values = self.nf_training_loop(rng_keys_nf, state, self.variables, flat_chain,
+                                                                    self.n_epochs, self.batch_size)
+            rng_keys_nf, nf_chain, log_prob, log_prob_nf, global_acceptance = self.global_sampler(
+                rng_keys_nf, self.n_global_steps, state.params, self.variables, self.likelihood_vec,
+                positions[:,-1])
 
             positions = jnp.concatenate((positions,nf_chain),axis=1)
             log_prob_output = jnp.concatenate((log_prob_output,log_prob),axis=1)
