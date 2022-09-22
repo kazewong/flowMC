@@ -51,7 +51,7 @@ def make_nf_metropolis_sampler(nf_model):
     def sample_nf(rng_key, n_samples, nf_params, nf_variables):
         return nf_model.apply({'params': nf_params, 'variables': nf_variables}, rng_key,
                               n_samples,
-                              method=nf_model.sample)[0]
+                              method=nf_model.sample)
 
     sample_nf = jax.jit(sample_nf, static_argnums=(1))
 
@@ -70,7 +70,8 @@ def make_nf_metropolis_sampler(nf_model):
 
         total_sample = initial_position.shape[0]*n_steps
 
-        log_pdf_nf_initial = eval_nf_logprob(initial_position, nf_param, nf_variables)
+        initial_position_trans = (initial_position-nf_variables['base_mean'])/jnp.sqrt(jnp.diag(nf_variables['base_cov']))
+        log_pdf_nf_initial = eval_nf_logprob(initial_position_trans, nf_param, nf_variables)
         log_pdf_initial = target_pdf(initial_position)
 
 
@@ -81,14 +82,16 @@ def make_nf_metropolis_sampler(nf_model):
             local_key, subkey = random.split(subkeys[0], 2)
             for i in tqdm(range(total_sample//n_sample_max), desc='Sampling Globally',miniters=(total_sample//n_sample_max)//10):
                 local_samples = sample_nf(subkey, n_sample_max, nf_param, nf_variables)
+                local_samples_trans = (local_samples-nf_variables['base_mean'])/jnp.sqrt(jnp.diag(nf_variables['base_cov']))
                 proposal_position = proposal_position.at[i*n_sample_max:(i+1)*n_sample_max].set(local_samples)
-                log_pdf_nf_proposal = log_pdf_nf_proposal.at[i*n_sample_max:(i+1)*n_sample_max].set(eval_nf_logprob(local_samples, nf_param, nf_variables))
+                log_pdf_nf_proposal = log_pdf_nf_proposal.at[i*n_sample_max:(i+1)*n_sample_max].set(eval_nf_logprob(local_samples_trans, nf_param, nf_variables))
                 log_pdf_proposal = log_pdf_proposal.at[i*n_sample_max:(i+1)*n_sample_max].set(target_pdf(local_samples))
                 local_key, subkey = random.split(local_key, 2)
 
         else:
             proposal_position = sample_nf(subkeys[0], total_sample, nf_param, nf_variables)
-            log_pdf_nf_proposal = eval_nf_logprob(proposal_position, nf_param, nf_variables)
+            proposal_position_trans = (proposal_position-nf_variables['base_mean'])/jnp.sqrt(jnp.diag(nf_variables['base_cov']))
+            log_pdf_nf_proposal = eval_nf_logprob(proposal_position_trans, nf_param, nf_variables)
             log_pdf_proposal = target_pdf(proposal_position)
 
         proposal_position = proposal_position.reshape(n_steps,
