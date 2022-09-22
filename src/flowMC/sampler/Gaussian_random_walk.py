@@ -5,7 +5,9 @@ from functools import partial
 
 # @partial(jax.jit, static_argnums=(1,))
 def rw_metropolis_kernel(rng_key, logpdf, position, log_prob, dt=0.1):
+
     """Moves the chains by one step using the Random Walk Metropolis algorithm.
+    
     Attributes
     ----------
     rng_key: jax.random.PRNGKey

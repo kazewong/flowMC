@@ -1,9 +1,19 @@
+.. _configuration-section-top:
 Configuration
 =============
 
+This page contains information about what knobs can you tune when the sampler doesn't work as expected.
 
-# Parameters
+Sampler class arguments
+-----------------------
 
+flowMC.sampler.Sampler module
+-----------------------------
+
+.. automodule:: flowMC.sampler.Sampler
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 
 ===============================    ===================================
@@ -27,3 +37,11 @@ momentum                           Momentum to use when training the normalizing
 batch_size                         Batch size to use when training the normalizing flow model.
 logging                            Whether we log or not.
 ===============================    ===================================
+
+
+
+Local sampler parameters
+------------------------
+
+Normalizing flow parameters
+---------------------------
