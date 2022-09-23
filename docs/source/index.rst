@@ -8,6 +8,8 @@ flowMC
 .. image:: https://badgen.net/badge/License/MIT/blue
    :target: https//github.com/kazewong/flowMC/blob/Packaging/LICENSE
 
+.. image:: logo_0810.png
+   
 
 flowMC is a Jax-based python package for normalizing-flow enhanced Markov chain Monte Carlo (MCMC) sampling.
 The code is open source under MIT license, and it is under active development.
