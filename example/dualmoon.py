@@ -1,14 +1,11 @@
-from flowMC.nfmodel.realNVP import RealNVP
 from flowMC.nfmodel.rqSpline import RQSpline
-from flowMC.sampler.MALA import make_mala_sampler
+from flowMC.sampler.MALA import make_mala_sampler, mala_sampler_autotune
 
 import jax
 import jax.numpy as jnp  # JAX NumPy
 from jax.scipy.special import logsumexp
+import numpy as np
 
-
-from flowMC.nfmodel.realNVP import RealNVP
-from flowMC.sampler.MALA import mala_sampler
 from flowMC.sampler.Sampler import Sampler
 from flowMC.utils.PRNG_keys import initialize_rng_keys
 
@@ -30,15 +27,14 @@ d_dual_moon = jax.grad(dual_moon_pe)
 ### Demo config
 
 n_dim = 5
-n_chains = 10
+n_chains = 100
 n_loop = 5
 n_local_steps = 100
 n_global_steps = 100
-learning_rate = 0.1
+learning_rate = 0.01
 momentum = 0.9
-num_epochs = 5
-batch_size = 50
-stepsize = 0.01
+num_epochs = 30
+batch_size = 10000
 
 print("Preparing RNG keys")
 rng_key_set = initialize_rng_keys(n_chains, seed=42)
@@ -51,20 +47,18 @@ initial_position = jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 
 # model = RealNVP(10, n_dim, 64, 1)
 model = RQSpline(n_dim, 10, [128, 128], 8)
 
-local_sampler, updater, kernel, logp, dlogp = make_mala_sampler(
-    dual_moon_pe, d_dual_moon, 1e-1, jit=True, M=jnp.eye(n_dim)
-)
-
+local_sampler = make_mala_sampler(dual_moon_pe, jit=True)
+local_sampler_caller = lambda x: make_mala_sampler(x, jit=True)
 
 print("Initializing sampler class")
 
 nf_sampler = Sampler(
     n_dim,
     rng_key_set,
-    model,
-    run_mcmc,
+    local_sampler_caller,
+    {'dt':1e-1},
     dual_moon_pe,
-    d_likelihood=d_dual_moon,
+    model,
     n_loop=n_loop,
     n_local_steps=n_local_steps,
     n_global_steps=n_global_steps,
@@ -74,16 +68,17 @@ nf_sampler = Sampler(
     learning_rate=learning_rate,
     momentum=momentum,
     batch_size=batch_size,
-    stepsize=stepsize,
     use_global=True,
+    local_autotune=mala_sampler_autotune
 )
 
 print("Sampling")
 
 nf_sampler.sample(initial_position)
 
-chains, log_prob, local_accs, global_accs, loss_vals = nf_sampler.get_sampler_state()
-nf_samples = nf_sampler.sample_flow()
+summary = nf_sampler.get_sampler_state(training=True)
+chains, log_prob, local_accs, global_accs, loss_vals = summary.values() 
+nf_samples = nf_sampler.sample_flow(10000)
 
 print(
     "chains shape: ",

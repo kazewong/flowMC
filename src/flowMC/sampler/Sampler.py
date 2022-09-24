@@ -89,11 +89,22 @@ class Sampler(object):
             apply_fn=nf_model.apply, params=params, tx=tx
         )
 
-        self.chains = jnp.empty((self.n_chains, 0, self.n_dim))
-        self.log_prob = jnp.empty((self.n_chains, 0))
-        self.local_accs = jnp.empty((self.n_chains, 0))
-        self.global_accs = jnp.empty((self.n_chains, 0))
-        self.loss_vals = jnp.empty((0, self.n_epochs))
+        training = {}
+        training["chains"] = jnp.empty((self.n_chains, 0, self.n_dim))
+        training["log_prob"] = jnp.empty((self.n_chains, 0))
+        training["local_accs"] = jnp.empty((self.n_chains, 0))
+        training["global_accs"] = jnp.empty((self.n_chains, 0))
+        training["loss_vals"] = jnp.empty((0, self.n_epochs))
+
+        production = {}
+        production["chains"] = jnp.empty((self.n_chains, 0, self.n_dim))
+        production["log_prob"] = jnp.empty((self.n_chains, 0))
+        production["local_accs"] = jnp.empty((self.n_chains, 0))
+        production["global_accs"] = jnp.empty((self.n_chains, 0))
+
+        self.summary = {}
+        self.summary['training'] = training
+        self.summary['production'] = production
 
     def sample(self, initial_position):
         """
@@ -170,34 +181,56 @@ class Sampler(object):
                     self.n_epochs,
                     self.batch_size,
                 )
-            else:
-                (
-                    self.rng_keys_nf,
-                    nf_chain,
-                    log_prob,
-                    log_prob_nf,
-                    global_acceptance,
-                ) = self.global_sampler(
-                    self.rng_keys_nf,
-                    self.n_global_steps,
-                    self.state.params,
-                    self.variables,
-                    self.likelihood_vec,
-                    positions[:, -1],
+                self.summary['training']['loss_vals'] = jnp.append(
+                    self.summary['training']['loss_vals'], loss_values.reshape(1, -1), axis=0
                 )
 
-                positions = jnp.concatenate((positions, nf_chain), axis=1)
-                log_prob_output = jnp.concatenate((log_prob_output, log_prob), axis=1)
-
-        self.chains = jnp.append(self.chains, positions, axis=1)
-        self.log_prob = jnp.append(self.log_prob, log_prob_output, axis=1)
-        self.local_accs = jnp.append(self.local_accs, local_acceptance, axis=1)
-        if self.use_global == True:
-            self.global_accs = jnp.append(self.global_accs, global_acceptance, axis=1)
-            self.loss_vals = jnp.append(
-                self.loss_vals, loss_values.reshape(1, -1), axis=0
+            (
+                self.rng_keys_nf,
+                nf_chain,
+                log_prob,
+                log_prob_nf,
+                global_acceptance,
+            ) = self.global_sampler(
+                self.rng_keys_nf,
+                self.n_global_steps,
+                self.state.params,
+                self.variables,
+                self.likelihood_vec,
+                positions[:, -1],
             )
 
+            positions = jnp.concatenate((positions, nf_chain), axis=1)
+            log_prob_output = jnp.concatenate((log_prob_output, log_prob), axis=1)
+
+        if training == True:
+            self.summary['training']['chains'] = jnp.append(
+                self.summary['training']['chains'], positions, axis=1
+            )
+            self.summary['training']['log_prob'] = jnp.append(
+                self.summary['training']['log_prob'], log_prob_output, axis=1
+            )
+            self.summary['training']['local_accs'] = jnp.append(
+                self.summary['training']['local_accs'], local_acceptance, axis=1
+            )
+            if self.use_global == True:
+                self.summary['training']['global_accs'] = jnp.append(
+                    self.summary['training']['global_accs'], global_acceptance, axis=1
+                )
+        else:
+            self.summary['production']['chains'] = jnp.append(
+                self.summary['production']['chains'], positions, axis=1
+            )
+            self.summary['production']['log_prob'] = jnp.append(
+                self.summary['production']['log_prob'], log_prob_output, axis=1
+            )
+            self.summary['production']['local_accs'] = jnp.append(
+                self.summary['production']['local_accs'], local_acceptance, axis=1
+            )
+            if self.use_global == True:
+                self.summary['production']['global_accs'] = jnp.append(
+                    self.summary['production']['global_accs'], global_acceptance, axis=1
+                )
         last_step = positions[:, -1]
 
         return last_step
@@ -221,14 +254,11 @@ class Sampler(object):
         for _ in range(self.n_loop):
             self.sampling_loop(last_step)
 
-    def get_sampler_state(self):
-        return (
-            self.chains,
-            self.log_prob,
-            self.local_accs,
-            self.global_accs,
-            self.loss_vals,
-        )
+    def get_sampler_state(self, training=False):
+        if training == True:
+            return self.summary['training']
+        else:
+            return self.summary['production']
 
     def sample_flow(self, n_samples=None):
         if n_samples is None:
@@ -243,8 +273,19 @@ class Sampler(object):
         return nf_samples
 
     def reset(self):
-        self.chains = jnp.empty((self.n_chains, 0, self.n_dim))
-        self.log_prob = jnp.empty((self.n_chains, 0))
-        self.local_accs = jnp.empty((self.n_chains, 0))
-        self.global_accs = jnp.empty((self.n_chains, 0))
-        self.loss_vals = jnp.empty((0, self.n_epochs))
+        training = {}
+        training["chains"] = jnp.empty((self.n_chains, 0, self.n_dim))
+        training["log_prob"] = jnp.empty((self.n_chains, 0))
+        training["local_accs"] = jnp.empty((self.n_chains, 0))
+        training["global_accs"] = jnp.empty((self.n_chains, 0))
+        training["loss_vals"] = jnp.empty((0, self.n_epochs))
+
+        production = {}
+        production["chains"] = jnp.empty((self.n_chains, 0, self.n_dim))
+        production["log_prob"] = jnp.empty((self.n_chains, 0))
+        production["local_accs"] = jnp.empty((self.n_chains, 0))
+        production["global_accs"] = jnp.empty((self.n_chains, 0))
+
+        self.summary = {}
+        self.summary['training'] = training
+        self.summary['production'] = production
