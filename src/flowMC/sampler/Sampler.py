@@ -211,6 +211,17 @@ class Sampler(object):
 
         return rng_keys_nf, rng_keys_mcmc, state, last_step
 
+    def local_sampler_tuning(self, initial_position):
+        rng_keys_mcmc, positions, log_prob, local_acceptance = self.local_sampler(
+                rng_keys_mcmc, self.n_local_steps, initial_position
+            )
+
+    def global_sampler_tuning(self):
+        pass
+
+    def production_run(self):
+        pass
+
     def get_sampler_state(self):
         return (
             self.chains,
