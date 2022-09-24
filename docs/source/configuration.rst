@@ -46,4 +46,5 @@ flowMC.sampler.Sampler module
 
 .. automodule:: flowMC.sampler.Sampler
    :members:
+   :noindex:
 

@@ -40,5 +40,5 @@ User guide
    analysis
    examples
    FAQ
-   api
+   api/modules
    
