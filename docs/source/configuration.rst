@@ -1,4 +1,5 @@
 .. _configuration-section-top:
+
 Configuration
 =============
 
@@ -12,9 +13,6 @@ flowMC.sampler.Sampler module
 
 .. automodule:: flowMC.sampler.Sampler
    :members:
-   :undoc-members:
-   :show-inheritance:
-
 
 ===============================    ===================================
 Name                               Description

@@ -58,6 +58,23 @@ def scalar_affine(params: jnp.ndarray):
 
 
 class RQSpline(nn.Module):
+
+    """
+    Rational quadratic spline normalizing flow model using distrax.
+
+    Parameters
+    ----------
+    n_features : int
+        Number of features in the data.
+    num_layers : int
+        Number of layers in the flow.
+    num_bins : int
+        Number of bins in the spline.
+    hidden_size : Sequence[int]
+        Size of the hidden layers in the conditioner.
+    spline_range : Sequence[float]
+        Range of the spline.
+    """
     n_features: int
     num_layers: int
     hidden_size: Sequence[int]

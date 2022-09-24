@@ -1,9 +1,23 @@
+from typing import Callable
 import jax
 import jax.numpy as jnp
 from jax.scipy.stats import multivariate_normal
 from tqdm import tqdm
 
-def make_mala_kernel(logpdf, d_logpdf, dt, M=None):
+
+def make_mala_kernel(logpdf: Callable, dt: float, M: jnp.array=None):
+    """
+    Making MALA kernel for a single step
+
+    Args:
+        logpdf (Callable): log-probability density function
+        dt (float): step size of the MALA step
+        M (jnp.array): mass matrix. Currently we only support diagonal mass matrix
+
+    Returns:
+        mala_kernel (Callable): MALA kernel for a single step
+
+    """
 
     if M != None:
         dt  = dt*jnp.sqrt(M)
@@ -54,7 +68,21 @@ def make_mala_kernel(logpdf, d_logpdf, dt, M=None):
 
 
 def make_mala_update(logpdf, d_logpdf, dt, M=None):
-    mala_kernel = make_mala_kernel(logpdf, d_logpdf, dt, M)
+    """
+    
+    Making MALA update function for multiple steps
+
+    Args:
+        logpdf (Callable): log-probability density function
+        d_logpdf (Callable): gradient of log-probability density function
+        dt (float): step size of the MALA step
+        M (jnp.array): mass matrix. Currently we only support diagonal mass matrix
+
+    Returns:
+        mala_update (Callable): MALA update function for multiple steps
+
+    """
+    mala_kernel = make_mala_kernel(logpdf, dt, M)
     def mala_update(i,state):
         key, positions, log_prob, acceptance = state
         _, key = jax.random.split(key)
