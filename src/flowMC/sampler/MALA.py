@@ -179,7 +179,7 @@ def make_mala_sampler(logpdf: Callable, jit: bool=False):
 from tqdm import tqdm
 from functools import partialmethod
 
-def mala_sampler_autotune(mala_sampler, rng_key, n_steps, initial_position, sampler_params, max_iter = 10):
+def mala_sampler_autotune(mala_sampler, rng_key, n_steps, initial_position, sampler_params, max_iter = 30):
     tqdm.__init__ = partialmethod(tqdm.__init__, disable=True)
 
     counter = 0
@@ -191,9 +191,9 @@ def mala_sampler_autotune(mala_sampler, rng_key, n_steps, initial_position, samp
             print("Maximal number of iterations reached. Existing tuning with current parameters.")
             break
         if acceptance_rate < 0.3:
-            dt *= 0.5
+            dt *= 0.8
         elif acceptance_rate > 0.5:
-            dt *= 5
+            dt *= 1.25
         counter += 1
         rng_keys_mcmc, positions, log_prob, local_acceptance, _ = mala_sampler(rng_keys_mcmc, n_steps, initial_position, {'dt':dt})
         acceptance_rate = jnp.mean(local_acceptance)
