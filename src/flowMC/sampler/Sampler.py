@@ -112,21 +112,9 @@ class Sampler(object):
         self.local_sampler_tuning(10, initial_position)
         if self.use_global == True:
             self.global_sampler_tuning()
-        self.production_run(initial_position)
 
         last_step = initial_position
-
-        for i in range(self.n_loop):
-            (
-                self.rng_keys_nf,
-                self.rng_keys_mcmc,
-                self.state,
-                last_step,
-            ) = self.sampling_loop(
-                self.rng_keys_nf, self.rng_keys_mcmc, self.state, last_step
-            )
-
-        # return chains, log_prob, nf_samples, self.local_accs, global_accs, loss_vals
+        self.production_run(last_step)
 
     def sampling_loop(self, rng_keys_nf, rng_keys_mcmc, state, initial_position):
 
@@ -268,36 +256,40 @@ class Sampler(object):
         positions = jnp.concatenate((positions, nf_chain), axis=1)
         log_prob_output = jnp.concatenate((log_prob_output, log_prob), axis=1)
 
-    def production_run(self, initial_position, state):
+    def production_run(self, initial_position):
 
-        rng_keys_mcmc, positions, log_prob, local_acceptance = self.local_sampler(
-            rng_keys_mcmc, self.n_local_steps, initial_position, self.sampler_params
-        )
-        log_prob_output = np.copy(log_prob)
-        (
-            rng_keys_nf,
-            nf_chain,
-            log_prob,
-            log_prob_nf,
-            global_acceptance,
-        ) = self.global_sampler(
-            rng_keys_nf,
-            self.n_global_steps,
-            self.state.params,
-            self.variables,
-            self.likelihood_vec,
-            positions[:, -1],
-        )
+        last_step = initial_position
+        for _ in range(self.n_loop):
+            self.rng_keys_mcmc, positions, log_prob, local_acceptance = self.local_sampler(
+                self.rng_keys_mcmc, self.n_local_steps, last_step, self.sampler_params
+            )
+            log_prob_output = np.copy(log_prob)
 
-        self.chains = jnp.append(self.chains, positions, axis=1)
-        self.log_prob = jnp.append(self.log_prob, log_prob_output, axis=1)
-        self.local_accs = jnp.append(self.local_accs, local_acceptance, axis=1)
-        if self.use_global == True:
-            self.global_accs = jnp.append(self.global_accs, global_acceptance, axis=1)
+            if self.use_global == True:
+                (self.rng_keys_nf,
+                    nf_chain,
+                    log_prob,
+                    log_prob_nf,
+                    global_acceptance,
+                ) = self.global_sampler(
+                    self.rng_keys_nf,
+                    self.n_global_steps,
+                    self.state.params,
+                    self.variables,
+                    self.likelihood_vec,
+                    positions[:, -1],
+                )            
+                positions = jnp.concatenate((positions, nf_chain), axis=1)
+                log_prob_output = jnp.concatenate((log_prob_output, log_prob), axis=1)
+                self.global_accs = jnp.append(self.global_accs, global_acceptance, axis=1)
 
-        last_step = positions[:, -1]
 
-        return rng_keys_nf, rng_keys_mcmc, state, last_step
+            self.chains = jnp.append(self.chains, positions, axis=1)
+            self.log_prob = jnp.append(self.log_prob, log_prob_output, axis=1)
+            self.local_accs = jnp.append(self.local_accs, local_acceptance, axis=1)
+
+            last_step = positions[:, -1]
+
 
     def get_sampler_state(self):
         return (
