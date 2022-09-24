@@ -1,3 +1,4 @@
+from typing import Tuple
 import jax
 import jax.numpy as jnp
 from jax import random, jit, vmap
@@ -8,12 +9,12 @@ n_sample_max = 100000
 
 def nf_metropolis_kernel(
     rng_key: jax.random.PRNGKey,
-    proposal_position,
-    initial_position,
-    proposal_pdf,
-    proposal_nf_pdf,
-    initial_pdf,
-    initial_nf_pdf,
+    proposal_position: jnp.ndarray,
+    initial_position: jnp.ndarray,
+    proposal_pdf: jnp.ndarray,
+    proposal_nf_pdf: jnp.ndarray,
+    initial_pdf: jnp.ndarray,
+    initial_nf_pdf: jnp.ndarray,
 ):
 
     """
@@ -21,7 +22,18 @@ def nf_metropolis_kernel(
 
     Args:
         rng_key: Jax PRNGKey.
+        proposal_position: Proposed positions, shape (Ndim).
+        initial_position: Initial positions, shape (Ndim).
+        proposal_pdf: Pdf value evaluate using the target function at the proposal position, shape (Ndim).
+        proposal_nf_pdf: Pdf value evaluate using the normalizing flow model at the proposal position, shape (Ndim).
+        initial_pdf: Pdf value evaluate using the target function at the initial position, shape (Ndim).
+        initial_nf_pdf: Pdf value evaluate using the normalizing flow model at the initial position, shape (Ndim).
 
+    Returns:
+        position: New positions, shape (Ndim).
+        log_prob: Pdf value evaluate using the target function at the new position, shape (Ndim).
+        log_prob_nf: Pdf value evaluate using the normalizing flow model at the new position, shape (Ndim).
+        do_accept: Acceptance boolean, shape (Ndim).
     """
 
     rng_key, subkeys = random.split(rng_key, 2)
@@ -38,7 +50,17 @@ nf_metropolis_kernel = vmap(jit(nf_metropolis_kernel))
 
 
 @jax.jit
-def nf_metropolis_update(i, state):
+def nf_metropolis_update(i: int, state: Tuple):
+
+    """
+    A multistep global sampling kernel for a given normalizing flow model.
+
+    Args:
+        i: Number of iteration.
+        state: A tuple containing the current state of the sampler.
+
+    """
+
     (
         key,
         positions,
@@ -79,6 +101,33 @@ def nf_metropolis_update(i, state):
 
 
 def make_nf_metropolis_sampler(nf_model):
+
+    """
+    A function make the normalizing flow sampler for a given normalizing flow model.
+
+    Args:
+        nf_model: A normalizing flow model.
+        
+    Returns:
+        nf_metropolis_sampler: A normalizing flow sampler that has the following signature:
+
+            Args:
+                rng_key: Jax PRNGKey.
+                n_steps: Number of steps.
+                nf_param: Normalizing flow parameters.
+                nf_variables: Normalizing flow variables.
+                target_pdf: Target pdf.
+                initial_position: Initial position.
+
+            Returns:
+                rng_key: Current state of random key
+                all_positions: All positions of the chain
+                all_logp: Log probability of the target function at all positions
+                all_logp_nf: Log probability of the normalizing flow model at all positions
+                acceptance: Acceptance boolean
+
+    """
+
     @jax.jit
     def eval_nf_logprob(position, nf_params, nf_variables):
         return nf_model.apply(
@@ -100,15 +149,6 @@ def make_nf_metropolis_sampler(nf_model):
     def nf_metropolis_sampler(
         rng_key, n_steps, nf_param, nf_variables, target_pdf, initial_position
     ):
-        """
-        Returns:
-            rng_key: current state of random key
-            all_positions (n_steps, dim): all the positions of the chain
-            log_prob (): log probability at the end of the chain
-            log_prob_nf (): log probability at the end of the chain
-            acceptance (n_steps, ): acceptance table of the chains
-        """
-
         rng_key, *subkeys = random.split(rng_key, 3)
 
         total_sample = initial_position.shape[0] * n_steps
