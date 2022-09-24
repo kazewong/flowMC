@@ -1,5 +1,7 @@
-API
-===
+.. _api-section-top:
+
+flowMC
+======
 
 .. toctree::
    :maxdepth: 4

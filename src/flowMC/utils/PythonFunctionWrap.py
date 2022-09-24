@@ -18,10 +18,7 @@ from jax.experimental import host_callback
 from jax.tree_util import tree_flatten, tree_unflatten
 
 
-
-def wrap_python_log_prob_fn(
-    python_log_prob_fn: Callable[..., Array]
-):
+def wrap_python_log_prob_fn(python_log_prob_fn: Callable[..., Array]):
     @custom_vmap
     @wraps(python_log_prob_fn)
     def log_prob_fn(params: Array) -> Array:
@@ -33,9 +30,7 @@ def wrap_python_log_prob_fn(
         )
 
     @log_prob_fn.def_vmap
-    def _(
-        axis_size: int, in_batched: List[bool], params: Array
-    ) -> Tuple[Array, bool]:
+    def _(axis_size: int, in_batched: List[bool], params: Array) -> Tuple[Array, bool]:
         del axis_size, in_batched
 
         if _arraylike(params):
@@ -45,15 +40,13 @@ def wrap_python_log_prob_fn(
             flat_params, unravel = ravel_ensemble(params)
             eval_one = lambda x: python_log_prob_fn(unravel(x))
 
-        result_shape = jax.ShapeDtypeStruct(
-            (flat_params.shape[0],), flat_params.dtype
-        )
+        result_shape = jax.ShapeDtypeStruct((flat_params.shape[0],), flat_params.dtype)
 
         result = host_callback.call(
-                lambda y: np.stack([eval_one(x) for x in y]),
-                flat_params,
-                result_shape=result_shape,
-            )
+            lambda y: np.stack([eval_one(x) for x in y]),
+            flat_params,
+            result_shape=result_shape,
+        )
         return (
             result,
             True,
@@ -102,9 +95,7 @@ def _ravel_inner(lst: List[Array]) -> Tuple[Array, UnravelFn]:
 
         def unravel(arr: Array) -> PyTree:
             chunks = jnp.split(arr, indices[:-1])
-            return [
-                chunk.reshape(shape) for chunk, shape in zip(chunks, shapes)
-            ]
+            return [chunk.reshape(shape) for chunk, shape in zip(chunks, shapes)]
 
         ravel = lambda arg: jnp.concatenate([jnp.ravel(e) for e in arg])
         raveled = jax.vmap(ravel)(lst)
