@@ -1,4 +1,5 @@
-from flowMC.sampler.MALA import make_mala_kernel, make_mala_update,make_mala_sampler
+from flowMC.sampler.MALA import make_mala_kernel, make_mala_update, make_mala_sampler
+from flowMC.sampler.MALA import make_mala_sampler
 from flowMC.utils.PRNG_keys import initialize_rng_keys
 import jax
 import jax.numpy as jnp
@@ -25,4 +26,4 @@ def test_mala_kernel():
     update = make_mala_update(kernel)
     sampler = make_mala_sampler(dual_moon_pe)
 
-    kernel(rng_key_set[1][0],initial_position[0],dual_moon_pe(dual_moon_pe),1e-1)
+    sampler(rng_key_set[1],initial_position,jax.vmap(dual_moon_pe)(initial_position),1e-1)

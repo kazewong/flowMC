@@ -30,7 +30,8 @@ class Sampler(object):
         sampler_params: dict,
         likelihood,
         nf_model,
-        n_loop: int = 2,
+        n_loop_training: int = 2,
+        n_loop_production: int = 2,
         n_local_steps: int = 5,
         n_global_steps: int = 5,
         n_chains: int = 5,
@@ -57,7 +58,8 @@ class Sampler(object):
         self.rng_keys_nf = rng_keys_nf
         self.rng_keys_mcmc = rng_keys_mcmc
         self.n_dim = n_dim
-        self.n_loop = n_loop
+        self.n_loop_training = n_loop_training
+        self.n_loop_production = n_loop_production
         self.n_local_steps = n_local_steps
         self.n_global_steps = n_global_steps
         self.n_chains = n_chains
@@ -248,13 +250,13 @@ class Sampler(object):
     def global_sampler_tuning(self,initial_position):
         print("Training normalizing flow")
         last_step = initial_position
-        for _ in range(self.n_loop):
+        for _ in range(self.n_loop_training):
             last_step = self.sampling_loop(last_step, training=True)
         return last_step
         
     def production_run(self, initial_position):
         last_step = initial_position
-        for _ in range(self.n_loop):
+        for _ in range(self.n_loop_production):
             self.sampling_loop(last_step)
 
     def get_sampler_state(self, training=False):
