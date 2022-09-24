@@ -16,13 +16,14 @@ import matplotlib.pyplot as plt
 
 def wiggle(x):
     """
-    Wiggle-distribution 
+    Wiggle-distribution
     """
     mean = jnp.array([0, 6])
     centered_x = x[0] - mean - jnp.sin(5 * x[1] / 5)
-    log_prob = - 0.5 * centered_x @ jnp.eye(2) @ centered_x.T
+    log_prob = -0.5 * centered_x @ jnp.eye(2) @ centered_x.T
     log_prob -= 0.5 * (jnp.linalg.norm(x) - 5) ** 2 / 8
     return log_prob
+
 
 d_wiggle = jax.grad(wiggle)
 
@@ -52,20 +53,25 @@ run_mcmc = jax.vmap(mala_sampler, in_axes=(0, None, None, None, 0, None), out_ax
 
 print("Initializing sampler class")
 
-nf_sampler = Sampler(n_dim, rng_key_set, model, run_mcmc,
-                    wiggle,
-                    d_likelihood=d_wiggle,
-                    n_loop=n_loop,
-                    n_local_steps=n_local_steps,
-                    n_global_steps=n_global_steps,
-                    n_chains=n_chains,
-                    n_epochs=num_epochs,
-                    n_nf_samples=100,
-                    learning_rate=learning_rate,
-                    momentum=momentum,
-                    batch_size=batch_size,
-                    stepsize=stepsize,
-                    use_global=True,)
+nf_sampler = Sampler(
+    n_dim,
+    rng_key_set,
+    model,
+    run_mcmc,
+    wiggle,
+    d_likelihood=d_wiggle,
+    n_loop=n_loop,
+    n_local_steps=n_local_steps,
+    n_global_steps=n_global_steps,
+    n_chains=n_chains,
+    n_epochs=num_epochs,
+    n_nf_samples=100,
+    learning_rate=learning_rate,
+    momentum=momentum,
+    batch_size=batch_size,
+    stepsize=stepsize,
+    use_global=True,
+)
 print("Sampling")
 
 nf_sampler.sample(initial_position)

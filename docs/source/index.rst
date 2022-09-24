@@ -39,5 +39,6 @@ User guide
    configuration
    analysis
    examples
+   FAQ
    api
    

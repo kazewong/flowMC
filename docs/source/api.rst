@@ -3,7 +3,4 @@
 API
 ===
 
-.. autofunction::
-   :toctree: generated
-
-   flowMC
+.. autofunction:: flowMC.nfmodel.rqSpline.RQSpline

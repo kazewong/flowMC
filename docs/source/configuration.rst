@@ -5,14 +5,7 @@ Configuration
 
 This page contains information about what knobs can you tune when the sampler doesn't work as expected.
 
-Sampler class arguments
------------------------
 
-flowMC.sampler.Sampler module
------------------------------
-
-.. automodule:: flowMC.sampler.Sampler
-   :members:
 
 ===============================    ===================================
 Name                               Description
@@ -36,6 +29,10 @@ batch_size                         Batch size to use when training the normalizi
 logging                            Whether we log or not.
 ===============================    ===================================
 
+Sampler class arguments
+-----------------------
+
+likelihood 
 
 
 Local sampler parameters
@@ -43,3 +40,10 @@ Local sampler parameters
 
 Normalizing flow parameters
 ---------------------------
+
+flowMC.sampler.Sampler module
+-----------------------------
+
+.. automodule:: flowMC.sampler.Sampler
+   :members:
+

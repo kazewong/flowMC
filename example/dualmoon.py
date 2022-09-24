@@ -48,32 +48,38 @@ print("Initializing MCMC model and normalizing flow model.")
 initial_position = jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
 
 
-
 # model = RealNVP(10, n_dim, 64, 1)
-model = RQSpline(n_dim, 10, [128,128], 8)
+model = RQSpline(n_dim, 10, [128, 128], 8)
 
-local_sampler,updater, kernel,logp,dlogp = make_mala_sampler(dual_moon_pe, d_dual_moon,1e-1, jit=True, M=jnp.eye(n_dim))
+local_sampler, updater, kernel, logp, dlogp = make_mala_sampler(
+    dual_moon_pe, d_dual_moon, 1e-1, jit=True, M=jnp.eye(n_dim)
+)
 
 
 print("Initializing sampler class")
 
-nf_sampler = Sampler(n_dim, rng_key_set, model, run_mcmc,
-                    dual_moon_pe,
-                    d_likelihood=d_dual_moon,
-                    n_loop=n_loop,
-                    n_local_steps=n_local_steps,
-                    n_global_steps=n_global_steps,
-                    n_chains=n_chains,
-                    n_epochs=num_epochs,
-                    n_nf_samples=100,
-                    learning_rate=learning_rate,
-                    momentum=momentum,
-                    batch_size=batch_size,
-                    stepsize=stepsize,
-                    use_global=True,)
+nf_sampler = Sampler(
+    n_dim,
+    rng_key_set,
+    model,
+    run_mcmc,
+    dual_moon_pe,
+    d_likelihood=d_dual_moon,
+    n_loop=n_loop,
+    n_local_steps=n_local_steps,
+    n_global_steps=n_global_steps,
+    n_chains=n_chains,
+    n_epochs=num_epochs,
+    n_nf_samples=100,
+    learning_rate=learning_rate,
+    momentum=momentum,
+    batch_size=batch_size,
+    stepsize=stepsize,
+    use_global=True,
+)
 
 print("Sampling")
-    
+
 nf_sampler.sample(initial_position)
 
 chains, log_prob, local_accs, global_accs, loss_vals = nf_sampler.get_sampler_state()
