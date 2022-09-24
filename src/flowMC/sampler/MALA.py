@@ -179,11 +179,10 @@ def make_mala_sampler(logpdf: Callable, jit: bool=False):
 from tqdm import tqdm
 from functools import partialmethod
 
-def mala_sampler_autotune(mala_sampler, start_params, max_iter = 10):
+def mala_sampler_autotune(mala_sampler, rng_key, n_steps, initial_position, sampler_params, max_iter = 10):
     tqdm.__init__ = partialmethod(tqdm.__init__, disable=True)
 
     counter = 0
-    rng_key, n_steps, initial_position, sampler_params = start_params
     dt = sampler_params['dt']
     rng_keys_mcmc, positions, log_prob, local_acceptance, _ = mala_sampler(rng_key, n_steps, initial_position, {'dt':dt})
     acceptance_rate = jnp.mean(local_acceptance)
