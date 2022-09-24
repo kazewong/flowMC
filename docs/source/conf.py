@@ -54,8 +54,7 @@ html_theme = "sphinx_book_theme"
 html_copy_source = True
 html_show_sourcelink = True
 html_sourcelink_suffix = ""
-html_title = "emcee"
-html_favicon = "_static/favicon.png"
+html_title = "flowMC"
 html_theme_options = {
     "repository_url": "https://github.com/kazewong/flowMC",
     "repository_branch": "main",

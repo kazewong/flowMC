@@ -4,3 +4,4 @@ jax
 jaxlib
 flax
 distrax
+tqdm
