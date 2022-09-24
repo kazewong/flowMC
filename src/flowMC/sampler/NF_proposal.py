@@ -46,7 +46,7 @@ def nf_metropolis_kernel(
     return position, log_prob, log_prob_nf, do_accept
 
 
-nf_metropolis_kernel = vmap(jit(nf_metropolis_kernel))
+nf_metropolis_kernel = vmap(nf_metropolis_kernel)
 
 
 @jax.jit

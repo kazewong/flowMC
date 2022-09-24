@@ -52,7 +52,7 @@ class Sampler(object):
         self.likelihood_vec = jax.jit(jax.vmap(self.likelihood))
         self.sampler_params = sampler_params
         self.local_sampler = local_sampler(likelihood)
-        self.local_autotune = local_autotune
+        self.local_autotune= local_autotune
 
         self.rng_keys_nf = rng_keys_nf
         self.rng_keys_mcmc = rng_keys_mcmc
@@ -120,8 +120,11 @@ class Sampler(object):
             global_accs (Device Array): (n_chains, n_global_steps * n_loop)
             loss_vals (Device Array): (n_epoch * n_loop,)
         """
+        
+        # Note that auto-tune function needs to have the same number of steps
+        # as the actual sampling loop to avoid recompilation.
 
-        self.local_sampler_tuning(10, initial_position)
+        self.local_sampler_tuning(self.n_local_steps, initial_position)
         last_step = initial_position
         if self.use_global == True:
             last_step = self.global_sampler_tuning(last_step)
@@ -238,7 +241,7 @@ class Sampler(object):
     def local_sampler_tuning(self, n_steps, initial_position, max_iter=10):
         if self.local_autotune is not None:
             print("Autotune found, start tuning sampler_params")
-            self.sampler_params = self.local_autotune(self.local_sampler, self.rng_keys_mcmc, n_steps, initial_position, self.sampler_params, max_iter)
+            self.sampler_params, self.local_sampler = self.local_autotune(self.local_sampler, self.rng_keys_mcmc, n_steps, initial_position, self.sampler_params, max_iter)
         else:
             print("No autotune found, use input sampler_params")
 

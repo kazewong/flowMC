@@ -174,7 +174,7 @@ def make_mala_sampler(logpdf: Callable, jit: bool=False):
             state = mala_update(i, state)
         return state
 
-    return mala_sampler
+    return mala_sampler, mala_update
     
 from tqdm import tqdm
 from functools import partialmethod
@@ -198,7 +198,7 @@ def mala_sampler_autotune(mala_sampler, rng_key, n_steps, initial_position, samp
         rng_keys_mcmc, positions, log_prob, local_acceptance, _ = mala_sampler(rng_keys_mcmc, n_steps, initial_position, {'dt':dt})
         acceptance_rate = jnp.mean(local_acceptance)
     tqdm.__init__ = partialmethod(tqdm.__init__, disable=False)
-    return {"dt": dt}
+    return {"dt": dt}, mala_sampler
 
 
 ################### Scan API ##############################

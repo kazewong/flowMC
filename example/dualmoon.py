@@ -47,7 +47,6 @@ initial_position = jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 
 # model = RealNVP(10, n_dim, 64, 1)
 model = RQSpline(n_dim, 10, [128, 128], 8)
 
-local_sampler = make_mala_sampler(dual_moon_pe, jit=True)
 local_sampler_caller = lambda x: make_mala_sampler(x, jit=True)
 
 print("Initializing sampler class")
