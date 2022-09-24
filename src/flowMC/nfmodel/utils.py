@@ -62,8 +62,12 @@ def make_training_loop(model):
             if loss_values[epoch] < best_loss:
                 best_state = state
                 best_loss = loss_values[epoch]
-            if epoch % int(num_epochs / 10) == 0:
-                pbar.set_description(f"Training NF, current loss: {value:.3f}")
+            if num_epochs > 10:
+                if epoch % int(num_epochs / 10) == 0:
+                    pbar.set_description(f"Training NF, current loss: {value:.3f}")
+            else:
+                if epoch == num_epochs:
+                    pbar.set_description(f"Training NF, current loss: {value:.3f}")
 
         return rng, best_state, loss_values
 

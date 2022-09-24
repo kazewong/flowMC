@@ -5,32 +5,28 @@ from jax.scipy.stats import multivariate_normal
 from tqdm import tqdm
 
 
-def make_mala_kernel(logpdf: Callable, dt: float, M: jnp.array = None):
+def make_mala_kernel(logpdf: Callable):
     """
     Making MALA kernel for a single step
 
     Args:
         logpdf (Callable): log-probability density function
-        dt (float): step size of the MALA step
-        M (jnp.array): mass matrix. Currently we only support diagonal mass matrix
+
 
     Returns:
         mala_kernel (Callable): MALA kernel for a single step
 
     """
 
-    if M != None:
-        dt = dt * jnp.sqrt(M)
-
-    dt2 = dt * dt
-
-    def body(this_position, this_key):
+    def body(carry, this_key):
+        this_position, dt = carry
+        dt2 = dt*dt
         this_log_prob, this_d_log = jax.value_and_grad(logpdf)(this_position)
         proposal = this_position + jnp.dot(dt2, this_d_log) / 2
         proposal += jnp.dot(dt, jax.random.normal(this_key, shape=this_position.shape))
-        return proposal, (proposal, this_log_prob, this_d_log)
+        return (proposal,dt), (proposal, this_log_prob, this_d_log)
 
-    def mala_kernel(rng_key, position, log_prob):
+    def mala_kernel(rng_key, position, log_prob, dt = 1e-1):
 
         """
         Metropolis-adjusted Langevin algorithm kernel.
@@ -52,8 +48,10 @@ def make_mala_kernel(logpdf: Callable, dt: float, M: jnp.array = None):
         """
         key1, key2 = jax.random.split(rng_key)
 
+        dt2 = dt*dt
+
         _, (proposal, logprob, d_logprob) = jax.lax.scan(
-            body, position, jnp.array([key1, key1])
+            body, (position, dt), jnp.array([key1, key1])
         )
 
         ratio = logprob[1] - logprob[0]
@@ -74,7 +72,7 @@ def make_mala_kernel(logpdf: Callable, dt: float, M: jnp.array = None):
     return mala_kernel
 
 
-def make_mala_update(logpdf, d_logpdf, dt, M=None):
+def make_mala_update(logpdf):
     """
 
     Making MALA update function for multiple steps
@@ -89,43 +87,39 @@ def make_mala_update(logpdf, d_logpdf, dt, M=None):
         mala_update (Callable): MALA update function for multiple steps
 
     """
-    mala_kernel = make_mala_kernel(logpdf, dt, M)
+    mala_kernel = make_mala_kernel(logpdf)
 
     def mala_update(i, state):
-        key, positions, log_prob, acceptance = state
+        key, positions, log_prob, acceptance, dt = state
         _, key = jax.random.split(key)
         new_position, new_log_prob, do_accept = mala_kernel(
-            key, positions[i - 1], log_prob[i - 1]
+            key, positions[i - 1], log_prob[i - 1], dt
         )
         positions = positions.at[i].set(new_position)
         log_prob = log_prob.at[i].set(new_log_prob)
         acceptance = acceptance.at[i].set(do_accept)
-        return (key, positions, log_prob, acceptance)
+        return (key, positions, log_prob, acceptance, dt)
 
     # Apperantly jitting after vmap will make compilation much slower.
     # Output the kernel, logpdf, and dlogpdf for warmup jitting.
     # Apperantly passing in a warmed up function will still trigger recompilation.
     # so the warmup need to be done with the output function
 
-    return mala_update, mala_kernel, logpdf, d_logpdf
+    return mala_update, logpdf
 
 
-def make_mala_sampler(logpdf, d_logpdf, dt=1e-5, jit=False, M=None):
-    mala_update, mk, lp, dlp = make_mala_update(logpdf, d_logpdf, dt, M)
+def make_mala_sampler(logpdf: Callable, jit: bool=False):
+    mala_update, lp = make_mala_update(logpdf)
     # Somehow if I define the function inside the other function,
     # I think it doesn't use the cache and recompile everytime.
     if jit:
         mala_update = jax.jit(mala_update)
-        mk = jax.jit(mk)
         lp = jax.jit(lp)
-        dlp = jax.jit(dlp)
 
-    mala_update = jax.vmap(mala_update, in_axes=(None, (0, 0, 0, 0)))
-    mk = jax.vmap(mk, in_axes=(0, 0, 0))
+    mala_update = jax.vmap(mala_update, in_axes=(None, (0, 0, 0, 0, None)), out_axes=(0, 0, 0, 0, None))
     lp = jax.vmap(lp)
-    dlp = jax.vmap(dlp)
 
-    def mala_sampler(rng_key, n_steps, initial_position):
+    def mala_sampler(rng_key, n_steps, initial_position, sampler_params={'dt':1e-1}):
 
         """
         Metropolis-adjusted Langevin algorithm sampler.
@@ -173,14 +167,38 @@ def make_mala_sampler(logpdf, d_logpdf, dt=1e-5, jit=False, M=None):
             )
             + logp[:, None]
         )
-        state = (rng_key, all_positions, all_logp, acceptance)
+        state = (rng_key, all_positions, all_logp, acceptance, sampler_params['dt'])
         for i in tqdm(
             range(1, n_steps), desc="Sampling Locally", miniters=int(n_steps / 10)
         ):
             state = mala_update(i, state)
         return state
 
-    return mala_sampler, mala_update, mk, lp, dlp
+    return mala_sampler, mala_update
+    
+from tqdm import tqdm
+from functools import partialmethod
+
+def mala_sampler_autotune(mala_sampler, rng_key, n_steps, initial_position, sampler_params, max_iter = 30):
+    tqdm.__init__ = partialmethod(tqdm.__init__, disable=True)
+
+    counter = 0
+    dt = sampler_params['dt']
+    rng_keys_mcmc, positions, log_prob, local_acceptance, _ = mala_sampler(rng_key, n_steps, initial_position, {'dt':dt})
+    acceptance_rate = jnp.mean(local_acceptance)
+    while (acceptance_rate < 0.3) or (acceptance_rate > 0.5):
+        if counter > max_iter:
+            print("Maximal number of iterations reached. Existing tuning with current parameters.")
+            break
+        if acceptance_rate < 0.3:
+            dt *= 0.8
+        elif acceptance_rate > 0.5:
+            dt *= 1.25
+        counter += 1
+        rng_keys_mcmc, positions, log_prob, local_acceptance, _ = mala_sampler(rng_keys_mcmc, n_steps, initial_position, {'dt':dt})
+        acceptance_rate = jnp.mean(local_acceptance)
+    tqdm.__init__ = partialmethod(tqdm.__init__, disable=False)
+    return {"dt": dt}, mala_sampler
 
 
 ################### Scan API ##############################
