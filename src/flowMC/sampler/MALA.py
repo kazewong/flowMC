@@ -108,7 +108,7 @@ def make_mala_update(logpdf):
     return mala_update, logpdf
 
 
-def make_mala_sampler(logpdf,jit=False, M=None):
+def make_mala_sampler(logpdf: Callable, jit: bool=False):
     mala_update, lp = make_mala_update(logpdf)
     # Somehow if I define the function inside the other function,
     # I think it doesn't use the cache and recompile everytime.
@@ -175,6 +175,31 @@ def make_mala_sampler(logpdf,jit=False, M=None):
         return state
 
     return mala_sampler
+    
+from tqdm import tqdm
+from functools import partialmethod
+
+def mala_sampler_autotune(mala_sampler, start_params, max_iter = 10):
+    tqdm.__init__ = partialmethod(tqdm.__init__, disable=True)
+
+    counter = 0
+    rng_key, n_steps, initial_position, sampler_params = start_params
+    dt = sampler_params['dt']
+    rng_keys_mcmc, positions, log_prob, local_acceptance, _ = mala_sampler(rng_key, n_steps, initial_position, {'dt':dt})
+    acceptance_rate = jnp.mean(local_acceptance)
+    while (acceptance_rate < 0.3) or (acceptance_rate > 0.5):
+        if counter > max_iter:
+            print("Maximal number of iterations reached. Existing tuning with current parameters.")
+            break
+        if acceptance_rate < 0.3:
+            dt *= 0.5
+        elif acceptance_rate > 0.5:
+            dt *= 5
+        counter += 1
+        rng_keys_mcmc, positions, log_prob, local_acceptance, _ = mala_sampler(rng_keys_mcmc, n_steps, initial_position, {'dt':dt})
+        acceptance_rate = jnp.mean(local_acceptance)
+    tqdm.__init__ = partialmethod(tqdm.__init__, disable=False)
+    return {"dt": dt}
 
 
 ################### Scan API ##############################
