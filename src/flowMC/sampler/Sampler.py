@@ -157,7 +157,7 @@ class Sampler():
 
         last_step = self.production_run(last_step)
 
-    def sampling_loop(self, initial_position, training=False):
+    def sampling_loop(self, initial_position: jnp.array, training=False) -> jnp.array:
         """
         Sampling loop for both the global sampler and the local sampler.
 
@@ -283,7 +283,7 @@ class Sampler():
         else:
             print("No autotune found, use input sampler_params")
 
-    def global_sampler_tuning(self, initial_position: jnp.ndarray):
+    def global_sampler_tuning(self, initial_position: jnp.ndarray) -> jnp.array:
         """
         Tuning the global sampler. This runs both the local sampler and the global sampler,
         and train the normalizing flow on the run.
@@ -300,18 +300,48 @@ class Sampler():
             last_step = self.sampling_loop(last_step, training=True)
         return last_step
 
-    def production_run(self, initial_position):
+    def production_run(self, initial_position: jnp.ndarray):
+        """
+        Sampling procedure that produce the final set of samples.
+        The main difference between this and the global tuning step is
+        we do not train the normalizing flow in order to main detail balance.
+        The data is stored in the summary dictionary.
+        
+        """
         last_step = initial_position
         for _ in range(self.n_loop_production):
             self.sampling_loop(last_step)
 
-    def get_sampler_state(self, training=False):
+    def get_sampler_state(self, training: bool=False) -> dict:
+        """
+        Get the sampler state. There are two sets of sampler outputs one can get,
+        the training set and the production set.
+        The training set is produced during the global tuning step, and the production set
+        is produced during the production run.
+        Only the training set contains information about the loss function.
+        Only the production set should be used to represent the final set of samples.
+
+        Args:
+            training (bool): Whether to get the training set sampler state. Defaults to False.
+        
+        """
         if training == True:
             return self.summary['training']
         else:
             return self.summary['production']
 
-    def sample_flow(self, n_samples):
+    def sample_flow(self, n_samples: int) -> jnp.ndarray:
+        """
+
+        Sample from the normalizing flow.
+
+        Args:
+            n_samples (int): Number of samples to generate.
+
+        Returns:
+            Device Array: Samples generated using the normalizing flow.
+        """
+
         nf_samples = sample_nf(
             self.nf_model,
             self.state.params,
@@ -322,6 +352,10 @@ class Sampler():
         return nf_samples
 
     def reset(self):
+        """
+        Reset the sampler state.
+
+        """
         training = {}
         training["chains"] = jnp.empty((self.n_chains, 0, self.n_dim))
         training["log_prob"] = jnp.empty((self.n_chains, 0))
