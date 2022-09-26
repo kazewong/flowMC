@@ -37,10 +37,10 @@ The key features of `FlowMC` are summarized in the following list:
 ## Key features
 
 - Since `FlowMC` is built on top of `Jax`, it supports gradient-based sampler such as MALA and Hamiltonian Monte Carlo (HMC) through automatic differentiation.
+- `FlowMC` uses state-of-the-art normalizing flow models such as rational quadratic spline (RQS) for the global sampler, which is very efficient in capturing local features with relatively short training time.
 - Use of accelerators such as GPUs and TPUs are natively supported. The code also supports the use of multiple accelerators with SIMD parallelism.
 - By default, Just-in-time (JIT) compilation are used to further speed up the sampling process. 
-- `FlowMC` provides an interface to train normalizing flow models using `Flax`.
-- We provide a simple blackbox interface for the users who want to use `FlowMC` by its default parameters, at the same time provide an extensive guide explaining trade-off while tuning the sampler parameters.
+- We provide a simple black box interface for the users who want to use `FlowMC` by its default parameters, at the same time provide an extensive guide explaining trade-off while tuning the sampler parameters.
 
 The tight integration of all the above features makes `FlowMC` a highly performant yet simple-to-use package for Bayesian inference.
 
