@@ -32,12 +32,13 @@ bibliography: paper.bib
 At its core, `FlowMC` uses a local sampler such as Metropolis-adjusted Langevin algorithm (MALA) and normalizing flow models in tandem to efficiently sample posterior distributions with non-trivial geometry,
 such as multimodal distributions and distributions with local correlations.
 While multiple chains of the local sampler generate samples over the region of interest in the target parameter space, the package uses these samples to train a normalizing flow model, then use it to propose global jumps across the parameter space.
-As the package is built on top of `Jax`, it supports automatic differentiation and the use of accelerators such as GPUs and TPUs out of the box.
+The key features of `FlowMC` are summarized in the following list:
 
 ## Key features
 
-- `FlowMC` supports gradient-based sampler such as MALA and Hamiltonian Monte Carlo (HMC).
-- Use of accelerators such as GPU and TPU are natively supported. The code also supports the use of multiple accelerators with SIMD parallelism.
+- Since `FlowMC` is built on top of `Jax`, it supports gradient-based sampler such as MALA and Hamiltonian Monte Carlo (HMC) through automatic differentiation.
+- Use of accelerators such as GPUs and TPUs are natively supported. The code also supports the use of multiple accelerators with SIMD parallelism.
+- By default, Just-in-time (JIT) compilation are used to further speed up the sampling process. 
 - `FlowMC` provides an interface to train normalizing flow models using `Flax`.
 - We provide a simple blackbox interface for the users who want to use `FlowMC` by its default parameters, at the same time provide an extensive guide explaining trade-off while tuning the sampler parameters.
 
