@@ -61,8 +61,8 @@ A minimum example to sample a N dimensional Gaussian, you would do something lik
 For more realistic test case, see the examples on `github <https://github.com/kazewong/flowMC/tree/main/example>`_.
 In particular, currently the best engineered test case is `dualmoon.py <https://github.com/kazewong/flowMC/blob/main/example/dualmoon.py>`_.
 
-In the ideal case, the only two things you will have to do is:
+In the ideal case, the only three things you will have to do are:
 
 #. Write down the function you want to sample in the form of :code:`p(x)`, where :code:`p` is the log probability density function and :code:`x` is the vector of variables of interest.
 #. Configure the sampler.
-
+#. Give the sampler the initial position of your n_chains
