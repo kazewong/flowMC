@@ -21,7 +21,7 @@ The code is open source under MIT license, and it is under active development.
 - Suit for problems with multi-modality.
 
 
-Five steps to use flowMC
+Five steps to use flowMC's guide
 ========================
 
 #. You will find basic information such as installation and a quick guide in the :ref:`quickstart-section-top`.
