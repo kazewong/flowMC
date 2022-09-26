@@ -42,6 +42,8 @@ The key features of `FlowMC` are summarized in the following list:
 - `FlowMC` provides an interface to train normalizing flow models using `Flax`.
 - We provide a simple blackbox interface for the users who want to use `FlowMC` by its default parameters, at the same time provide an extensive guide explaining trade-off while tuning the sampler parameters.
 
+The tight integration of all the above features makes `FlowMC` a highly performant yet simple-to-use package for Bayesian inference.
+
 # Statement of need
 
 ***Gradient-based sampler***
