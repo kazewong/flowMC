@@ -48,4 +48,5 @@ User guide
    :caption: Tutorials
    :name: tutorials
 
-   tutorials/AnalyzingChains
+   tutorials/analyzingChains
+   tutorials/localKernels
