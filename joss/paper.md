@@ -29,17 +29,17 @@ bibliography: paper.bib
 # Summary
 
 `FlowMC` is a Python library for accelerated Markov Chain Monte Carlo (MCMC) building on top of `Jax` and `Flax`.
-At it cores, it uses a combination of normalizing flows and traditional sampler to efficiently sample posterior distributions with non-trivial geometry,
-such as multimode
+At its core, `FlowMC` uses a local sampler such as Metropolis-adjusted Langevin algorithm (MALA) and normalizing flow models in tandem to efficiently sample posterior distributions with non-trivial geometry,
+such as multimodal distributions and distributions with local correlations.
+While multiple chains of the local sampler generate samples over the region of interest in the target parameter space, the package uses these samples to train a normalizing flow model, then use it to propose global jumps across the parameter space.
+As the package is built on top of `Jax`, it supports automatic differentiation and the use of accelerators such as GPUs and TPUs out of the box.
 
+## Key features
 
-# Key features
-
-- `FlowMC` by default employ gradient-based sampler such as Metropolis-adjusted Langevin algorithm (MALA)
+- `FlowMC` supports gradient-based sampler such as MALA and Hamiltonian Monte Carlo (HMC).
 - Use of accelerators such as GPU and TPU are natively supported. The code also supports the use of multiple accelerators with SIMD parallelism.
 - `FlowMC` provides an interface to train normalizing flow models using `Flax`.
 - We provide a simple blackbox interface for the users who want to use `FlowMC` by its default parameters, at the same time provide an extensive guide explaining trade-off while tuning the sampler parameters.
-- We keep the library relatively lightweight and extensible. We provide examples of how to combine `FlowMC` with other libraries such as `harmonics`
 
 # Statement of need
 
@@ -47,7 +47,7 @@ such as multimode
 Models in many scientific fields are growing more complex to capture complicated physical processes.
 One common way to increase the complexity of a model is to introduce more parameters.
 This increases the flexibility in the model, but it makes downstream data analysis tasks such as parameter estimation more challenging since introducing new parameters increase the dimension of problem.
-We 
+
 
 ***Learned reparameterization with normalizing flow***
 While gradient-based sampler such as MALA and HMC are powerful in decorrelating random variables with a problem, their capability are limited to global correlation.
