@@ -82,7 +82,7 @@ Furthermore, the library leverage Just-In-Time compilations to further improve t
 Since we anticipate most of the users would like to spend most of their time building model instead of optimize the performance of the sampler,
 we provide a black-box interface with a few tuning parameters for users who intend to use `FlowMC` without too much customization on the sampler side.
 The only inputs we require from the users are the log-likelihood function, the log-prior function, and initial position of the chains.
-<!-- Mention something related to auto tune -->
+On top of the black-box interface, the package offers automatic tuning for the local samplers, in order to reduce the number of hyperparameters the users have to manage.
 
 While we provide a high-level API for most of the users, the code is also designed to be extensible.
 <!-- Say something about extensibility like custom proposal -->
