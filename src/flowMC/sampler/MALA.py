@@ -174,7 +174,7 @@ def make_mala_sampler(logpdf: Callable, jit: bool=False):
             state = mala_update(i, state)
         return state
 
-    return mala_sampler, mala_update
+    return mala_sampler
     
 from tqdm import tqdm
 from functools import partialmethod
