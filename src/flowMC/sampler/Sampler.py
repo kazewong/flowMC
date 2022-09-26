@@ -1,4 +1,5 @@
 from logging import lastResort
+from typing import Callable, Tuple
 import jax
 import jax.numpy as jnp
 import numpy as np
@@ -8,35 +9,59 @@ from flax.training import train_state  # Useful dataclass to keep train state
 import flax
 import optax
 
-# Optimizers
-class Sampler(object):
+class Sampler():
     """
     Sampler class that host configuration parameters, NF model, and local sampler
 
     Args:
-        rng_key_set (Device Array): RNG keys set generated using initialize_rng_keys.
-        config (dict): Configuration parameters.
-        nf_model (flax module): Normalizing flow model.
-        local_sampler (function): Local sampler function.
-        likelihood (function): Likelihood function.
-        d_likelihood (Device Array): Derivative of the likelihood function.
+        n_dim (int): Dimension of the problem.
+        rng_key_set (Tuple): Tuple of random number generator keys.
+        local_sampler (Callable): Local sampler maker
+        sampler_params (dict): Parameters for the local sampler.
+        likelihood (Callable): Likelihood function.
+        nf_model (Callable): Normalizing flow model.
+        n_loop_training (int, optional): Number of training loops. Defaults to 2.
+        n_loop_production (int, optional): Number of production loops. Defaults to 2.
+        n_local_steps (int, optional): Number of local steps per loop. Defaults to 5.
+        n_global_steps (int, optional): Number of global steps per loop. Defaults to 5.
+        n_chains (int, optional): Number of chains. Defaults to 5.
+        n_epochs (int, optional): Number of epochs per training loop. Defaults to 5.
+        learning_rate (float, optional): Learning rate for the NF model. Defaults to 0.01.
+        max_samples (int, optional): Maximum number of samples fed to training the NF model. Defaults to 10000.
+        momentum (float, optional): Momentum for the NF model. Defaults to 0.9.
+        batch_size (int, optional): Batch size for the NF model. Defaults to 10.
+        use_global (bool, optional): Whether to use global sampler. Defaults to True.
+        logging (bool, optional): Whether to log the training process. Defaults to True.
+        nf_variable (None, optional): Mean and variance variables for the NF model. Defaults to None.
+        keep_quantile (float, optional): Quantile of chains to keep when training the normalizing flow model. Defaults to 0.5.
+        local_autotune (None, optional): Auto-tune function for the local sampler. Defaults to None.
+        
+    Methods:
+        sample: Sample from the posterior using the local sampler.
+        sampling_loop: Sampling loop for the NF model.
+        local_sampler_tuning: Tune the local sampler.
+        global_sampler_tuning: Tune the global sampler.
+        production_run: Run the production run.
+        get_sampler_state: Get the sampler state.
+        sample_flow: Sample from the normalizing flow model.
+
+
     """
 
     def __init__(
         self,
         n_dim: int,
-        rng_key_set,
-        local_sampler,
+        rng_key_set: Tuple,
+        local_sampler: Callable,
         sampler_params: dict,
-        likelihood,
-        nf_model,
+        likelihood: Callable,
+        nf_model: Callable,
         n_loop_training: int = 2,
         n_loop_production: int = 2,
         n_local_steps: int = 5,
         n_global_steps: int = 5,
         n_chains: int = 5,
         n_epochs: int = 5,
-        n_nf_samples: int = 100,
         learning_rate: float = 0.01,
         max_samples: int = 10000,
         momentum: float = 0.9,
@@ -64,7 +89,6 @@ class Sampler(object):
         self.n_global_steps = n_global_steps
         self.n_chains = n_chains
         self.n_epochs = n_epochs
-        self.n_nf_samples = n_nf_samples
         self.learning_rate = learning_rate
         self.max_samples = max_samples
         self.momentum = momentum
@@ -265,9 +289,7 @@ class Sampler(object):
         else:
             return self.summary['production']
 
-    def sample_flow(self, n_samples=None):
-        if n_samples is None:
-            n_samples = self.n_nf_samples
+    def sample_flow(self, n_samples):
         nf_samples = sample_nf(
             self.nf_model,
             self.state.params,
