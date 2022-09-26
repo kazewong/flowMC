@@ -22,7 +22,7 @@ The code is open source under MIT license, and it is under active development.
 
 
 Five steps to use flowMC's guide
-========================
+================================
 
 #. You will find basic information such as installation and a quick guide in the :ref:`quickstart-section-top`.
 #. We give more information about tuning parameters of our sampler in the :ref:`configuration-section-top`.
