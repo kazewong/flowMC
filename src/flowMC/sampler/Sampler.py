@@ -159,14 +159,15 @@ class Sampler():
 
     def sampling_loop(self, initial_position: jnp.array, training=False) -> jnp.array:
         """
-        Sampling loop for both the global sampler and the local sampler.
+        One sampling loop that iterate through the local sampler and potentially the global sampler.
+        If training is set to True, the loop will also train the normalizing flow model.
 
         Args:
-            rng_keys_nf (Device Array): RNG keys for the normalizing flow global sampler.
-            rng_keys_mcmc (Device Array): RNG keys for the local sampler.
-            d_likelihood ?
-            TODO: likelihood vs posterior?
-            TODO: nf_samples - sometime int, sometimes samples
+            initial_position (jnp.array): Initial position. Shape (n_chains, n_dim)
+            training (bool, optional): Whether to train the normalizing flow model. Defaults to False.
+
+        Returns:
+            chains (jnp.array): Samples from the posterior. Shape (n_chains, n_local_steps + n_global_steps, n_dim)
 
         """
 
