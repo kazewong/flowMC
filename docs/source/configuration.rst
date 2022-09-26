@@ -1,7 +1,7 @@
-.. _configuration-section-top:
+.. _tuning_guide-section-top:
 
-Configuration
-=============
+Tuning Guide
+============
 
 This page contains information about what knobs can you tune when the sampler doesn't work as expected.
 

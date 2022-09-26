@@ -25,7 +25,7 @@ Five steps to use flowMC's guide
 ================================
 
 #. You will find basic information such as installation and a quick guide in the :ref:`quickstart-section-top`.
-#. We give more information about tuning parameters of our sampler in the :ref:`configuration-section-top`.
+#. We give more information about tuning parameters of our sampler in the :ref:`tuning_guide-section-top`.
 #. In :ref:`tutorials`, we have a set of more pedagogical notebooks that will give you a better understanding of the package infrastructure.
 #. We list some community examples in :ref:`example-section-top`, so users can see whether there is a similar use case they can adopt their code quickly.
 #. Finally, we have a list of frequently asked questions in :ref:`FAQ-section-top`.
