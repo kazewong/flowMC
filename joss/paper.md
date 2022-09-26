@@ -50,6 +50,10 @@ The tight integration of all the above features makes `FlowMC` a highly performa
 Models in many scientific fields are growing more complex to capture complicated physical processes.
 One common way to increase the complexity of a model is to introduce more parameters.
 This increases the flexibility in the model, but it makes downstream data analysis tasks such as parameter estimation more challenging since introducing new parameters increase the dimension of problem.
+In a high dimensional space, sampling methods which leverage gradient information of the target distribution such as MALA and HMC are shown to be more efficient in proposing new samples with higher acceptance rate.
+`FlowMC` supports gradient-based samplers such as MALA and HMC through automatic differentiation with `Jax`.
+The computational cost of obtaining the gradient information in this way is often about the same order as evaluating the target function itself,
+which makes the extra computational costs in computing the gradient information usually a favorable trade-off for the increased efficiency in sampling.
 
 
 ***Learned reparameterization with normalizing flow***
@@ -71,7 +75,7 @@ This comes with its own set of challenges, and implementing such class of method
 Because the benefit from accelerators is not clear ahead of time and the hefty cost of implementation, 
 there are not many MCMC libraries that are designed to take advantage on accelerators.
 Since `FlowMC` is built on top of `Jax`, it supports the use of accelerators by default.
-Users can code in the same way as they would on a CPU, and the library will automatically detect the available accelerators and use them in run time.
+Users can write codes in the same way as they would do on a CPU, and the library will automatically detect the available accelerators and use them in run time.
 Furthermore, the library leverage Just-In-Time compilations to further improve the performance of the sampler.
 
 ***Simplicity and extensibility***
