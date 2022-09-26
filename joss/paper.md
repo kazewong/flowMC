@@ -29,17 +29,20 @@ bibliography: paper.bib
 # Summary
 
 `FlowMC` is a Python library for accelerated Markov Chain Monte Carlo (MCMC) building on top of `Jax` and `Flax`.
-At it cores, it uses a combination of normalizing flows and traditional sampler to efficiently sample posterior distributions with non-trivial geometry,
-such as multimode
+At its core, `FlowMC` uses a local sampler such as Metropolis-adjusted Langevin algorithm (MALA) and normalizing flow models in tandem to efficiently sample posterior distributions with non-trivial geometry,
+such as multimodal distributions and distributions with local correlations.
+While multiple chains of the local sampler generate samples over the region of interest in the target parameter space, the package uses these samples to train a normalizing flow model, then use it to propose global jumps across the parameter space.
+The key features of `FlowMC` are summarized in the following list:
 
+## Key features
 
-# Key features
+- Since `FlowMC` is built on top of `Jax`, it supports gradient-based sampler such as MALA and Hamiltonian Monte Carlo (HMC) through automatic differentiation.
+- `FlowMC` uses state-of-the-art normalizing flow models such as rational quadratic spline (RQS) for the global sampler, which is very efficient in capturing local features with relatively short training time.
+- Use of accelerators such as GPUs and TPUs are natively supported. The code also supports the use of multiple accelerators with SIMD parallelism.
+- By default, Just-in-time (JIT) compilation are used to further speed up the sampling process. 
+- We provide a simple black box interface for the users who want to use `FlowMC` by its default parameters, at the same time provide an extensive guide explaining trade-off while tuning the sampler parameters.
 
-- `FlowMC` by default employ gradient-based sampler such as Metropolis-adjusted Langevin algorithm (MALA)
-- Use of accelerators such as GPU and TPU are natively supported. The code also supports the use of multiple accelerators with SIMD parallelism.
-- `FlowMC` provides an interface to train normalizing flow models using `Flax`.
-- We provide a simple blackbox interface for the users who want to use `FlowMC` by its default parameters, at the same time provide an extensive guide explaining trade-off while tuning the sampler parameters.
-- We keep the library relatively lightweight and extensible. We provide examples of how to combine `FlowMC` with other libraries such as `harmonics`
+The tight integration of all the above features makes `FlowMC` a highly performant yet simple-to-use package for Bayesian inference.
 
 # Statement of need
 
@@ -47,7 +50,11 @@ such as multimode
 Models in many scientific fields are growing more complex to capture complicated physical processes.
 One common way to increase the complexity of a model is to introduce more parameters.
 This increases the flexibility in the model, but it makes downstream data analysis tasks such as parameter estimation more challenging since introducing new parameters increase the dimension of problem.
-We 
+In a high dimensional space, sampling methods which leverage gradient information of the target distribution such as MALA and HMC are shown to be more efficient in proposing new samples with higher acceptance rate.
+`FlowMC` supports gradient-based samplers such as MALA and HMC through automatic differentiation with `Jax`.
+The computational cost of obtaining the gradient information in this way is often about the same order as evaluating the target function itself,
+which makes the extra computational costs in computing the gradient information usually a favorable trade-off for the increased efficiency in sampling.
+
 
 ***Learned reparameterization with normalizing flow***
 While gradient-based sampler such as MALA and HMC are powerful in decorrelating random variables with a problem, their capability are limited to global correlation.
@@ -68,14 +75,14 @@ This comes with its own set of challenges, and implementing such class of method
 Because the benefit from accelerators is not clear ahead of time and the hefty cost of implementation, 
 there are not many MCMC libraries that are designed to take advantage on accelerators.
 Since `FlowMC` is built on top of `Jax`, it supports the use of accelerators by default.
-Users can code in the same way as they would on a CPU, and the library will automatically detect the available accelerators and use them in run time.
+Users can write codes in the same way as they would do on a CPU, and the library will automatically detect the available accelerators and use them in run time.
 Furthermore, the library leverage Just-In-Time compilations to further improve the performance of the sampler.
 
 ***Simplicity and extensibility***
 Since we anticipate most of the users would like to spend most of their time building model instead of optimize the performance of the sampler,
 we provide a black-box interface with a few tuning parameters for users who intend to use `FlowMC` without too much customization on the sampler side.
 The only inputs we require from the users are the log-likelihood function, the log-prior function, and initial position of the chains.
-<!-- Mention something related to auto tune -->
+On top of the black-box interface, the package offers automatic tuning for the local samplers, in order to reduce the number of hyperparameters the users have to manage.
 
 While we provide a high-level API for most of the users, the code is also designed to be extensible.
 <!-- Say something about extensibility like custom proposal -->
