@@ -37,16 +37,6 @@ class Sampler():
         keep_quantile (float, optional): Quantile of chains to keep when training the normalizing flow model. Defaults to 0.5.
         local_autotune (None, optional): Auto-tune function for the local sampler. Defaults to None.
 
-    Methods:
-        sample: Sample from the posterior using the local sampler.
-        sampling_loop: Sampling loop for the NF model.
-        local_sampler_tuning: Tune the local sampler.
-        global_sampler_tuning: Tune the global sampler.
-        production_run: Run the production run.
-        get_sampler_state: Get the sampler state.
-        sample_flow: Sample from the normalizing flow model.
-
-
     """
 
     def __init__(
