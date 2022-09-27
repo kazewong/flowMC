@@ -50,3 +50,4 @@ User guide
 
    tutorials/analyzingChains
    tutorials/localKernels
+   tutorials/normalizingFlow
