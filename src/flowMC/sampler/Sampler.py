@@ -56,7 +56,7 @@ class Sampler():
         learning_rate: float = 0.01,
         max_samples: int = 10000,
         momentum: float = 0.9,
-        batch_size: int = 1000,
+        batch_size: int = 10000,
         use_global: bool = True,
         logging: bool = True,
         nf_variable=None,
