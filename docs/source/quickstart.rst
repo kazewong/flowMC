@@ -47,7 +47,7 @@ A minimum example to sample a N dimensional Gaussian, you would do something lik
     from flowMC.utils.PRNG_keys import initialize_rng_keys
     from flowMC.nfmodel.utils import *
 
-    def log_prob(x):
+    def posterior(x):
         return -0.5 * jnp.sum(x ** 2)
 
     n_dim = 5
@@ -57,13 +57,23 @@ A minimum example to sample a N dimensional Gaussian, you would do something lik
     initial_position = jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
     model = RQSpline(n_dim, 3, [64, 64], 8)
     local_sampler_caller = lambda x: make_mala_sampler(x, jit=True)
-    sampler_params = {'dt': 1e-1}
+    sampler_params = {'dt': 5e-1}
 
-    nf_sampler = Sampler(n_dim, rng_key_set, local_sampler_caller, sampler_params, log_prob,
+    nf_sampler = Sampler(n_dim,
+                        rng_key_set,
+                        local_sampler_caller,
+                        sampler_params,
+                        posterior,
                         model,
-                        n_chains=n_chains)
+                        n_local_steps = 50,
+                        n_global_steps = 50,
+                        n_epochs = 30,
+                        learning_rate = 1e-2,
+                        batch_size = 1000,
+                        n_chains = n_chains)
 
     nf_sampler.sample(initial_position)
+    chains,log_prob,local_accs, global_accs = nf_sampler.get_sampler_state().values()
 
 
 For more realistic test case, see the examples on `github <https://github.com/kazewong/flowMC/tree/main/example>`_.
