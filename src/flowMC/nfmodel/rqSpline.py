@@ -163,6 +163,7 @@ class RQSpline(nn.Module):
         return base_dist, flow
 
     def __call__(self, x):
+        x = (x-self.base_mean.value)/jnp.sqrt(jnp.diag(self.base_cov.value))
         base_dist, flow = self.make_flow()
         return distrax.Transformed(base_dist, flow).log_prob(x)
 
