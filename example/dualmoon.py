@@ -27,8 +27,9 @@ d_dual_moon = jax.grad(dual_moon_pe)
 ### Demo config
 
 n_dim = 5
-n_chains = 100
-n_loop = 5
+n_chains = 20
+n_loop_training = 5
+n_loop_production = 5
 n_local_steps = 100
 n_global_steps = 100
 learning_rate = 0.01
@@ -58,19 +59,17 @@ nf_sampler = Sampler(
     {'dt':1e-1},
     dual_moon_pe,
     model,
-    n_loop=n_loop,
+    n_loop_training=n_loop_training,
+    n_loop_production=n_loop_production,
     n_local_steps=n_local_steps,
     n_global_steps=n_global_steps,
     n_chains=n_chains,
     n_epochs=num_epochs,
-    n_nf_samples=100,
     learning_rate=learning_rate,
     momentum=momentum,
     batch_size=batch_size,
     use_global=True,
-    local_autotune=mala_sampler_autotune
 )
-
 print("Sampling")
 
 nf_sampler.sample(initial_position)
