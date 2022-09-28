@@ -162,16 +162,17 @@ class RQSpline(nn.Module):
 
         return base_dist, flow
 
-    def __call__(self, x):
+    def __call__(self, x: jnp.array) -> jnp.array:
+        x = (x-self.base_mean.value)/jnp.sqrt(jnp.diag(self.base_cov.value))
         base_dist, flow = self.make_flow()
         return distrax.Transformed(base_dist, flow).log_prob(x)
 
-    def sample(self, rng, num_samples):
+    def sample(self, rng: jax.random.PRNGKey, num_samples: int) -> jnp.array:
         base_dist, flow = self.make_flow()
         samples = distrax.Transformed(base_dist, flow).sample(
             seed=rng, sample_shape=(num_samples)
         )
         return samples * jnp.sqrt(jnp.diag(self.base_cov.value)) + self.base_mean.value
 
-    def log_prob(self, x):
+    def log_prob(self, x: jnp.array) -> jnp.array:
         return self.vmap_call(x)
