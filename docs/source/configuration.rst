@@ -70,6 +70,7 @@ Number of global steps to run during the global sampling step. Default is ``50``
 ``n_epochs``
 
 Number of epochs to run during the training phase. Default is ``30``.
+The higher this number, the better the flow performs, at the cost of increasing the training time.
 
 ``learning_rate``
 
@@ -78,11 +79,22 @@ Learning rate for the Adam optimizer. Default is ``1e-2``.
 ``max_samples``
 
 Maximum number of samples used to training the normalizing flow model. Default is ``10000``.
+If the total number of samples is more than this parameters, only up to this parameters of samples will be fed into the normalizing flow model.
+The chains dimension has priority over step dimension, meaning the sampler will try to take at least one sample from each chains before going to previous steps to retrieve more samples.
+One usually choose this number base on the memory capacity of the device.
+If the number is larger than the memory bandwidth of your device, each training loop will take longer to finish.
+On the otherhand, the training time will not be affect if the entire dataset can fit on your device.
+If this number is too small, it means only the most recent samples are used in the training.
+This may cause the normalizing flow model to forget about the global landscape too quickly, leading to mode collapse.
+
 
 ``batch_size``
 
 Batch size for training the normalizing flow model. Default is ``10000``.
-
+Using large batch size speeds up the training since the training time is determined by the number of batched backward passes.
+Unlikely typical deep learning use case, since our training dataset is continuously evolving, we do not really have to worry about overfitting.
+Therefore, using larger batch size is usually better.
+The rule of thumb here is: within memory and computational bandwith, choose the largest number that would not decrease the training time.
 
 
 Only-if-you-know-what-you-are-doing arguments
