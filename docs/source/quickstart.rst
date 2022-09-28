@@ -24,6 +24,14 @@ At the time of writing this documentation page, this is the command to install J
     pip install --upgrade "jax[cuda]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 
 
+If you want to install the latest version of flowMC, you can clone this repo and install it locally:
+
+.. code-block::
+
+    git clone https://github.com/kazewong/flowMC.git
+    cd flowMC
+    pip install -e .
+
 Basic Usage
 -----------
 
