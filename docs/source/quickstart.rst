@@ -33,8 +33,8 @@ A minimum example to sample a N dimensional Gaussian, you would do something lik
 
     import jax
     import jax.numpy as jnp
-    from flowMC.nfmodel.realNVP import RealNVP
-    from flowMC.sampler.MALA import mala_sampler
+    from flowMC.nfmodel.rqSpline import RQSpline
+    from flowMC.sampler.MALA import make_mala_sampler
     from flowMC.sampler.Sampler import Sampler
     from flowMC.utils.PRNG_keys import initialize_rng_keys
     from flowMC.nfmodel.utils import *
@@ -42,29 +42,27 @@ A minimum example to sample a N dimensional Gaussian, you would do something lik
     def log_prob(x):
         return -0.5 * jnp.sum(x ** 2)
 
-    d_logp = jax.grad(log_prob)
-
     n_dim = 5
     n_chains = 10
 
     rng_key_set = initialize_rng_keys(n_chains, seed=42)
     initial_position = jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
+    model = RQSpline(n_dim, 3, [64, 64], 8)
+    local_sampler_caller = lambda x: make_mala_sampler(x, jit=True)
+    sampler_params = {'dt': 1e-1}
 
-    model = RealNVP(10, n_dim, 64, 1)
-    run_mcmc = jax.vmap(mala_sampler, in_axes=(0, None, None, None, 0, None), out_axes=0)
-
-    nf_sampler = Sampler(n_dim, rng_key_set, model, run_mcmc,
-                        log_prob,
-                        n_chains=n_chains,
-                        d_likelihood=d_logp,)
+    nf_sampler = Sampler(n_dim, rng_key_set, local_sampler_caller, sampler_params, log_prob,
+                        model,
+                        n_chains=n_chains)
 
     nf_sampler.sample(initial_position)
+
 
 For more realistic test case, see the examples on `github <https://github.com/kazewong/flowMC/tree/main/example>`_.
 In particular, currently the best engineered test case is `dualmoon.py <https://github.com/kazewong/flowMC/blob/main/example/dualmoon.py>`_.
 
-In the ideal case, the only two things you will have to do is:
+In the ideal case, the only three things you will have to do are:
 
 #. Write down the function you want to sample in the form of :code:`p(x)`, where :code:`p` is the log probability density function and :code:`x` is the vector of variables of interest.
 #. Configure the sampler.
-
+#. Give the sampler the initial position of your n_chains

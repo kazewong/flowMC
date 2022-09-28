@@ -1,4 +1,5 @@
 from logging import lastResort
+from typing import Callable, Tuple
 import jax
 import jax.numpy as jnp
 import numpy as np
@@ -8,35 +9,50 @@ from flax.training import train_state  # Useful dataclass to keep train state
 import flax
 import optax
 
-# Optimizers
-class Sampler(object):
+
+class Sampler():
     """
     Sampler class that host configuration parameters, NF model, and local sampler
 
     Args:
-        rng_key_set (Device Array): RNG keys set generated using initialize_rng_keys.
-        config (dict): Configuration parameters.
-        nf_model (flax module): Normalizing flow model.
-        local_sampler (function): Local sampler function.
-        likelihood (function): Likelihood function.
-        d_likelihood (Device Array): Derivative of the likelihood function.
+        n_dim (int): Dimension of the problem.
+        rng_key_set (Tuple): Tuple of random number generator keys.
+        local_sampler (Callable): Local sampler maker
+        sampler_params (dict): Parameters for the local sampler.
+        likelihood (Callable): Likelihood function.
+        nf_model (Callable): Normalizing flow model.
+        n_loop_training (int, optional): Number of training loops. Defaults to 2.
+        n_loop_production (int, optional): Number of production loops. Defaults to 2.
+        n_local_steps (int, optional): Number of local steps per loop. Defaults to 5.
+        n_global_steps (int, optional): Number of global steps per loop. Defaults to 5.
+        n_chains (int, optional): Number of chains. Defaults to 5.
+        n_epochs (int, optional): Number of epochs per training loop. Defaults to 5.
+        learning_rate (float, optional): Learning rate for the NF model. Defaults to 0.01.
+        max_samples (int, optional): Maximum number of samples fed to training the NF model. Defaults to 10000.
+        momentum (float, optional): Momentum for the NF model. Defaults to 0.9.
+        batch_size (int, optional): Batch size for the NF model. Defaults to 10.
+        use_global (bool, optional): Whether to use global sampler. Defaults to True.
+        logging (bool, optional): Whether to log the training process. Defaults to True.
+        nf_variable (None, optional): Mean and variance variables for the NF model. Defaults to None.
+        keep_quantile (float, optional): Quantile of chains to keep when training the normalizing flow model. Defaults to 0.5.
+        local_autotune (None, optional): Auto-tune function for the local sampler. Defaults to None.
+
     """
 
     def __init__(
         self,
         n_dim: int,
-        rng_key_set,
-        local_sampler,
+        rng_key_set: Tuple,
+        local_sampler: Callable,
         sampler_params: dict,
-        likelihood,
-        nf_model,
+        likelihood: Callable,
+        nf_model: Callable,
         n_loop_training: int = 2,
         n_loop_production: int = 2,
         n_local_steps: int = 5,
         n_global_steps: int = 5,
         n_chains: int = 5,
         n_epochs: int = 5,
-        n_nf_samples: int = 100,
         learning_rate: float = 0.01,
         max_samples: int = 10000,
         momentum: float = 0.9,
@@ -53,7 +69,7 @@ class Sampler(object):
         self.likelihood_vec = jax.jit(jax.vmap(self.likelihood))
         self.sampler_params = sampler_params
         self.local_sampler = local_sampler(likelihood)
-        self.local_autotune= local_autotune
+        self.local_autotune = local_autotune
 
         self.rng_keys_nf = rng_keys_nf
         self.rng_keys_mcmc = rng_keys_mcmc
@@ -64,14 +80,12 @@ class Sampler(object):
         self.n_global_steps = n_global_steps
         self.n_chains = n_chains
         self.n_epochs = n_epochs
-        self.n_nf_samples = n_nf_samples
         self.learning_rate = learning_rate
         self.max_samples = max_samples
         self.momentum = momentum
         self.batch_size = batch_size
         self.use_global = use_global
         self.logging = logging
-
 
         self.nf_model = nf_model
         model_init = nf_model.init(init_rng_keys_nf, jnp.ones((1, self.n_dim)))
@@ -122,7 +136,7 @@ class Sampler(object):
             global_accs (Device Array): (n_chains, n_global_steps * n_loop)
             loss_vals (Device Array): (n_epoch * n_loop,)
         """
-        
+
         # Note that auto-tune function needs to have the same number of steps
         # as the actual sampling loop to avoid recompilation.
 
@@ -133,17 +147,17 @@ class Sampler(object):
 
         last_step = self.production_run(last_step)
 
-    def sampling_loop(self, initial_position, training=False):
-
+    def sampling_loop(self, initial_position: jnp.array, training=False) -> jnp.array:
         """
-        Sampling loop for both the global sampler and the local sampler.
+        One sampling loop that iterate through the local sampler and potentially the global sampler.
+        If training is set to True, the loop will also train the normalizing flow model.
 
         Args:
-            rng_keys_nf (Device Array): RNG keys for the normalizing flow global sampler.
-            rng_keys_mcmc (Device Array): RNG keys for the local sampler.
-            d_likelihood ?
-            TODO: likelihood vs posterior?
-            TODO: nf_samples - sometime int, sometimes samples
+            initial_position (jnp.array): Initial position. Shape (n_chains, n_dim)
+            training (bool, optional): Whether to train the normalizing flow model. Defaults to False.
+
+        Returns:
+            chains (jnp.array): Samples from the posterior. Shape (n_chains, n_local_steps + n_global_steps, n_dim)
 
         """
 
@@ -164,7 +178,7 @@ class Sampler(object):
                 chain_size = cut_chains.shape[0] * cut_chains.shape[1]
                 if chain_size > self.max_samples:
                     flat_chain = cut_chains[
-                        :, -int(self.max_samples / self.n_chains) :
+                        :, -int(self.max_samples / self.n_chains):
                     ].reshape(-1, self.n_dim)
                 else:
                     flat_chain = cut_chains.reshape(-1, self.n_dim)
@@ -174,9 +188,14 @@ class Sampler(object):
                 variables["base_cov"] = jnp.cov(flat_chain.T)
                 self.variables = flax.core.freeze(variables)
 
-                flat_chain = (flat_chain - variables["base_mean"]) / jnp.sqrt(
-                    jnp.diag(variables["base_cov"])
-                )
+                if variables["base_cov"].shape[0] > 1:
+                    flat_chain = (flat_chain - variables["base_mean"]) / jnp.sqrt(
+                        jnp.diag(variables["base_cov"])
+                    )
+                else:
+                    flat_chain = (flat_chain - variables["base_mean"]) / jnp.sqrt(
+                        variables["base_cov"]
+                    )
 
                 self.rng_keys_nf, self.state, loss_values = self.nf_training_loop(
                     self.rng_keys_nf,
@@ -206,7 +225,8 @@ class Sampler(object):
             )
 
             positions = jnp.concatenate((positions, nf_chain), axis=1)
-            log_prob_output = jnp.concatenate((log_prob_output, log_prob), axis=1)
+            log_prob_output = jnp.concatenate(
+                (log_prob_output, log_prob), axis=1)
 
         if training == True:
             self.summary['training']['chains'] = jnp.append(
@@ -240,34 +260,84 @@ class Sampler(object):
 
         return last_step
 
-    def local_sampler_tuning(self, n_steps, initial_position, max_iter=10):
+    def local_sampler_tuning(self, n_steps: int, initial_position: jnp.array, max_iter: int = 10):
+        """
+        Tuning the local sampler. This runs a number of iterations of the local sampler,
+        and then uses the acceptance rate to adjust the local sampler parameters.
+        Since this is mostly for a fast adaptation, we do not carry the sample state forward.
+        Instead, we only adapt the sampler parameters using the initial position.
+
+        Args:
+            n_steps (int): Number of steps to run the local sampler.
+            initial_position (Device Array): Initial position for the local sampler.
+            max_iter (int): Number of iterations to run the local sampler.
+        """
         if self.local_autotune is not None:
             print("Autotune found, start tuning sampler_params")
-            self.sampler_params, self.local_sampler = self.local_autotune(self.local_sampler, self.rng_keys_mcmc, n_steps, initial_position, self.sampler_params, max_iter)
+            self.sampler_params, self.local_sampler = self.local_autotune(
+                self.local_sampler, self.rng_keys_mcmc, n_steps, initial_position, self.sampler_params, max_iter)
         else:
             print("No autotune found, use input sampler_params")
 
-    def global_sampler_tuning(self,initial_position):
+    def global_sampler_tuning(self, initial_position: jnp.ndarray) -> jnp.array:
+        """
+        Tuning the global sampler. This runs both the local sampler and the global sampler,
+        and train the normalizing flow on the run.
+        To adapt the normalizing flow, we need to keep certain amount of the data generated during the sampling.
+        The data is stored in the summary dictionary.
+
+        Args:
+            initial_position (Device Array): Initial position for the sampler, shape (n_chains, n_dim)
+
+        """
         print("Training normalizing flow")
         last_step = initial_position
         for _ in range(self.n_loop_training):
             last_step = self.sampling_loop(last_step, training=True)
         return last_step
+
+    def production_run(self, initial_position: jnp.ndarray):
+        """
+        Sampling procedure that produce the final set of samples.
+        The main difference between this and the global tuning step is
+        we do not train the normalizing flow in order to main detail balance.
+        The data is stored in the summary dictionary.
         
-    def production_run(self, initial_position):
+        """
         last_step = initial_position
         for _ in range(self.n_loop_production):
             self.sampling_loop(last_step)
 
-    def get_sampler_state(self, training=False):
+    def get_sampler_state(self, training: bool=False) -> dict:
+        """
+        Get the sampler state. There are two sets of sampler outputs one can get,
+        the training set and the production set.
+        The training set is produced during the global tuning step, and the production set
+        is produced during the production run.
+        Only the training set contains information about the loss function.
+        Only the production set should be used to represent the final set of samples.
+
+        Args:
+            training (bool): Whether to get the training set sampler state. Defaults to False.
+        
+        """
         if training == True:
             return self.summary['training']
         else:
             return self.summary['production']
 
-    def sample_flow(self, n_samples=None):
-        if n_samples is None:
-            n_samples = self.n_nf_samples
+    def sample_flow(self, n_samples: int) -> jnp.ndarray:
+        """
+
+        Sample from the normalizing flow.
+
+        Args:
+            n_samples (int): Number of samples to generate.
+
+        Returns:
+            Device Array: Samples generated using the normalizing flow.
+        """
+
         nf_samples = sample_nf(
             self.nf_model,
             self.state.params,
@@ -278,6 +348,10 @@ class Sampler(object):
         return nf_samples
 
     def reset(self):
+        """
+        Reset the sampler state.
+
+        """
         training = {}
         training["chains"] = jnp.empty((self.n_chains, 0, self.n_dim))
         training["log_prob"] = jnp.empty((self.n_chains, 0))

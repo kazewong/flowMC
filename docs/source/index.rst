@@ -21,14 +21,14 @@ The code is open source under MIT license, and it is under active development.
 - Suit for problems with multi-modality.
 
 
-Five steps to use flowMC
-========================
+Five steps to use flowMC's guide
+================================
 
 #. You will find basic information such as installation and a quick guide in the :ref:`quickstart-section-top`.
-#. We give more information about tuning parameters of our sampler in the :ref:`configuration-section-top`.
-#. In :ref:`analysis-section-top`, we give some examples of common diagnostics one can use in understanding the performance of our sampler.
-#. We list some examples in :ref:`example-section-top` so users can see whether there is a similar use case they can adopt their code quickly.
-#. Finally, the auto-generated API doc is available in the :ref:`api-section-top`.
+#. We give more information about tuning parameters of our sampler in the :ref:`tuning_guide-section-top`.
+#. In :ref:`tutorials`, we have a set of more pedagogical notebooks that will give you a better understanding of the package infrastructure.
+#. We list some community examples in :ref:`example-section-top`, so users can see whether there is a similar use case they can adopt their code quickly.
+#. Finally, we have a list of frequently asked questions in :ref:`FAQ-section-top`.
 
 User guide
 ----------
@@ -39,8 +39,15 @@ User guide
    
    quickstart
    configuration
-   analysis
    examples
    FAQ
    api/modules
    
+.. toctree::
+   :maxdepth: 1
+   :caption: Tutorials
+   :name: tutorials
+
+   tutorials/analyzingChains
+   tutorials/localKernels
+   tutorials/normalizingFlow

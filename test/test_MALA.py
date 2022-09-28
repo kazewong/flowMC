@@ -24,6 +24,7 @@ initial_position = jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 
 def test_mala_kernel():
     kernel = make_mala_kernel(dual_moon_pe)
     update = make_mala_update(kernel)
-    sampler = make_mala_sampler(dual_moon_pe)
+    sampler = make_mala_sampler(dual_moon_pe,jit=True)
 
-    sampler(rng_key_set[1],initial_position,jax.vmap(dual_moon_pe)(initial_position),1e-1)
+    kernel(rng_key_set[1][0], initial_position[0], dual_moon_pe(initial_position[0]), 1e-1)
+    sampler(rng_key_set[1],10,initial_position,{'dt':1e-1})

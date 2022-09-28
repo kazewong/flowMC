@@ -1,5 +1,3 @@
-.. _api-section-top:
-
 flowMC
 ======
 

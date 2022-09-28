@@ -35,6 +35,7 @@ flowMC.sampler.Sampler module
    :members:
    :undoc-members:
    :show-inheritance:
+   :noindex:
 
 flowMC.sampler.mMALA module
 ---------------------------

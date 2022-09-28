@@ -9,3 +9,4 @@ FAQ
 
 **The sampler is stuck a bit until it starts sampling**
 
+**Why do you need to call all these making methods instead of using a class?**
