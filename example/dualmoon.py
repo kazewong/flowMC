@@ -1,3 +1,4 @@
+from flowMC.nfmodel.realNVP import RealNVP
 from flowMC.nfmodel.rqSpline import RQSpline
 from flowMC.sampler.MALA import make_mala_sampler, mala_sampler_autotune
 
@@ -32,9 +33,9 @@ n_loop_training = 5
 n_loop_production = 5
 n_local_steps = 100
 n_global_steps = 100
-learning_rate = 0.01
+learning_rate = 0.001
 momentum = 0.9
-num_epochs = 30
+num_epochs = 300
 batch_size = 10000
 
 print("Preparing RNG keys")
