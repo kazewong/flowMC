@@ -163,7 +163,7 @@ class RealNVP(nn.Module):
             rng_key, self.base_mean.value, self.base_cov.value, shape=(n_samples,)
         )
         samples = self.inverse(gaussian)
-        return samples
+        return samples[0] # Return only the samples 
 
     def log_prob(self, x):
         y, log_det = self.__call__(x)
