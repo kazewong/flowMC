@@ -49,8 +49,6 @@ def make_training_loop(model):
 
     def train_flow(rng, state, variables, data, num_epochs, batch_size):
         loss_values = jnp.zeros(num_epochs)
-        best_state = state
-        best_loss = 1e9
         pbar = trange(num_epochs, desc="Training NF", miniters=int(num_epochs / 10))
         for epoch in pbar:
             # Use a separate PRNG key to permute image data during shuffling
@@ -59,9 +57,6 @@ def make_training_loop(model):
             value, state = train_epoch(input_rng, state, variables, data, batch_size)
             # print('Train loss: %.3f' % value)
             loss_values = loss_values.at[epoch].set(value)
-            if loss_values[epoch] < best_loss:
-                best_state = state
-                best_loss = loss_values[epoch]
             if num_epochs > 10:
                 if epoch % int(num_epochs / 10) == 0:
                     pbar.set_description(f"Training NF, current loss: {value:.3f}")
@@ -69,7 +64,7 @@ def make_training_loop(model):
                 if epoch == num_epochs:
                     pbar.set_description(f"Training NF, current loss: {value:.3f}")
 
-        return rng, best_state, loss_values
+        return rng, state, loss_values
 
     return train_flow, train_epoch, train_step
 
