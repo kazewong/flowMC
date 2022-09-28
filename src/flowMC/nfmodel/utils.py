@@ -49,9 +49,9 @@ def make_training_loop(model):
 
     def train_flow(rng, state, variables, data, num_epochs, batch_size):
         loss_values = jnp.zeros(num_epochs)
+        pbar = trange(num_epochs, desc="Training NF", miniters=int(num_epochs / 10))
         best_state = state
         best_loss = 1e9
-        pbar = trange(num_epochs, desc="Training NF", miniters=int(num_epochs / 10))
         for epoch in pbar:
             # Use a separate PRNG key to permute image data during shuffling
             rng, input_rng = jax.random.split(rng)
