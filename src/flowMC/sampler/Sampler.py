@@ -186,16 +186,9 @@ class Sampler():
                 variables = self.variables.unfreeze()
                 variables["base_mean"] = jnp.mean(flat_chain, axis=0)
                 variables["base_cov"] = jnp.cov(flat_chain.T)
+                if variables["base_cov"].ndim == 0:
+                    variables["base_cov"] = jnp.array([variables["base_cov"]])
                 self.variables = flax.core.freeze(variables)
-
-                if variables["base_cov"].shape[0] > 1:
-                    flat_chain = (flat_chain - variables["base_mean"]) / jnp.sqrt(
-                        jnp.diag(variables["base_cov"])
-                    )
-                else:
-                    flat_chain = (flat_chain - variables["base_mean"]) / jnp.sqrt(
-                        variables["base_cov"]
-                    )
 
                 self.rng_keys_nf, self.state, loss_values = self.nf_training_loop(
                     self.rng_keys_nf,
