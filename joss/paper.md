@@ -56,24 +56,24 @@ p(\theta|\mathcal{D}) = \frac{\ell(\mathcal{D}|\theta) p_0(\theta)}{Z(\mathcal{D
 $$
 
 where $\ell(\mathcal{D}|\theta)$ is the likelihood induced by the model,  $p_0(\theta)$ the prior on the parameters and  $Z(\mathcal{D})$ the model evidence. 
-As soon as the dimension of $\theta$ exceeds 3 or 4, it is necessary to resort to a robust sampling strategy such as a MCMC. Drastic gains in computational efficiency can be obtained by a careful selection of the MCMC transition kernel which can be assisted by machine learning libraries.  [@Gabrie2021]
+As soon as the dimension of $\theta$ exceeds 3 or 4, it is necessary to resort to a robust sampling strategy such as a MCMC. Drastic gains in computational efficiency can be obtained by a careful selection of the MCMC transition kernel which can be assisted by machine learning libraries.  
 
 ***Gradient-based sampler***
-In a high dimensional space, sampling methods which leverage gradient information of the target distribution such as MALA and HMC are shown to be more efficient in proposing new samples with higher acceptance rate.
+In a high dimensional space, sampling methods which leverage gradient information of the target distribution are shown to be more efficient by proposing new samples more likely to be accepted.
 `FlowMC` supports gradient-based samplers such as MALA and HMC through automatic differentiation with `Jax`.
-The computational cost of obtaining the gradient information in this way is often about the same order as evaluating the target function itself,
-which makes the extra computational costs in computing the gradient information usually a favorable trade-off for the increased efficiency in sampling.
+The computational cost of obtaining a gradient in this way is often of the same order as evaluating the target function itself, making gradient-based samplers compare usually favorably to random walks with respect to the efficiency/accuracy trade-off.
 
+***Learned transition kernels with normalizing flow***<!-- While gradient-based sampler such as MALA and HMC are powerful in decorrelating random variables with high, their capability are limited to global correlation. -->
+Posterior distribution of many real-world problems have non-trivial geometry such as multi-modality and local correlation, which could drastically slow down the convergence of the sampler only based on gradient information.
+To address this problem, we combine a gradient-based sampler with a normalizing flow, which is a class of generative model `[@Papamakarios2019; @Kobyzev2021]`, that is trained to mimic the posterior distribution and used as a proposal a Metropolis-Hastings step. Variant of this idea have been explored in the past few years (e.g.`[@Albergo2019; @Hoffman2019; @Gabrie2021]`), especially in the statistical mechanics literature (see also for instance `[@Nicoli2020, @McNaughton2020]`). 
+Despite the growing interest for these methods and their potential applicability in statistical inference across fields, few accessible implementations for non-experts already exist (cite pyro implementation of neutra + pocomoc).  
 
-***Learned reparameterization with normalizing flow***
-While gradient-based sampler such as MALA and HMC are powerful in decorrelating random variables with a problem, their capability are limited to global correlation.
-Posterior distribution of many real-world problems can have non-trivial geometry such as multi-modality and local correlation, which could drastically slow down the convergence of the sampler.
-To address this problem, we combine gradient-based sampler with normalizing flow, which is a class of generative model that can learn the geometry of the posterior distribution, as the proposal distribution.
-As individual chains are exploring their local neighbor, multiple chains can be combined and fed to the normalizing flow, such that the normalizing flow learn the global landscape of the posterior distribution.
-Since we are only using the normalizing flow as a proposal distribution, the entire algorithm is still essentially a MCMC method, meaning one assess the robustness of the inference result using diagnostics one would use to assess other MCMC methods.
-This means we do not have to worry about validation of the normalizing flow model, which is a common problem in deep learning.
-The normalizing flow is trained in parallel to the sampling process, so no pre-training is required.
-The mathematical detail of the method are explained in (cite)
+`FlowMC` implements the proposition of `[@Gabrie2021a]`. 
+As individual chains are exploring their local neighborhood through gradient-based MCMC steps, multiple chains can be combined and fed to the normalizing flow so it can learn the global landscape of the posterior distribution. In turn, the chains can be propagated with a Metropolis-Hastings kernel using the normalizing flow to propose globally in the parameter space in regions of high posterior-density. The cycle of local sampling, normalizing flow tuning and global sampling is repeated until convergence of the chains.
+The entire algorithm belongs to the class of adaptive MCMCs `[@Andrieu2008]` collected information from the chains previous steps to simultaneously improve the transition kernel. 
+Usual MCMC diagnostics can be applied to asses the robustness of the inference results without worrying about the validation of the normalizing flow model, which is a common problem in deep learning. 
+The normalizing flow is trained in parallel to the sampling process, no pre-training is required. However, if further sampling from the posterior will be necessary the flow trained at the end of a run can be saved to be used without further training in a next run. 
+The mathematical detail of the method are explained in `[@Gabrie2021a]`. The documentation provides ....
 
 ***Use of Accelerator***
 Modern accelerators such as GPU and TPU are designed to execute dense computation in parallel.
