@@ -161,14 +161,30 @@ class Sampler():
 
         """
 
+        if training == True:
+            summary_mode = 'training'
+        else:
+            summary_mode = 'production'
+
         self.rng_keys_mcmc, positions, log_prob, local_acceptance, _ = self.local_sampler(
             self.rng_keys_mcmc, self.n_local_steps, initial_position, self.sampler_params
         )
 
-        log_prob_output = np.copy(log_prob)
+        self.summary[summary_mode]['chains'] = jnp.append(
+            self.summary[summary_mode]['chains'], positions, axis=1
+        )
+        self.summary[summary_mode]['log_prob'] = jnp.append(
+            self.summary[summary_mode]['log_prob'], log_prob, axis=1
+        )
+        self.summary[summary_mode]['local_accs'] = jnp.append(
+            self.summary[summary_mode]['local_accs'], local_acceptance, axis=1
+        )
 
         if self.use_global == True:
             if training == True:
+                positions = self.summary['training']['chains']
+                log_prob_output = self.summary['training']['log_prob']
+
                 if self.keep_quantile > 0:
                     max_log_prob = jnp.max(log_prob_output, axis=1)
                     cut = jnp.quantile(max_log_prob, self.keep_quantile)
@@ -182,6 +198,11 @@ class Sampler():
                     ].reshape(-1, self.n_dim)
                 else:
                     flat_chain = cut_chains.reshape(-1, self.n_dim)
+
+                if flat_chain.shape[0] < self.max_samples:
+                    # This is to pad the training data to avoid recompilation.
+                    flat_chain = jnp.repeat(flat_chain, (self.max_samples // flat_chain.shape[0])+1, axis=0)
+                    flat_chain = flat_chain[:self.max_samples]
 
                 variables = self.variables.unfreeze()
                 variables["base_mean"] = jnp.mean(flat_chain, axis=0)
@@ -215,25 +236,12 @@ class Sampler():
                 positions[:, -1],
             )
 
-            positions = jnp.concatenate((positions, nf_chain), axis=1)
-            log_prob_output = jnp.concatenate(
-                (log_prob_output, log_prob), axis=1)
-
-        if training == True:
-            summary_mode = 'training'
-        else:
-            summary_mode = 'production'
-
-        self.summary[summary_mode]['chains'] = jnp.append(
-            self.summary[summary_mode]['chains'], positions, axis=1
-        )
-        self.summary[summary_mode]['log_prob'] = jnp.append(
-            self.summary[summary_mode]['log_prob'], log_prob_output, axis=1
-        )
-        self.summary[summary_mode]['local_accs'] = jnp.append(
-            self.summary[summary_mode]['local_accs'], local_acceptance, axis=1
-        )
-        if self.use_global == True:
+            self.summary[summary_mode]['chains'] = jnp.append(
+                self.summary[summary_mode]['chains'], nf_chain, axis=1
+            )
+            self.summary[summary_mode]['log_prob'] = jnp.append(
+                self.summary[summary_mode]['log_prob'], log_prob, axis=1
+            )
             self.summary[summary_mode]['global_accs'] = jnp.append(
                 self.summary[summary_mode]['global_accs'], global_acceptance, axis=1
             )
