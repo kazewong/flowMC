@@ -9,22 +9,22 @@ tags:
 authors:
   - name: Kaze W. K. Wong
     orcid: 0000-0001-8432-7788
-    equal-contrib: true
+    # equal-contrib: true
     affiliation: 1 
   - name:  Marylou Gabrié
     orcid: 0000-0002-5989-1018
-    equal-contrib: true 
+    # equal-contrib: true 
     affiliation: "2, 3"
   - name: Dan Foreman-Mackey
     orcid: 0000-0002-9328-5652
     affiliation: 1
 affiliations:
- - name: Center for Computational Astrophysics, Flatiron Institute, New York, NY 10010, US
-   index: 1
- - name: École Polytechnique, Palaiseau 91120, France
-   index: 2
-- name: Center for Computational Mathematics, Flatiron Institute, New York, NY 10010, US
-   index: 3
+  - name: Center for Computational Astrophysics, Flatiron Institute, New York, NY 10010, US
+    index: 1
+  - name: École Polytechnique, Palaiseau 91120, France
+    index: 2
+  - name: Center for Computational Mathematics, Flatiron Institute, New York, NY 10010, US
+    index: 3
 date: 30 September 2022
 bibliography: paper.bib
 ---
