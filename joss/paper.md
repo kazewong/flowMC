@@ -14,14 +14,17 @@ authors:
   - name:  Marylou Gabrié
     orcid: 0000-0002-5989-1018
     equal-contrib: true 
-    affiliation: 2
+    affiliation: "2, 3"
   - name: Dan Foreman-Mackey
     orcid: 0000-0002-9328-5652
     affiliation: 1
 affiliations:
  - name: Center for Computational Astrophysics, Flatiron Institute, New York, NY 10010, US
    index: 1
- - name: Institution Name, Country
+ - name: École Polytechnique, Palaiseau 91120, France
+   index: 2
+- name: Center for Computational Mathematics, Flatiron Institute, New York, NY 10010, US
+   index: 3
 date: 30 September 2022
 bibliography: paper.bib
 ---
@@ -39,17 +42,23 @@ The key features of `FlowMC` are summarized in the following list:
 - Since `FlowMC` is built on top of `Jax`, it supports gradient-based sampler such as MALA and Hamiltonian Monte Carlo (HMC) through automatic differentiation.
 - `FlowMC` uses state-of-the-art normalizing flow models such as rational quadratic spline (RQS) for the global sampler, which is very efficient in capturing local features with relatively short training time.
 - Use of accelerators such as GPUs and TPUs are natively supported. The code also supports the use of multiple accelerators with SIMD parallelism.
-- By default, Just-in-time (JIT) compilation are used to further speed up the sampling process. 
-- We provide a simple black box interface for the users who want to use `FlowMC` by its default parameters, at the same time provide an extensive guide explaining trade-off while tuning the sampler parameters.
+- By default, Just-in-time (JIT) compilations are used to further speed up the sampling process. 
+- We provide a simple black box interface for the users who want to use `FlowMC` by its default parameters, yet provide at the same time an extensive guide explaining trade-offs while tuning the sampler parameters.
 
-The tight integration of all the above features makes `FlowMC` a highly performant yet simple-to-use package for Bayesian inference.
+The tight integration of all the above features makes `FlowMC` a highly performant yet simple-to-use package for statistical inference.
 
 # Statement of need
 
+Across scientific fields, the modelling of increasingly complex physical processes requires more flexible models, which typically come with a large number of parameters. Yet parameter estimation becomes more challenging as the dimension of the parameter space grows. More precisely, the Bayesian method requires to compute expectations with respect to the posterior distribution on the parameters $\theta$ after collecting the observations $\mathcal{D}$: 
+
+$$
+p(\theta|\mathcal{D}) = \frac{\ell(\mathcal{D}|\theta) p_0(\theta)}{Z(\mathcal{D})}  
+$$
+
+where $\ell(\mathcal{D}|\theta)$ is the likelihood induced by the model,  $p_0(\theta)$ the prior on the parameters and  $Z(\mathcal{D})$ the model evidence. 
+As soon as the dimension of $\theta$ exceeds 3 or 4, it is necessary to resort to a robust sampling strategy such as a MCMC. Drastic gains in computational efficiency can be obtained by a careful selection of the MCMC transition kernel which can be assisted by machine learning libraries.  [@Gabrie2021]
+
 ***Gradient-based sampler***
-Models in many scientific fields are growing more complex to capture complicated physical processes.
-One common way to increase the complexity of a model is to introduce more parameters.
-This increases the flexibility in the model, but it makes downstream data analysis tasks such as parameter estimation more challenging since introducing new parameters increase the dimension of problem.
 In a high dimensional space, sampling methods which leverage gradient information of the target distribution such as MALA and HMC are shown to be more efficient in proposing new samples with higher acceptance rate.
 `FlowMC` supports gradient-based samplers such as MALA and HMC through automatic differentiation with `Jax`.
 The computational cost of obtaining the gradient information in this way is often about the same order as evaluating the target function itself,
