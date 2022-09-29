@@ -64,6 +64,7 @@ html_theme_options = {
     "use_download_button": True,
 }
 
+nb_execution_mode = 'off'
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
