@@ -229,33 +229,24 @@ class Sampler():
                 (log_prob_output, log_prob), axis=1)
 
         if training == True:
-            self.summary['training']['chains'] = jnp.append(
-                self.summary['training']['chains'], positions, axis=1
-            )
-            self.summary['training']['log_prob'] = jnp.append(
-                self.summary['training']['log_prob'], log_prob_output, axis=1
-            )
-            self.summary['training']['local_accs'] = jnp.append(
-                self.summary['training']['local_accs'], local_acceptance, axis=1
-            )
-            if self.use_global == True:
-                self.summary['training']['global_accs'] = jnp.append(
-                    self.summary['training']['global_accs'], global_acceptance, axis=1
-                )
+            summary_mode = 'training'
         else:
-            self.summary['production']['chains'] = jnp.append(
-                self.summary['production']['chains'], positions, axis=1
+            summary_mode = 'production'
+
+        self.summary[summary_mode]['chains'] = jnp.append(
+            self.summary[summary_mode]['chains'], positions, axis=1
+        )
+        self.summary[summary_mode]['log_prob'] = jnp.append(
+            self.summary[summary_mode]['log_prob'], log_prob_output, axis=1
+        )
+        self.summary[summary_mode]['local_accs'] = jnp.append(
+            self.summary[summary_mode]['local_accs'], local_acceptance, axis=1
+        )
+        if self.use_global == True:
+            self.summary[summary_mode]['global_accs'] = jnp.append(
+                self.summary[summary_mode]['global_accs'], global_acceptance, axis=1
             )
-            self.summary['production']['log_prob'] = jnp.append(
-                self.summary['production']['log_prob'], log_prob_output, axis=1
-            )
-            self.summary['production']['local_accs'] = jnp.append(
-                self.summary['production']['local_accs'], local_acceptance, axis=1
-            )
-            if self.use_global == True:
-                self.summary['production']['global_accs'] = jnp.append(
-                    self.summary['production']['global_accs'], global_acceptance, axis=1
-                )
+
         last_step = positions[:, -1]
 
         return last_step

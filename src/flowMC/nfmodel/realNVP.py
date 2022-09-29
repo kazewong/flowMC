@@ -152,6 +152,7 @@ class RealNVP(nn.Module):
         return x, log_det
 
     def inverse(self, x):
+        x = (x-self.base_mean.value)/jnp.sqrt(jnp.diag(self.base_cov.value))
         log_det = jnp.zeros(x.shape[0])
         for i in range(self.n_layer):
             x, log_det_i = self.affine_coupling[self.n_layer - 1 - i].inverse(x)
@@ -160,14 +161,16 @@ class RealNVP(nn.Module):
 
     def sample(self, rng_key, n_samples):
         gaussian = jax.random.multivariate_normal(
-            rng_key, self.base_mean.value, self.base_cov.value, shape=(n_samples,)
+            rng_key, jnp.zeros(self.n_features), jnp.eye(self.n_features), shape=(n_samples,)
         )
-        samples = self.inverse(gaussian)
-        return samples[0] # Return only the samples 
+        samples = self.inverse(gaussian)[0]
+        samples = samples * jnp.sqrt(jnp.diag(self.base_cov.value)) + self.base_mean.value
+        return samples # Return only the samples 
 
     def log_prob(self, x):
+        x = (x-self.base_mean.value)/jnp.sqrt(jnp.diag(self.base_cov.value))
         y, log_det = self.__call__(x)
         log_det = log_det + jax.scipy.stats.multivariate_normal.logpdf(
-            y, self.base_mean.value, self.base_cov.value
+            y, jnp.zeros(self.n_features), jnp.eye(self.n_features)
         )
         return log_det
