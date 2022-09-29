@@ -34,7 +34,7 @@ class Sampler():
         use_global (bool, optional): Whether to use global sampler. Defaults to True.
         logging (bool, optional): Whether to log the training process. Defaults to True.
         nf_variable (None, optional): Mean and variance variables for the NF model. Defaults to None.
-        keep_quantile (float, optional): Quantile of chains to keep when training the normalizing flow model. Defaults to 0.5.
+        keep_quantile (float, optional): Quantile of chains to keep when training the normalizing flow model. Defaults to 0..
         local_autotune (None, optional): Auto-tune function for the local sampler. Defaults to None.
 
     """
@@ -101,6 +101,10 @@ class Sampler():
         self.global_sampler = make_nf_metropolis_sampler(self.nf_model)
 
         tx = optax.adam(self.learning_rate, self.momentum)
+        # tx = optax.chain(
+        #     optax.adaptive_grad_clip(1, eps=0.001),
+        #     optax.adam(self.learning_rate, self.momentum)
+        # )
         self.state = train_state.TrainState.create(
             apply_fn=nf_model.apply, params=params, tx=tx
         )
