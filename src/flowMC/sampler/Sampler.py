@@ -188,7 +188,6 @@ class Sampler():
                 variables["base_cov"] = jnp.cov(flat_chain.T)
                 self.variables = flax.core.freeze(variables)
 
-
                 self.rng_keys_nf, self.state, loss_values = self.nf_training_loop(
                     self.rng_keys_nf,
                     self.state,
