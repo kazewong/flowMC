@@ -62,6 +62,7 @@ class Sampler():
         nf_variable=None,
         keep_quantile=0,
         local_autotune=None,
+        train_thinning = 1,
     ):
         rng_key_init, rng_keys_mcmc, rng_keys_nf, init_rng_keys_nf = rng_key_set
 
@@ -87,6 +88,7 @@ class Sampler():
         self.use_global = use_global
         self.logging = logging
 
+
         self.nf_model = nf_model
         model_init = nf_model.init(init_rng_keys_nf, jnp.ones((1, self.n_dim)))
         params = model_init["params"]
@@ -95,6 +97,7 @@ class Sampler():
             self.variables = self.variables
 
         self.keep_quantile = keep_quantile
+        self.train_thinning = train_thinning
         self.nf_training_loop, train_epoch, train_step = make_training_loop(
             self.nf_model
         )
@@ -182,8 +185,8 @@ class Sampler():
 
         if self.use_global == True:
             if training == True:
-                positions = self.summary['training']['chains']
-                log_prob_output = self.summary['training']['log_prob']
+                positions = self.summary['training']['chains'][:,::self.train_thinning]
+                log_prob_output = self.summary['training']['log_prob'][:,::self.train_thinning]
 
                 if self.keep_quantile > 0:
                     max_log_prob = jnp.max(log_prob_output, axis=1)
@@ -246,7 +249,7 @@ class Sampler():
                 self.summary[summary_mode]['global_accs'], global_acceptance, axis=1
             )
 
-        last_step = positions[:, -1]
+        last_step = self.summary[summary_mode]['chains'][:, -1]
 
         return last_step
 
