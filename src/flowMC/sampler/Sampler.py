@@ -301,6 +301,7 @@ class Sampler():
         The data is stored in the summary dictionary.
         
         """
+        print("Starting Production run")
         last_step = initial_position
         for _ in range(self.n_loop_production):
             last_step = self.sampling_loop(last_step)
