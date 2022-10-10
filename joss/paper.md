@@ -93,7 +93,7 @@ we provide a black-box interface with a few tuning parameters for users who inte
 The only inputs we require from the users are the log-likelihood function, the log-prior function, and initial position of the chains.
 On top of the black-box interface, the package offers automatic tuning for the local samplers, in order to reduce the number of hyperparameters the users have to manage.
 
-While we provide a high-level API for most of the users, the code is also designed to be extensible.
+While we provide a high-level API for most of the users, the code is also designed to be extensible. In particular, custom local and global sampling kernels can be integrated in the `sampler` module. 
 <!-- Say something about extensibility like custom proposal -->
 
 # Acknowledgements
