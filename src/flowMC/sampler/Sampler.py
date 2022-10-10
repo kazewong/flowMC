@@ -293,7 +293,7 @@ class Sampler():
             last_step = self.sampling_loop(last_step, training=True)
         return last_step
 
-    def production_run(self, initial_position: jnp.ndarray):
+    def production_run(self, initial_position: jnp.ndarray) -> jnp.array:
         """
         Sampling procedure that produce the final set of samples.
         The main difference between this and the global tuning step is
@@ -303,7 +303,8 @@ class Sampler():
         """
         last_step = initial_position
         for _ in range(self.n_loop_production):
-            self.sampling_loop(last_step)
+            last_step = self.sampling_loop(last_step)
+        return last_step
 
     def get_sampler_state(self, training: bool=False) -> dict:
         """
