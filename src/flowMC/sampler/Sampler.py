@@ -56,12 +56,13 @@ class Sampler():
         learning_rate: float = 0.01,
         max_samples: int = 10000,
         momentum: float = 0.9,
-        batch_size: int = 1000,
+        batch_size: int = 10000,
         use_global: bool = True,
         logging: bool = True,
         nf_variable=None,
         keep_quantile=0,
         local_autotune=None,
+        train_thinning = 1,
     ):
         rng_key_init, rng_keys_mcmc, rng_keys_nf, init_rng_keys_nf = rng_key_set
 
@@ -87,6 +88,7 @@ class Sampler():
         self.use_global = use_global
         self.logging = logging
 
+
         self.nf_model = nf_model
         model_init = nf_model.init(init_rng_keys_nf, jnp.ones((1, self.n_dim)))
         params = model_init["params"]
@@ -95,6 +97,7 @@ class Sampler():
             self.variables = self.variables
 
         self.keep_quantile = keep_quantile
+        self.train_thinning = train_thinning
         self.nf_training_loop, train_epoch, train_step = make_training_loop(
             self.nf_model
         )
@@ -165,14 +168,30 @@ class Sampler():
 
         """
 
+        if training == True:
+            summary_mode = 'training'
+        else:
+            summary_mode = 'production'
+
         self.rng_keys_mcmc, positions, log_prob, local_acceptance, _ = self.local_sampler(
             self.rng_keys_mcmc, self.n_local_steps, initial_position, self.sampler_params
         )
 
-        log_prob_output = np.copy(log_prob)
+        self.summary[summary_mode]['chains'] = jnp.append(
+            self.summary[summary_mode]['chains'], positions, axis=1
+        )
+        self.summary[summary_mode]['log_prob'] = jnp.append(
+            self.summary[summary_mode]['log_prob'], log_prob, axis=1
+        )
+        self.summary[summary_mode]['local_accs'] = jnp.append(
+            self.summary[summary_mode]['local_accs'], local_acceptance, axis=1
+        )
 
         if self.use_global == True:
             if training == True:
+                positions = self.summary['training']['chains'][:,::self.train_thinning]
+                log_prob_output = self.summary['training']['log_prob'][:,::self.train_thinning]
+
                 if self.keep_quantile > 0:
                     max_log_prob = jnp.max(log_prob_output, axis=1)
                     cut = jnp.quantile(max_log_prob, self.keep_quantile)
@@ -187,19 +206,15 @@ class Sampler():
                 else:
                     flat_chain = cut_chains.reshape(-1, self.n_dim)
 
+                if flat_chain.shape[0] < self.max_samples:
+                    # This is to pad the training data to avoid recompilation.
+                    flat_chain = jnp.repeat(flat_chain, (self.max_samples // flat_chain.shape[0])+1, axis=0)
+                    flat_chain = flat_chain[:self.max_samples]
+
                 variables = self.variables.unfreeze()
                 variables["base_mean"] = jnp.mean(flat_chain, axis=0)
                 variables["base_cov"] = jnp.cov(flat_chain.T)
                 self.variables = flax.core.freeze(variables)
-
-                if variables["base_cov"].shape[0] > 1:
-                    flat_chain = (flat_chain - variables["base_mean"]) / jnp.sqrt(
-                        jnp.diag(variables["base_cov"])
-                    )
-                else:
-                    flat_chain = (flat_chain - variables["base_mean"]) / jnp.sqrt(
-                        variables["base_cov"]
-                    )
 
                 self.rng_keys_nf, self.state, loss_values = self.nf_training_loop(
                     self.rng_keys_nf,
@@ -228,30 +243,17 @@ class Sampler():
                 positions[:, -1],
             )
 
-            positions = jnp.concatenate((positions, nf_chain), axis=1)
-            log_prob_output = jnp.concatenate(
-                (log_prob_output, log_prob), axis=1)
-
-        if training == True:
-            summary_mode = 'training'
-        else:
-            summary_mode = 'production'
-
-        self.summary[summary_mode]['chains'] = jnp.append(
-            self.summary[summary_mode]['chains'], positions, axis=1
-        )
-        self.summary[summary_mode]['log_prob'] = jnp.append(
-            self.summary[summary_mode]['log_prob'], log_prob_output, axis=1
-        )
-        self.summary[summary_mode]['local_accs'] = jnp.append(
-            self.summary[summary_mode]['local_accs'], local_acceptance, axis=1
-        )
-        if self.use_global == True:
+            self.summary[summary_mode]['chains'] = jnp.append(
+                self.summary[summary_mode]['chains'], nf_chain, axis=1
+            )
+            self.summary[summary_mode]['log_prob'] = jnp.append(
+                self.summary[summary_mode]['log_prob'], log_prob, axis=1
+            )
             self.summary[summary_mode]['global_accs'] = jnp.append(
                 self.summary[summary_mode]['global_accs'], global_acceptance, axis=1
             )
 
-        last_step = positions[:, -1]
+        last_step = self.summary[summary_mode]['chains'][:, -1]
 
         return last_step
 
