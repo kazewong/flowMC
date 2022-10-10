@@ -35,7 +35,7 @@ n_local_steps = 100
 n_global_steps = 100
 learning_rate = 0.001
 momentum = 0.9
-num_epochs = 300
+num_epochs = 30
 batch_size = 10000
 
 print("Preparing RNG keys")
@@ -107,7 +107,7 @@ plt.ylabel("$x_2$")
 
 plt.sca(axs[1])
 plt.title("NF loss")
-plt.plot(loss_vals)
+plt.plot(loss_vals.reshape(-1))
 plt.xlabel("iteration")
 
 plt.sca(axs[2])
