@@ -48,7 +48,8 @@ User guide
    :caption: Tutorials
    :name: tutorials
 
+   tutorials/dualmoon
    tutorials/analyzingChains
    tutorials/localKernels
    tutorials/normalizingFlow
-   tutorials/dualmoon
+   
