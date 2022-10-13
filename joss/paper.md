@@ -97,5 +97,5 @@ While we provide a high-level API for most of the users, the code is also design
 <!-- Say something about extensibility like custom proposal -->
 
 # Acknowledgements
-M.G. acknowledges funding from Hi!Paris.
+M.G. acknowledges support from Hi!Paris.
 # References
