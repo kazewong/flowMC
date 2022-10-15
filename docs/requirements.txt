@@ -1,0 +1,7 @@
+sphinx-book-theme
+myst-nb
+jax
+jaxlib
+flax
+distrax
+tqdm
