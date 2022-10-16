@@ -34,7 +34,7 @@ class Sampler():
         use_global (bool, optional): Whether to use global sampler. Defaults to True.
         logging (bool, optional): Whether to log the training process. Defaults to True.
         nf_variable (None, optional): Mean and variance variables for the NF model. Defaults to None.
-        keep_quantile (float, optional): Quantile of chains to keep when training the normalizing flow model. Defaults to 0.5.
+        keep_quantile (float, optional): Quantile of chains to keep when training the normalizing flow model. Defaults to 0..
         local_autotune (None, optional): Auto-tune function for the local sampler. Defaults to None.
 
     """
@@ -62,6 +62,7 @@ class Sampler():
         nf_variable=None,
         keep_quantile=0,
         local_autotune=None,
+        train_thinning = 1,
     ):
         rng_key_init, rng_keys_mcmc, rng_keys_nf, init_rng_keys_nf = rng_key_set
 
@@ -87,6 +88,7 @@ class Sampler():
         self.use_global = use_global
         self.logging = logging
 
+
         self.nf_model = nf_model
         model_init = nf_model.init(init_rng_keys_nf, jnp.ones((1, self.n_dim)))
         params = model_init["params"]
@@ -95,12 +97,17 @@ class Sampler():
             self.variables = self.variables
 
         self.keep_quantile = keep_quantile
+        self.train_thinning = train_thinning
         self.nf_training_loop, train_epoch, train_step = make_training_loop(
             self.nf_model
         )
         self.global_sampler = make_nf_metropolis_sampler(self.nf_model)
 
         tx = optax.adam(self.learning_rate, self.momentum)
+        # tx = optax.chain(
+        #     optax.adaptive_grad_clip(1, eps=0.001),
+        #     optax.adam(self.learning_rate, self.momentum)
+        # )
         self.state = train_state.TrainState.create(
             apply_fn=nf_model.apply, params=params, tx=tx
         )
@@ -161,14 +168,30 @@ class Sampler():
 
         """
 
+        if training == True:
+            summary_mode = 'training'
+        else:
+            summary_mode = 'production'
+
         self.rng_keys_mcmc, positions, log_prob, local_acceptance, _ = self.local_sampler(
             self.rng_keys_mcmc, self.n_local_steps, initial_position, self.sampler_params
         )
 
-        log_prob_output = np.copy(log_prob)
+        self.summary[summary_mode]['chains'] = jnp.append(
+            self.summary[summary_mode]['chains'], positions, axis=1
+        )
+        self.summary[summary_mode]['log_prob'] = jnp.append(
+            self.summary[summary_mode]['log_prob'], log_prob, axis=1
+        )
+        self.summary[summary_mode]['local_accs'] = jnp.append(
+            self.summary[summary_mode]['local_accs'], local_acceptance, axis=1
+        )
 
         if self.use_global == True:
             if training == True:
+                positions = self.summary['training']['chains'][:,::self.train_thinning]
+                log_prob_output = self.summary['training']['log_prob'][:,::self.train_thinning]
+
                 if self.keep_quantile > 0:
                     max_log_prob = jnp.max(log_prob_output, axis=1)
                     cut = jnp.quantile(max_log_prob, self.keep_quantile)
@@ -182,6 +205,11 @@ class Sampler():
                     ].reshape(-1, self.n_dim)
                 else:
                     flat_chain = cut_chains.reshape(-1, self.n_dim)
+
+                if flat_chain.shape[0] < self.max_samples:
+                    # This is to pad the training data to avoid recompilation.
+                    flat_chain = jnp.repeat(flat_chain, (self.max_samples // flat_chain.shape[0])+1, axis=0)
+                    flat_chain = flat_chain[:self.max_samples]
 
                 variables = self.variables.unfreeze()
                 variables["base_mean"] = jnp.mean(flat_chain, axis=0)
@@ -215,30 +243,17 @@ class Sampler():
                 positions[:, -1],
             )
 
-            positions = jnp.concatenate((positions, nf_chain), axis=1)
-            log_prob_output = jnp.concatenate(
-                (log_prob_output, log_prob), axis=1)
-
-        if training == True:
-            summary_mode = 'training'
-        else:
-            summary_mode = 'production'
-
-        self.summary[summary_mode]['chains'] = jnp.append(
-            self.summary[summary_mode]['chains'], positions, axis=1
-        )
-        self.summary[summary_mode]['log_prob'] = jnp.append(
-            self.summary[summary_mode]['log_prob'], log_prob_output, axis=1
-        )
-        self.summary[summary_mode]['local_accs'] = jnp.append(
-            self.summary[summary_mode]['local_accs'], local_acceptance, axis=1
-        )
-        if self.use_global == True:
+            self.summary[summary_mode]['chains'] = jnp.append(
+                self.summary[summary_mode]['chains'], nf_chain, axis=1
+            )
+            self.summary[summary_mode]['log_prob'] = jnp.append(
+                self.summary[summary_mode]['log_prob'], log_prob, axis=1
+            )
             self.summary[summary_mode]['global_accs'] = jnp.append(
                 self.summary[summary_mode]['global_accs'], global_acceptance, axis=1
             )
 
-        last_step = positions[:, -1]
+        last_step = self.summary[summary_mode]['chains'][:, -1]
 
         return last_step
 
@@ -278,7 +293,7 @@ class Sampler():
             last_step = self.sampling_loop(last_step, training=True)
         return last_step
 
-    def production_run(self, initial_position: jnp.ndarray):
+    def production_run(self, initial_position: jnp.ndarray) -> jnp.array:
         """
         Sampling procedure that produce the final set of samples.
         The main difference between this and the global tuning step is
@@ -286,9 +301,11 @@ class Sampler():
         The data is stored in the summary dictionary.
         
         """
+        print("Starting Production run")
         last_step = initial_position
         for _ in range(self.n_loop_production):
-            self.sampling_loop(last_step)
+            last_step = self.sampling_loop(last_step)
+        return last_step
 
     def get_sampler_state(self, training: bool=False) -> dict:
         """
