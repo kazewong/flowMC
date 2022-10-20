@@ -40,7 +40,7 @@ The key features of `FlowMC` are summarized in the following list:
 ## Key features
 
 - Since `FlowMC` is built on top of `Jax`, it supports gradient-based sampler such as MALA and Hamiltonian Monte Carlo (HMC) through automatic differentiation.
-- `FlowMC` uses state-of-the-art normalizing flow models such as rational quadratic spline (RQS) for the global sampler, which is very efficient in capturing local features with relatively short training time.
+- `FlowMC` uses state-of-the-art normalizing flow models such as rational quadratic spline for the global sampler, which is very efficient in capturing local features with relatively short training time.
 - Use of accelerators such as GPUs and TPUs are natively supported. The code also supports the use of multiple accelerators with SIMD parallelism.
 - By default, Just-in-time (JIT) compilations are used to further speed up the sampling process. 
 - We provide a simple black box interface for the users who want to use `FlowMC` by its default parameters, yet provide at the same time an extensive guide explaining trade-offs while tuning the sampler parameters.
@@ -61,7 +61,7 @@ As soon as the dimension of $\theta$ exceeds 3 or 4, it is necessary to resort t
 ***Gradient-based sampler***
 In a high dimensional space, sampling methods which leverage gradient information of the target distribution are shown to be efficient by proposing new samples likely to be accepted.
 `FlowMC` supports gradient-based samplers such as MALA and HMC through automatic differentiation with `Jax`.
-The computational cost of obtaining a gradient in this way is often of the same order as evaluating the target function itself, making gradient-based samplers compare usually favorably to random walks with respect to the efficiency/accuracy trade-off.
+The computational cost of obtaining a gradient in this way is often of the same order as evaluating the target function itself, making gradient-based samplers favorable with respect to the efficiency/accuracy trade-off.
 
 ***Learned transition kernels with normalizing flow***
 Posterior distribution of many real-world problems have non-trivial geometry such as multi-modality and local correlation, which could drastically slow down the convergence of the sampler only based on gradient information.
@@ -69,9 +69,9 @@ To address this problem, we combine a gradient-based sampler with a normalizing 
 Despite the growing interest for these methods few accessible implementations for non-experts already exist and none of them propose GPU and TPU. Namely, a version of the NeuTra sampler [@Hoffman2019] available in Pyro [@bingham2019pyro] and the PocoMC package [@Karamanis2022] are both CPU bounded.
 
 `FlowMC` implements the proposition of [@Gabrie2021a]. 
-As individual chains are exploring their local neighborhood through gradient-based MCMC steps, multiple chains can be combined and fed to the normalizing flow so it can learn the global landscape of the posterior distribution. In turn, the chains can be propagated with a Metropolis-Hastings kernel using the normalizing flow to propose globally in the parameter space. The cycle of local sampling, normalizing flow tuning and global sampling is repeated until convergence of the chains.
+As individual chains explore their local neighborhood through gradient-based MCMC steps, multiple chains can be used to train the normalizing flow, so it can learn the global landscape of the posterior distribution. In turn, the chains can be propagated with a Metropolis-Hastings kernel using the normalizing flow to propose globally in the parameter space. The cycle of local sampling, normalizing flow tuning and global sampling is repeated until convergence of the chains.
 The entire algorithm belongs to the class of adaptive MCMCs [@Andrieu2008] collecting information from the chains previous steps to simultaneously improve the transition kernel. 
-Usual MCMC diagnostics can be applied to asses the robustness of the inference results without worrying about the validation of the normalizing flow model, which is a common problem in deep learning. 
+Usual MCMC diagnostics can be applied to assess the robustness of the inference results, therefore rid the common concern of validating the normalizing flow model. 
 If further sampling from the posterior is necessary, the flow trained during a previous can be reused without further training. 
 The mathematical detail of the method are explained in [@Gabrie2021a].
 
