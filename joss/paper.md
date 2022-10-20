@@ -55,7 +55,7 @@ $$
 p(\theta|\mathcal{D}) = \frac{\ell(\mathcal{D}|\theta) p_0(\theta)}{Z(\mathcal{D})}  
 $$
 
-where $\ell(\mathcal{D}|\theta)$ is the likelihood induced by the model,  $p_0(\theta)$ the prior on the parameters and  $Z(\mathcal{D})$ the model evidence. 
+where $\ell(\mathcal{D}|\theta)$ is the likelihood induced by the model, $p_0(\theta)$ the prior on the parameters and  $Z(\mathcal{D})$ the model evidence. 
 As soon as the dimension of $\theta$ exceeds 3 or 4, it is necessary to resort to a robust sampling strategy such as a MCMC. Drastic gains in computational efficiency can be obtained by a careful selection of the MCMC transition kernel which can be assisted by machine learning methods and libraries.  
 
 ***Gradient-based sampler***
@@ -65,15 +65,15 @@ The computational cost of obtaining a gradient in this way is often of the same 
 
 ***Learned transition kernels with normalizing flow***
 Posterior distribution of many real-world problems have non-trivial geometry such as multi-modality and local correlation, which could drastically slow down the convergence of the sampler only based on gradient information.
-To address this problem, we combine a gradient-based sampler with a normalizing flow, which is a class of generative model `[@Papamakarios2019; @Kobyzev2021]`, that is trained to mimic the posterior distribution and used as a proposal a Metropolis-Hastings step. Variant of this idea have been explored in the past few years (e.g.`[@Albergo2019; @Hoffman2019; @Gabrie2021]` and references there in).
-Despite the growing interest for these methods few accessible implementations for non-experts already exist and none of them propose GPU and TPU. Namely, a version of the NeuTra sampler `[@Hoffman2019]` available in Pyro `[@bingham2019pyro]` and the PocoMC package `[@Karamanis2022]` are both CPU bounded.
+To address this problem, we combine a gradient-based sampler with a normalizing flow, which is a class of generative model [@Papamakarios2019; @Kobyzev2021], that is trained to mimic the posterior distribution and used as a proposal a Metropolis-Hastings step. Variant of this idea have been explored in the past few years (e.g.[@Albergo2019; @Hoffman2019; @Gabrie2021] and references there in).
+Despite the growing interest for these methods few accessible implementations for non-experts already exist and none of them propose GPU and TPU. Namely, a version of the NeuTra sampler [@Hoffman2019] available in Pyro [@bingham2019pyro] and the PocoMC package [@Karamanis2022] are both CPU bounded.
 
-`FlowMC` implements the proposition of `[@Gabrie2021a]`. 
+`FlowMC` implements the proposition of [@Gabrie2021a]. 
 As individual chains are exploring their local neighborhood through gradient-based MCMC steps, multiple chains can be combined and fed to the normalizing flow so it can learn the global landscape of the posterior distribution. In turn, the chains can be propagated with a Metropolis-Hastings kernel using the normalizing flow to propose globally in the parameter space. The cycle of local sampling, normalizing flow tuning and global sampling is repeated until convergence of the chains.
-The entire algorithm belongs to the class of adaptive MCMCs `[@Andrieu2008]` collecting information from the chains previous steps to simultaneously improve the transition kernel. 
+The entire algorithm belongs to the class of adaptive MCMCs [@Andrieu2008] collecting information from the chains previous steps to simultaneously improve the transition kernel. 
 Usual MCMC diagnostics can be applied to asses the robustness of the inference results without worrying about the validation of the normalizing flow model, which is a common problem in deep learning. 
 If further sampling from the posterior is necessary, the flow trained during a previous can be reused without further training. 
-The mathematical detail of the method are explained in `[@Gabrie2021a]`.
+The mathematical detail of the method are explained in [@Gabrie2021a].
 
 ***Use of Accelerator***
 Modern accelerators such as GPU and TPU are designed to execute dense computation in parallel.
