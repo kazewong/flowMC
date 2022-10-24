@@ -87,3 +87,20 @@ In the ideal case, the only three things you will have to do are:
 While this guide can help in configuring the sampler, here are the two important bits you need to think about before using this package:
 
 1. You better write the likelihood function in JAX
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+While the package does support non-Jax likelihood function, it is highly recommended that you write your likelihood function in JAX.
+
+If your likelihood is fully defined in Jax, there are a couple benefits that compound with each other:
+#. Jax allows you to access the gradient of the likelihood function with respect to the parameters of the model through automatic differentiation.
+   Having access to the gradient allows the use of gradient-based local sampler such as Metropolis-adjusted Langevin algorithm (MALA) and Hamiltonian Monte Carlo (HMC).
+   These algorithms allow the sampler to handle high dimensional problems, and is often more efficient than the gradient-free local sampler such as Metropolis-Hastings.
+#. Jax uses `XLA <https://www.tensorflow.org/xla>`_ to compile your code not only into machine code but also in a way that is more optimized for accelerators such as GPUs and TPUs.
+   Having multiple MCMC chains helps speed up the training of the normalizing flow. Accelerators such as GPUs and TPUs provide parallel computing solutions that are more scalable compared to CPUs.
+
+
+
+Being able to run many chains in parallel helps training the normalizing flow model.
+
+1. Starting at the right position might help training and sampling.
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
