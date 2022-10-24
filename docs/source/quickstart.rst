@@ -83,3 +83,7 @@ In the ideal case, the only three things you will have to do are:
 #. Write down the function you want to sample in the form of :code:`p(x)`, where :code:`p` is the log probability density function and :code:`x` is the vector of variables of interest.
 #. Configure the sampler.
 #. Give the sampler the initial position of your n_chains
+
+While this guide can help in configuring the sampler, here are the two important bits you need to think about before using this package:
+
+1. You better write the likelihood function in JAX
