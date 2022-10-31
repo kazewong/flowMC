@@ -183,8 +183,9 @@ class Sampler():
         self.summary[summary_mode]['log_prob'] = jnp.append(
             self.summary[summary_mode]['log_prob'], log_prob, axis=1
         )
+        print(local_acceptance.shape)
         self.summary[summary_mode]['local_accs'] = jnp.append(
-            self.summary[summary_mode]['local_accs'], local_acceptance, axis=1
+            self.summary[summary_mode]['local_accs'], local_acceptance[:,1:], axis=1
         )
 
         if self.use_global == True:
@@ -249,8 +250,9 @@ class Sampler():
             self.summary[summary_mode]['log_prob'] = jnp.append(
                 self.summary[summary_mode]['log_prob'], log_prob, axis=1
             )
+            print(global_acceptance.shape)
             self.summary[summary_mode]['global_accs'] = jnp.append(
-                self.summary[summary_mode]['global_accs'], global_acceptance, axis=1
+                self.summary[summary_mode]['global_accs'], global_acceptance[:,1:], axis=1
             )
 
         last_step = self.summary[summary_mode]['chains'][:, -1]
