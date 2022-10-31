@@ -31,16 +31,16 @@ bibliography: paper.bib
 
 # Summary
 
-Across scientific fields, the modelling of increasingly complex physical processes requires more flexible models. Yet the estimation of models'parameters becomes more challenging as the dimension of the parameter space grows. A common strategy to explore parameter space is to sample through a Markov Chain Monte Carlo (MCMC). Yet even MCMC methods can struggle to fully represent the parameter space when only relying on local updates.
+Across scientific fields, more and more flexible models are required to understand increasingly complex physical processes. Yet the estimation of models'parameters becomes more challenging as the dimension of the parameter space grows. A common strategy to explore parameter space is to sample through a Markov Chain Monte Carlo (MCMC). Yet even MCMC methods can struggle to fully represent the parameter space when only relying on local updates.
 
-`FlowMC` is a Python library for accelerated Markov Chain Monte Carlo (MCMC) leveraging deep generative modelling built on top of machine learning libraries `Jax` and `Flax`. At its core, `FlowMC` uses a local sampler and a learnable global sampler in tandem to efficiently sample posterior distributions with non-trivial geometry, such as multimodal distributions and distributions with local correlations. While multiple chains of the local sampler generate samples over the region of interest in the target parameter space, the package uses these samples to train a normalizing flow model, then use it to propose global jumps across the parameter space.
+`FlowMC` is a Python library for accelerated Markov Chain Monte Carlo (MCMC) leveraging deep generative modelling built on top of the machine learning libraries `Jax` and `Flax`. At its core, `FlowMC` uses a local sampler and a learnable global sampler in tandem to efficiently sample posterior distributions. While multiple chains of the local sampler generate samples over the region of interest in the target parameter space, the package uses these samples to train a normalizing flow model, then use it to propose global jumps across the parameter space. The `FlowMC`sampler can handle non-trivial geometry, such as multimodal distributions and distributions with local correlations. 
 
 The key features of `FlowMC` are summarized in the following list:
 
 ## Key features
 
 - Since `FlowMC` is built on top of `Jax`, it supports gradient-based sampler such as MALA and Hamiltonian Monte Carlo (HMC) through automatic differentiation.
-- `FlowMC` uses state-of-the-art normalizing flow models such as rational quadratic spline for the global sampler, which is very efficient in capturing local features with relatively short training time.
+- `FlowMC` uses state-of-the-art normalizing flow models such as rational quadratic spline to power its global sampler, which is very efficient in capturing local features with relatively short training time.
 - Use of accelerators such as GPUs and TPUs are natively supported. The code also supports the use of multiple accelerators with SIMD parallelism.
 - By default, Just-in-time (JIT) compilations are used to further speed up the sampling process. 
 - We provide a simple black box interface for the users who want to use `FlowMC` by its default parameters, yet provide at the same time an extensive guide explaining trade-offs while tuning the sampler parameters.
@@ -65,31 +65,31 @@ The computational cost of obtaining a gradient in this way is often of the same 
 
 ***Learned transition kernels with normalizing flow***
 Posterior distribution of many real-world problems have non-trivial geometry such as multi-modality and local correlation, which could drastically slow down the convergence of the sampler only based on gradient information.
-To address this problem, we combine a gradient-based sampler with a normalizing flow, which is a class of generative model [@Papamakarios2019; @Kobyzev2021], that is trained to mimic the posterior distribution and used as a proposal a Metropolis-Hastings step. Variant of this idea have been explored in the past few years (e.g.[@Albergo2019; @Hoffman2019; @Gabrie2021] and references there in).
-Despite the growing interest for these methods few accessible implementations for non-experts already exist and none of them propose GPU and TPU. Namely, a version of the NeuTra sampler [@Hoffman2019] available in Pyro [@bingham2019pyro] and the PocoMC package [@Karamanis2022] are both CPU bounded.
+To address this problem, `FlowMC` also uses a generative model, namely a normalizing flow (NF) [@Papamakarios2019; @Kobyzev2021], that is trained to mimic the posterior distribution and used as a proposal in Metropolis-Hastings MCMC steps. Variant of this idea have been explored in the past few years (e.g.[@Parno2018; @Albergo2019; @Hoffman2019] and references there in).
+Despite the growing interest for these methods few accessible implementations for non-experts already exist, especially with GPU and TPU supports. Notably, a version of the NeuTra sampler [@Hoffman2019] is available in Pyro [@bingham2019pyro] and the PocoMC package [@Karamanis2022] implements a version of Sequential Monte Carlo including NFs.
 
 `FlowMC` implements the proposition of [@Gabrie2021a]. 
-As individual chains explore their local neighborhood through gradient-based MCMC steps, multiple chains can be used to train the normalizing flow, so it can learn the global landscape of the posterior distribution. In turn, the chains can be propagated with a Metropolis-Hastings kernel using the normalizing flow to propose globally in the parameter space. The cycle of local sampling, normalizing flow tuning and global sampling is repeated until convergence of the chains.
+As individual chains explore their local neighborhood through gradient-based MCMC steps, multiple chains can be used to train the NF, so it can learn the global landscape of the posterior distribution. In turn, the chains can be propagated with a Metropolis-Hastings kernel using the NF to propose globally in the parameter space. The cycle of local sampling, NF tuning and global sampling is repeated until convergence of the chains.
 The entire algorithm belongs to the class of adaptive MCMCs [@Andrieu2008] collecting information from the chains previous steps to simultaneously improve the transition kernel. 
-Usual MCMC diagnostics can be applied to assess the robustness of the inference results, therefore rid the common concern of validating the normalizing flow model. 
+Usual MCMC diagnostics can be applied to assess the robustness of the inference results, therefore rid the common concern of validating the NF model. 
 If further sampling from the posterior is necessary, the flow trained during a previous can be reused without further training. 
 The mathematical detail of the method are explained in [@Gabrie2021a].
 
 ***Use of Accelerator***
 Modern accelerators such as GPU and TPU are designed to execute dense computation in parallel.
 Due to the sequential nature of MCMC, a common approach in leveraging accelerators is to run multiple chains in parallel, then combine their results to obtain the posterior distribution.
-However, large portion of the computation comes from the burn-in phase, and simply by parallelizing over many chains do not help speed up the burn-in.
-To fully leverage the benefit from having many chains, ensemble methods such as (Cite) are often implemented.
-This comes with its own set of challenges, and implementing such class of methods on accelerators require careful consideration.
+However, a large portion of the computation time comes from the burn-in phase which for which chain-parallelization provides no speed up.
+<!-- To fully leverage the benefit from having many chains, ensemble methods such as (Cite) are often implemented.
+This comes with its own set of challenges, and implementing such class of methods on accelerators require careful consideration. -->
 <!-- Because the benefit from accelerators is not clear ahead of time and the hefty cost of implementation, 
 there are not many MCMC libraries that are designed to take advantage on accelerators. -->
-Since `FlowMC` is built on top of `Jax`, it supports the use of accelerators by default.
+`FlowMC` is built on top of `Jax`, so that it supports the use of GPU and TPU accelerators by default.
 Users can write codes in the same way as they would do on a CPU, and the library will automatically detect the available accelerators and use them in run time.
 Furthermore, the library leverage Just-In-Time compilations to further improve the performance of the sampler.
 
 ***Simplicity and extensibility***
-Since we anticipate most of the users would like to spend most of their time building model instead of optimize the performance of the sampler,
-we provide a black-box interface with a few tuning parameters for users who intend to use `FlowMC` without too much customization on the sampler side.
+<!-- Since we anticipate most of the users would like to spend most of their time building model instead of optimize the performance of the sampler, -->
+We provide a black-box interface with a few tuning parameters for users who intend to use `FlowMC` without too much customization on the sampler side.
 The only inputs we require from the users are the log-likelihood function, the log-prior function, and initial position of the chains.
 On top of the black-box interface, the package offers automatic tuning for the local samplers, in order to reduce the number of hyperparameters the users have to manage.
 
