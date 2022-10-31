@@ -84,7 +84,7 @@ In the ideal case, the only three things you will have to do are:
 #. Give the sampler the initial position of your n_chains,
 #. Configure the sampler and normalizing flow model.
 
-While this guide can help in configuring the sampler, here are the two important bits you need to think about before using this package:
+While this :ref:`configuration_guide-section-top` can help in configuring the sampler, here are the two important bits you need to think about before using this package:
 
 1. Write the likelihood function in JAX
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
