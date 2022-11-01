@@ -92,22 +92,67 @@ class HMC:
 
         """
 
-        hmc_kernel = self.make_hmc_kernel(self.logpdf)
-        def hmc_update():
-            pass
+        hmc_kernel = self.make_hmc_kernel()
+
+        def hmc_update(i, state):
+            key, positions, log_Ham, acceptance = state
+            _, key = jax.random.split(key)
+            new_position, new_log_Ham, do_accept = hmc_kernel(
+                key, positions[i - 1], log_Ham[i - 1]
+            )
+            positions = positions.at[i].set(new_position)
+            log_Ham = log_Ham.at[i].set(new_log_Ham)
+            acceptance = acceptance.at[i].set(do_accept)
+            return (key, positions, log_Ham, acceptance)
+
+        return hmc_update
 
     def make_hmc_sampler(self) -> Callable:
-        hmc_update, lp = self.make_hmc_update(self.logpdf)
+        hmc_update = self.make_hmc_update()
 
         if self.jit:
             hmc_update = jax.jit(hmc_update)
-            lp = jax.jit(lp)
 
-        hmc_update = jax.vmap(hmc_update, in_axes = (None, (0, 0, 0, 0, None)), out_axes=(0, 0, 0, 0, None))
-        lp = jax.vmap(lp)
+        hmc_update = jax.vmap(hmc_update, in_axes = (None, (0, 0, 0, 0)), out_axes=(0, 0, 0, 0))
+        lh = jax.vmap(self.get_initial_hamiltonian)
 
-        def hmc_sampler(rng_key, n_steps, initial_position, sampler_params = {}):
-            pass
+        def hmc_sampler(rng_key, rng_init, n_steps, initial_position):
+            
+            logp = lh(rng_init,initial_position)
+            n_chains = rng_key.shape[0]
+            acceptance = jnp.zeros(
+                (
+                    n_chains,
+                    n_steps
+                )
+            )
+            all_positions = (
+                jnp.zeros(
+                    (
+                        n_chains,
+                        n_steps,
+                    )
+                    + initial_position.shape[-1:]
+                )
+                + initial_position[:, None]
+            )
+            all_logp = (
+                jnp.zeros(
+                    (
+                        n_chains,
+                        n_steps,
+                    )
+                )
+                + logp[:, None]
+            )
+            state = (rng_key, all_positions, all_logp, acceptance)
+            for i in tqdm(
+                range(1, n_steps), desc="Sampling Locally", miniters=int(n_steps / 10)
+            ):
+                state = hmc_update(i, state)
+            return state
+
+        return hmc_sampler
 
     def make_leapforg_kernel(self):
         def leapfrog_kernal(carry, data):
