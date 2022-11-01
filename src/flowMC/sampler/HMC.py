@@ -29,6 +29,9 @@ class HMC:
         self.kinetic = lambda p: 0.5*(p**2 * self.inverse_metric).sum()
         self.grad_kinetic = jax.grad(self.kinetic)
 
+    def get_initial_hamiltonian(self, rng_key: jax.random.PRNGKey, position: jnp.array):
+        momentum = jax.random.normal(rng_key, shape=position.shape) * self.inverse_metric
+        return self.potential(position) + self.kinetic(momentum)
 
     def make_hmc_kernel(self, return_aux = False) -> Callable:
         """
@@ -41,7 +44,7 @@ class HMC:
             position, momentum = carry
             position = position + self.step_size * self.grad_kinetic(momentum)
             momentum = momentum - self.step_size * self.grad_potential(position)
-            return position, momentum
+            return (position, momentum), data
 
 
         def leapfrog_step(position, momentum):
@@ -53,6 +56,9 @@ class HMC:
 
         def hmc_kernel(rng_key, position, H):
             """
+
+            Note that since the potential function is the negative log likelihood, hamiltonian is going down, but the likelihood value should go up.
+
             Args:
             rng_key (n_chains, 2): random key
             position (n_chains, n_dim): current position
