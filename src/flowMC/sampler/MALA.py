@@ -34,8 +34,6 @@ def make_mala_kernel(logpdf: Callable):
 
         Args:
             rng_key (n_chains, 2): random key
-            logpdf (function) : log-density function
-            d_logpdf (function): gradient of log-density function
             position (n_chains, n_dim): current position
             log_prob (n_chains, ): log-probability of the current position
             dt (float): step size of the MALA step
