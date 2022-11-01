@@ -199,37 +199,3 @@ def mala_sampler_autotune(mala_sampler, rng_key, n_steps, initial_position, samp
         acceptance_rate = jnp.mean(local_acceptance)
     tqdm.__init__ = partialmethod(tqdm.__init__, disable=False)
     return {"dt": dt}, mala_sampler
-
-
-################### Scan API ##############################
-
-# def make_mala_kernel(logpdf, d_logpdf, dt):
-#     def mala_kernel(carry, data):
-#         rng_key, position, log_prob, do_accept = carry
-#         rng_key, key1, key2 = jax.random.split(rng_key,3)
-#         proposal = position + dt * d_logpdf(position)
-#         proposal += dt * jnp.sqrt(2/dt) * jax.random.normal(key1, shape=position.shape)
-#         ratio = logpdf(proposal) - logpdf(position)
-#         ratio -= ((position - proposal - dt * d_logpdf(proposal)) ** 2 / (4 * dt)).sum()
-#         ratio += ((proposal - position - dt * d_logpdf(position)) ** 2 / (4 * dt)).sum()
-#         proposal_log_prob = logpdf(proposal)
-
-#         log_uniform = jnp.log(jax.random.uniform(key2))
-#         do_accept = log_uniform < ratio
-
-#         position = jax.lax.cond(do_accept, lambda: proposal, lambda: position)
-#         log_prob = jax.lax.cond(do_accept, lambda: proposal_log_prob, lambda: log_prob)
-#         return (rng_key, position, log_prob, do_accept), (position, log_prob, do_accept)
-#     return mala_kernel, logpdf, d_logpdf
-
-# def make_mala_update(logpdf, d_logpdf, dt):
-#     mala_kernel, logpdf, d_logpdf = make_mala_kernel(logpdf, d_logpdf, dt)
-#     def mala_update(rng_key, position, logp, n_steps=100):
-#         carry = (rng_key, position, logp, False)
-#         y = jax.lax.scan(mala_kernel, carry, jax.random.split(rng_key,n_steps))
-#         return y
-#     mala_update = jax.vmap(mala_update, in_axes=(0,0,0,None))
-#     mala_kernel_vec = jax.vmap(mala_kernel, in_axes=((0,0,0,0),None))
-#     logpdf = jax.vmap(logpdf)
-#     d_logpdf = jax.vmap(d_logpdf)
-#     return mala_update, mala_kernel_vec, logpdf, d_logpdf
