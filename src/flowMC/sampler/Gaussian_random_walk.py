@@ -1,7 +1,17 @@
-from turtle import pos
+from typing import Callable
 import jax
 import jax.numpy as jnp
-from functools import partial
+from jax.scipy.stats import multivariate_normal
+from tqdm import tqdm
+
+def make_mh_kernel(logpdf: Callable) -> Callable:
+  pass
+
+def make_mh_update(logpdf: Callable) -> Callable:
+  pass
+
+def make_mh_sampler(logpdf: Callable, jit: bool= False) -> Callable:
+  pass
 
 # @partial(jax.jit, static_argnums=(1,))
 def rw_metropolis_kernel(rng_key, logpdf, position, log_prob, dt=0.1):
