@@ -51,7 +51,6 @@ class HMC:
             momentum = momentum - 0.5*self.step_size * self.grad_potential(position)
             return position, momentum
 
-
         def hmc_kernel(rng_key, position, H):
             """
             Args:
@@ -59,9 +58,20 @@ class HMC:
             position (n_chains, n_dim): current position
             H (n_chains, ): Hamiltonian of the current position
             """
-            momentum = jax.random.normal(rng_key, shape=position.shape) * self.inverse_metric
-            position, momentum = leapfrog_step(position, momentum)
+            key1, key2 = jax.random.split(rng_key)
 
+            momentum = jax.random.normal(key1, shape=position.shape) * self.inverse_metric
+            proposed_position, proposed_momentum = leapfrog_step(position, momentum)
+            proposed_ham = self.potential(proposed_position) + self.kinetic(proposed_momentum)
+            log_acc = H - proposed_ham
+            log_uniform = jnp.log(jax.random.uniform(key2))
+
+            do_accept = log_uniform < log_acc
+
+            position = jnp.where(do_accept, proposed_position, position)
+            log_prob = jnp.where(do_accept, proposed_ham, H)
+
+            return position, log_prob, do_accept
         
         if return_aux == False:
             return hmc_kernel
