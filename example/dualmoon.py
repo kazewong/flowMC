@@ -1,11 +1,14 @@
 from flowMC.nfmodel.realNVP import RealNVP
-from flowMC.sampler.MALA import mala_sampler
+from flowMC.nfmodel.rqSpline import RQSpline
+from flowMC.sampler.MALA import make_mala_sampler, mala_sampler_autotune
+
 import jax
 import jax.numpy as jnp  # JAX NumPy
-from flowMC.sampler.Sampler import Sampler
-from flowMC.utils.PRNG_keys import initialize_rng_keys
 from jax.scipy.special import logsumexp
 import numpy as np
+
+from flowMC.sampler.Sampler import Sampler
+from flowMC.utils.PRNG_keys import initialize_rng_keys
 
 from flowMC.nfmodel.utils import *
 
@@ -25,15 +28,15 @@ d_dual_moon = jax.grad(dual_moon_pe)
 ### Demo config
 
 n_dim = 5
-n_chains = 10
-n_loop = 5
+n_chains = 20
+n_loop_training = 5
+n_loop_production = 5
 n_local_steps = 100
 n_global_steps = 100
-learning_rate = 0.1
+learning_rate = 0.001
 momentum = 0.9
-num_epochs = 5
-batch_size = 50
-stepsize = 0.01
+num_epochs = 30
+batch_size = 10000
 
 print("Preparing RNG keys")
 rng_key_set = initialize_rng_keys(n_chains, seed=42)
@@ -43,32 +46,38 @@ print("Initializing MCMC model and normalizing flow model.")
 initial_position = jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
 
 
-model = RealNVP(10, n_dim, 64, 1)
-run_mcmc = jax.vmap(mala_sampler, in_axes=(0, None, None, None, 0, None), out_axes=0)
+# model = RealNVP(10, n_dim, 64, 1)
+model = RQSpline(n_dim, 10, [128, 128], 8)
+
+local_sampler_caller = lambda x: make_mala_sampler(x, jit=True)
 
 print("Initializing sampler class")
 
-nf_sampler = Sampler(n_dim, rng_key_set, model, run_mcmc,
-                    dual_moon_pe,
-                    d_likelihood=d_dual_moon,
-                    n_loop=n_loop,
-                    n_local_steps=n_local_steps,
-                    n_global_steps=n_global_steps,
-                    n_chains=n_chains,
-                    n_epochs=num_epochs,
-                    n_nf_samples=100,
-                    learning_rate=learning_rate,
-                    momentum=momentum,
-                    batch_size=batch_size,
-                    stepsize=stepsize,
-                    use_global=True,)
-
+nf_sampler = Sampler(
+    n_dim,
+    rng_key_set,
+    local_sampler_caller,
+    {'dt':1e-1},
+    dual_moon_pe,
+    model,
+    n_loop_training=n_loop_training,
+    n_loop_production=n_loop_production,
+    n_local_steps=n_local_steps,
+    n_global_steps=n_global_steps,
+    n_chains=n_chains,
+    n_epochs=num_epochs,
+    learning_rate=learning_rate,
+    momentum=momentum,
+    batch_size=batch_size,
+    use_global=True,
+)
 print("Sampling")
 
 nf_sampler.sample(initial_position)
 
-chains, log_prob, local_accs, global_accs, loss_vals = nf_sampler.get_sampler_state()
-nf_samples = nf_sampler.sample_flow()
+summary = nf_sampler.get_sampler_state(training=True)
+chains, log_prob, local_accs, global_accs, loss_vals = summary.values() 
+nf_samples = nf_sampler.sample_flow(10000)
 
 print(
     "chains shape: ",
@@ -98,7 +107,7 @@ plt.ylabel("$x_2$")
 
 plt.sca(axs[1])
 plt.title("NF loss")
-plt.plot(loss_vals)
+plt.plot(loss_vals.reshape(-1))
 plt.xlabel("iteration")
 
 plt.sca(axs[2])

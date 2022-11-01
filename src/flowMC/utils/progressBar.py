@@ -7,15 +7,14 @@ from jax.experimental import host_callback
 def progress_bar_scan(num_samples, message=None):
     "Progress bar for a JAX scan"
     if message is None:
-            message = f"Running for {num_samples:,} iterations"
+        message = f"Running for {num_samples:,} iterations"
     tqdm_bars = tqdm(range(num_samples))
     tqdm_bars.set_description(message)
-
 
     if num_samples > 20:
         print_rate = int(num_samples / 20)
     else:
-        print_rate = 1 # if you run the sampler for less than 20 iterations
+        print_rate = 1  # if you run the sampler for less than 20 iterations
 
     print_rate = 1
     remainder = num_samples % print_rate
@@ -38,7 +37,7 @@ def progress_bar_scan(num_samples, message=None):
 
         _ = lax.cond(
             # update tqdm every multiple of `print_rate` except at the end
-            (iter_num % print_rate == 0) & (iter_num != num_samples-remainder),
+            (iter_num % print_rate == 0) & (iter_num != num_samples - remainder),
             lambda _: host_callback.id_tap(_update_tqdm, print_rate, result=iter_num),
             lambda _: iter_num,
             operand=None,
@@ -46,7 +45,7 @@ def progress_bar_scan(num_samples, message=None):
 
         _ = lax.cond(
             # update tqdm by `remainder`
-            iter_num == num_samples-remainder,
+            iter_num == num_samples - remainder,
             lambda _: host_callback.id_tap(_update_tqdm, remainder, result=iter_num),
             lambda _: iter_num,
             operand=None,
@@ -57,12 +56,11 @@ def progress_bar_scan(num_samples, message=None):
 
     def close_tqdm(result, iter_num):
         return lax.cond(
-            iter_num == num_samples-1,
+            iter_num == num_samples - 1,
             lambda _: host_callback.id_tap(_close_tqdm, None, result=result),
             lambda _: result,
             operand=None,
         )
-
 
     def _progress_bar_scan(func):
         """Decorator that adds a progress bar to `body_fun` used in `lax.scan`.
