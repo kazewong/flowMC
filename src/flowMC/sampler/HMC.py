@@ -118,7 +118,9 @@ class HMC(LocalSamplerBase):
 
         def hmc_sampler(rng_key, n_steps, initial_position):
             
-            rng_key, rng_init = jax.random.split(rng_key)
+            keys = jax.vmap(jax.random.split)(rng_key)
+            rng_key = keys[:, 0]
+            rng_init = keys[:, 1]
             logp = lh(rng_init,initial_position)
             n_chains = rng_key.shape[0]
             acceptance = jnp.zeros(
