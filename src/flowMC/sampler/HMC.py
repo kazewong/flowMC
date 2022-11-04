@@ -3,7 +3,7 @@ import jax
 import jax.numpy as jnp
 from jax.scipy.stats import multivariate_normal
 from tqdm import tqdm
-from LocalSampler_Base import LocalSamplerBase
+from flowMC.sampler.LocalSampler_Base import LocalSamplerBase
 
 class HMC(LocalSamplerBase):
     

@@ -42,6 +42,6 @@ initial_Ham = jax.vmap(HMC.get_initial_hamiltonian)(rng_key_set[1], initial_posi
 
 # HMC_update(1, state)
 
-HMC_sampler = HMC.make_hmc_sampler()
+HMC_sampler = HMC.make_sampler()
 
 state = HMC_sampler(rng_key_set[1], rng_key_set[1], n_local_steps, initial_position)
