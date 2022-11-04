@@ -1,4 +1,4 @@
-from flowMC.sampler.HMC import HMC
+from flowMC.sampler.Gaussian_random_walk import GaussianRandomWalk
 from flowMC.utils.PRNG_keys import initialize_rng_keys
 import jax
 import jax.numpy as jnp
@@ -23,25 +23,22 @@ rng_key_set = initialize_rng_keys(n_chains, seed=42)
 
 initial_position = jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
 
-HMC = HMC(dual_moon_pe, True, {"step_size": step_size,"n_leapfrog": n_leapfrog})
+RWMCMC = GaussianRandomWalk(dual_moon_pe, True, {"step_size": step_size})
 
-initial_Ham = jax.vmap(HMC.get_initial_hamiltonian)(rng_key_set[1], initial_position)
+RWMCMC_kernel = RWMCMC.make_kernel()
 
-HMC_kernel = HMC.make_hmc_kernel()
 
-print(HMC_kernel(rng_key_set[0], initial_position[0], initial_Ham[0]))
-
-HMC_update = HMC.make_hmc_update()
-HMC_update = jax.vmap(HMC_update, in_axes = (None, (0, 0, 0, 0)), out_axes=(0, 0, 0, 0))
+RWMCMC_update = RWMCMC.make_update()
+RWMCMC_update = jax.vmap(RWMCMC_update, in_axes = (None, (0, 0, 0, 0)), out_axes=(0, 0, 0, 0))
 
 initial_position = jnp.repeat(initial_position[:,None], n_local_steps, 1)
-initial_Ham = jnp.repeat(initial_Ham[:,None], n_local_steps, 1)
+initial_logp = jnp.repeat(jax.vmap(dual_moon_pe)(initial_position[:,0])[:,None], n_local_steps, 1)[...,None]
 
-state = (rng_key_set[1], initial_position, initial_Ham, jnp.zeros((n_chains, n_local_steps,1)))
+state = (rng_key_set[1], initial_position, initial_logp, jnp.zeros((n_chains, n_local_steps,1)))
 
 
-HMC_update(1, state)
+RWMCMC_update(1, state)
 
-HMC_sampler = HMC.make_sampler()
+RWMCMC_sampler = RWMCMC.make_sampler()
 
-state = HMC_sampler(rng_key_set[1], n_local_steps, initial_position)
+state = RWMCMC_sampler(rng_key_set[1], n_local_steps, initial_position[:,0])
