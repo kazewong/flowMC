@@ -3,8 +3,9 @@ import jax
 import jax.numpy as jnp
 from jax.scipy.stats import multivariate_normal
 from tqdm import tqdm
+from LocalSampler_Base import LocalSamplerBase
 
-class HMC:
+class HMC(LocalSamplerBase):
     
     def __init__(self, logpdf: Callable, jit: bool, params: dict) -> Callable:
         self.logpdf = logpdf
@@ -33,7 +34,7 @@ class HMC:
         momentum = jax.random.normal(rng_key, shape=position.shape) * self.inverse_metric
         return self.potential(position) + self.kinetic(momentum)
 
-    def make_hmc_kernel(self, return_aux = False) -> Callable:
+    def make_kernel(self, return_aux = False) -> Callable:
         """
 
         Making HMC kernel for a single step
@@ -85,14 +86,14 @@ class HMC:
             return hmc_kernel, leapfrog_kernal, leapfrog_step
             
 
-    def make_hmc_update(self) -> Callable:
+    def make_update(self) -> Callable:
         """
         
         Making HMC update function for multiple steps
 
         """
 
-        hmc_kernel = self.make_hmc_kernel()
+        hmc_kernel = self.make_kernel()
 
         def hmc_update(i, state):
             key, positions, log_Ham, acceptance = state
@@ -107,8 +108,8 @@ class HMC:
 
         return hmc_update
 
-    def make_hmc_sampler(self) -> Callable:
-        hmc_update = self.make_hmc_update()
+    def make_sampler(self) -> Callable:
+        hmc_update = self.make_update()
 
         if self.jit:
             hmc_update = jax.jit(hmc_update)
