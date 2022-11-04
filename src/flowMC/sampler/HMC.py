@@ -8,8 +8,7 @@ from LocalSampler_Base import LocalSamplerBase
 class HMC(LocalSamplerBase):
     
     def __init__(self, logpdf: Callable, jit: bool, params: dict) -> Callable:
-        self.logpdf = logpdf
-        self.jit = jit
+        super().__init__(logpdf, jit, params)
 
         self.potential = lambda x: -self.logpdf(x)
         self.grad_potential = jax.grad(self.potential)

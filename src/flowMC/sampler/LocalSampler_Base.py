@@ -2,11 +2,12 @@ from abc import abstractmethod
 from typing import Callable
 class LocalSamplerBase:
 
-    @abstractmethod
     def __init__(self, logpdf: Callable, jit: bool, params: dict) -> Callable:
         """
         
         """
+        self.logpdf = logpdf
+        self.jit = jit
 
     @abstractmethod
     def make_kernel(self, return_aux = False) -> Callable:
