@@ -17,7 +17,7 @@ This page contains information about the most important hyperparameters which af
 +-----------------------+--------------------------+-----------------------+
 | :ref:`sampler_params` | :ref:`n_loop_production` | :ref:`local_autotune` |
 +-----------------------+--------------------------+-----------------------+
-| :ref:`likelihood`     | :ref:`n_local_steps`     |                       |
+| :ref:`likelihood`     | :ref:`n_local_steps`     | :ref:`train_thinning` |
 +-----------------------+--------------------------+-----------------------+
 | :ref:`nf_model`       | :ref:`n_global_steps`    |                       |
 +-----------------------+--------------------------+-----------------------+
@@ -197,6 +197,20 @@ nf_variable
 
 local_autotune
 ^^^^^^^^^^^^^^
+
+.. _train_thinning:
+
+train_thinning
+^^^^^^^^^^^^^^
+
+Thinning factors for data used to train the normalizing flow.
+Given we only keep ``max_samples`` Samples, only the newest ``max_samples/n_chains`` in each chain are used for training the normalizing flow.
+This thinning factor keep every ``train_thinning`` samples in each chain.
+The larger the number, the less correlated each samples in each chain are.
+When ``max_samples*train_thining/n_chains > n_local_steps``, samples generated from different global training loops are used in training the new normalizing flow.
+This reduces the possibility of mode collapse since the algorithms had access to samples generated before the mode collapse if it would have happened.
+
+This API is still experimental and might be combined with other hyperparameters into one big tuning parameters later.
 
 
 flowMC.sampler.Sampler module
