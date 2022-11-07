@@ -13,6 +13,11 @@ It is worth making sure your likelihood is well-defined within your range of pri
 
 **In order for my local sampler to accept, I have to choose a very small step size, which makes my chain very correlated.**
 
+This usually indicate some of your parameters are much better measured than others.
+Since taking a small step in those directions will already change your likelihood value by a lot, the exploration power of the local sampler in other parameters are limited by those which are well measured.
+Currently, we support different step size for different parameters, which you can tune to see whether that improves the situation or not.
+If you know the scale of each parameter ahead of time, reparameterizing them to maintain roughly equal scale across parameters also helps.
+
 **My global sample's loss is exploding/not decreasing**
 
 This usually means your learning rate used for training the normalizing flow is too large.
