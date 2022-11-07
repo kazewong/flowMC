@@ -1,5 +1,5 @@
 ---
-title: 'flowMC'
+title: 'flowMC: Normalizing-flow enhanced sampling package for probabilistic inference in Jax'
 tags:
   - Python
   - Bayesian Inference 
