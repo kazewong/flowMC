@@ -173,8 +173,8 @@ class Sampler():
         else:
             summary_mode = 'production'
 
-        self.rng_keys_mcmc, positions, log_prob, local_acceptance, _ = self.local_sampler(
-            self.rng_keys_mcmc, self.n_local_steps, initial_position, self.sampler_params
+        self.rng_keys_mcmc, positions, log_prob, local_acceptance = self.local_sampler(
+            self.rng_keys_mcmc, self.n_local_steps, initial_position
         )
 
         self.summary[summary_mode]['chains'] = jnp.append(
