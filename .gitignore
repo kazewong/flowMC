@@ -12,3 +12,4 @@ docs/build/*
 README.md
 *settings.json
 *build*
+test_docs/test_quickstart.ipynb
