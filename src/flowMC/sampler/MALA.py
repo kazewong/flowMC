@@ -3,177 +3,121 @@ import jax
 import jax.numpy as jnp
 from jax.scipy.stats import multivariate_normal
 from tqdm import tqdm
+from flowMC.sampler.LocalSampler_Base import LocalSamplerBase
 
 
-def make_mala_kernel(logpdf: Callable):
-    """
-    Making MALA kernel for a single step
+class MALA(LocalSamplerBase):
 
-    Args:
-        logpdf (Callable): log-probability density function
+    def __init__(self, logpdf: Callable, jit: bool, params: dict) -> Callable:
+        super().__init__(logpdf, jit, params)
+        self.step_size = params["step_size"]
+        self.logpdf = logpdf
 
+    def make_kernel(self, return_aux = False) -> Callable:
+        """
+        Make a MALA kernel for a given logpdf.
 
-    Returns:
-        mala_kernel (Callable): MALA kernel for a single step
+        Parameters
+        ----------
+        logpdf : Callable
+            The logpdf of the target distribution.
 
-    """
-
-    def body(carry, this_key):
-        this_position, dt = carry
-        dt2 = dt*dt
-        this_log_prob, this_d_log = jax.value_and_grad(logpdf)(this_position)
-        proposal = this_position + jnp.dot(dt2, this_d_log) / 2
-        proposal += jnp.dot(dt, jax.random.normal(this_key, shape=this_position.shape))
-        return (proposal,dt), (proposal, this_log_prob, this_d_log)
-
-    def mala_kernel(rng_key, position, log_prob, dt = 1e-1):
+        Returns
+        -------
+        Callable
+            A MALA kernel.
 
         """
-        Metropolis-adjusted Langevin algorithm kernel.
-        This function make a proposal and accept/reject it.
+        def body(carry, this_key):
+            this_position, dt = carry
+            dt2 = dt*dt
+            this_log_prob, this_d_log = jax.value_and_grad(self.logpdf)(this_position)
+            proposal = this_position + jnp.dot(dt2, this_d_log) / 2
+            proposal += jnp.dot(dt, jax.random.normal(this_key, shape=this_position.shape))
+            return (proposal,dt), (proposal, this_log_prob, this_d_log)
 
-        Args:
-            rng_key (n_chains, 2): random key
-            position (n_chains, n_dim): current position
-            log_prob (n_chains, ): log-probability of the current position
-            dt (float): step size of the MALA step
+        def mala_kernel(rng_key, position, log_prob):
 
-        Returns:
-            position (n_chains, n_dim): the new poisiton of the chain
-            log_prob (n_chains, ): the log-probability of the new position
-            do_accept (n_chains, ): whether to accept the new position
+            """
+            Metropolis-adjusted Langevin algorithm kernel.
+            This function make a proposal and accept/reject it.
 
-        """
-        key1, key2 = jax.random.split(rng_key)
+            Args:
+                rng_key (n_chains, 2): random key
+                position (n_chains, n_dim): current position
+                log_prob (n_chains, ): log-probability of the current position
 
-        dt2 = dt*dt
+            Returns:
+                position (n_chains, n_dim): the new poisiton of the chain
+                log_prob (n_chains, ): the log-probability of the new position
+                do_accept (n_chains, ): whether to accept the new position
 
-        _, (proposal, logprob, d_logprob) = jax.lax.scan(
-            body, (position, dt), jnp.array([key1, key1])
-        )
+            """
+            key1, key2 = jax.random.split(rng_key)
 
-        ratio = logprob[1] - logprob[0]
-        ratio -= multivariate_normal.logpdf(
-            proposal[0], position + jnp.dot(dt2, d_logprob[0]) / 2, dt2
-        )
-        ratio += multivariate_normal.logpdf(
-            position, proposal[0] + jnp.dot(dt2, d_logprob[1]) / 2, dt2
-        )
+            dt = self.step_size
+            dt2 = dt * dt
 
-        log_uniform = jnp.log(jax.random.uniform(key2))
-        do_accept = log_uniform < ratio
-
-        position = jnp.where(do_accept, proposal[0], position)
-        log_prob = jnp.where(do_accept, logprob[1], logprob[0])
-        return position, log_prob, do_accept
-
-    return mala_kernel
-
-
-def make_mala_update(logpdf):
-    """
-
-    Making MALA update function for multiple steps
-
-    Args:
-        logpdf (Callable): log-probability density function
-        d_logpdf (Callable): gradient of log-probability density function
-        dt (float): step size of the MALA step
-        M (jnp.array): mass matrix. Currently we only support diagonal mass matrix
-
-    Returns:
-        mala_update (Callable): MALA update function for multiple steps
-
-    """
-    mala_kernel = make_mala_kernel(logpdf)
-
-    def mala_update(i, state):
-        key, positions, log_prob, acceptance, dt = state
-        _, key = jax.random.split(key)
-        new_position, new_log_prob, do_accept = mala_kernel(
-            key, positions[i - 1], log_prob[i - 1], dt
-        )
-        positions = positions.at[i].set(new_position)
-        log_prob = log_prob.at[i].set(new_log_prob)
-        acceptance = acceptance.at[i].set(do_accept)
-        return (key, positions, log_prob, acceptance, dt)
-
-    # Apperantly jitting after vmap will make compilation much slower.
-    # Output the kernel, logpdf, and dlogpdf for warmup jitting.
-    # Apperantly passing in a warmed up function will still trigger recompilation.
-    # so the warmup need to be done with the output function
-
-    return mala_update, logpdf
-
-
-def make_mala_sampler(logpdf: Callable, jit: bool=False):
-    mala_update, lp = make_mala_update(logpdf)
-    # Somehow if I define the function inside the other function,
-    # I think it doesn't use the cache and recompile everytime.
-    if jit:
-        mala_update = jax.jit(mala_update)
-        lp = jax.jit(lp)
-
-    mala_update = jax.vmap(mala_update, in_axes=(None, (0, 0, 0, 0, None)), out_axes=(0, 0, 0, 0, None))
-    lp = jax.vmap(lp)
-
-    def mala_sampler(rng_key, n_steps, initial_position, sampler_params={'dt':1e-1}):
-
-        """
-        Metropolis-adjusted Langevin algorithm sampler.
-        This function do n step with the MALA kernel.
-
-        Args:
-            rng_key (n_chains, 2): random key for the sampler
-            n_steps (int): number of local steps
-            logpdf (function): log-density function
-            d_logpdf (function): gradient of log-density function
-            initial_position (n_chains, n_dim): initial position of the chain
-            dt (float): step size of the MALA step
-
-        Returns:
-            rng_key (n_chains, 2): random key for the sampler after the sampling
-            all_positions (n_chains, n_steps, n_dim): all the positions of the chain
-            log_probs (n_chains, ): log probability at the end of the chain
-            acceptance: acceptance rate of the chain
-        """
-
-        logp = lp(initial_position)
-        n_chains = rng_key.shape[0]
-        acceptance = jnp.zeros(
-            (
-                n_chains,
-                n_steps,
+            _, (proposal, logprob, d_logprob) = jax.lax.scan(
+                body, (position, dt), jnp.array([key1, key1])
             )
-        )
-        all_positions = (
-            jnp.zeros(
-                (
-                    n_chains,
-                    n_steps,
-                )
-                + initial_position.shape[-1:]
-            )
-            + initial_position[:, None]
-        )
-        all_logp = (
-            jnp.zeros(
-                (
-                    n_chains,
-                    n_steps,
-                )
-            )
-            + logp[:, None]
-        )
-        state = (rng_key, all_positions, all_logp, acceptance, sampler_params['dt'])
-        for i in tqdm(
-            range(1, n_steps), desc="Sampling Locally", miniters=int(n_steps / 10)
-        ):
-            state = mala_update(i, state)
-        return state
 
-    return mala_sampler
-    
+            ratio = logprob[1] - logprob[0]
+            ratio -= multivariate_normal.logpdf(
+                proposal[0], position + jnp.dot(dt2, d_logprob[0]) / 2, dt2
+            )
+            ratio += multivariate_normal.logpdf(
+                position, proposal[0] + jnp.dot(dt2, d_logprob[1]) / 2, dt2
+            )
+
+            log_uniform = jnp.log(jax.random.uniform(key2))
+            do_accept = log_uniform < ratio
+
+            position = jnp.where(do_accept, proposal[0], position)
+            log_prob = jnp.where(do_accept, logprob[1], logprob[0])
+            return position, log_prob, do_accept
+
+        return mala_kernel
+
+    def make_update(self) -> Callable:
+
+        mala_kernel = self.make_kernel()
+
+        def mala_update(i, state):
+            key, positions, log_p, acceptance = state
+            _, key = jax.random.split(key)
+            new_position, new_log_p, do_accept = mala_kernel(key, positions[i-1], log_p[i-1])
+            positions = positions.at[i].set(new_position)
+            log_p = log_p.at[i].set(new_log_p)
+            acceptance = acceptance.at[i].set(do_accept)
+            return (key, positions, log_p, acceptance)
+        
+        return mala_update
+
+    def make_sampler(self) -> Callable:
+        mala_update = self.make_update()
+        lp = self.logpdf
+
+        if self.jit:
+            mala_update = jax.jit(mala_update)
+            lp = jax.jit(self.logpdf)
+
+        mala_update = jax.vmap(mala_update, in_axes = (None, (0, 0, 0, 0)), out_axes=(0, 0, 0, 0))
+        lp = jax.vmap(lp)
+
+        def mala_sampler(rng_key, n_steps, initial_position):
+            logp = lp(initial_position)
+            n_chains = rng_key.shape[0]
+            acceptance = jnp.zeros((n_chains, n_steps))
+            all_positions = (jnp.zeros((n_chains, n_steps) + initial_position.shape[-1:])) + initial_position[:, None]
+            all_logp = (jnp.zeros((n_chains, n_steps)) + logp[:, None])
+            state = (rng_key, all_positions, all_logp, acceptance)
+            for i in tqdm(range(1, n_steps)):
+                state = mala_update(i, state)
+            return state
+
+        return mala_sampler 
+
 from tqdm import tqdm
 from functools import partialmethod
 
