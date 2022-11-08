@@ -75,8 +75,9 @@ To sample a N dimensional Gaussian, you would do something like:
     nf_sampler.sample(initial_position)
     chains,log_prob,local_accs, global_accs = nf_sampler.get_sampler_state().values()
 
-For more realistic test case, see the examples on `GitHub <https://github.com/kazewong/flowMC/tree/main/example>`_.
-In particular, currently the best engineered test case is `dualmoon.py <https://github.com/kazewong/flowMC/blob/main/example/dualmoon.py>`_.
+For more examples, have a look at the :ref:`tutorials`. 
+.. `GitHub <https://github.com/kazewong/flowMC/tree/main/example>`_.
+.. In particular, currently the best engineered test case is `dualmoon.py <https://github.com/kazewong/flowMC/blob/main/example/dualmoon.py>`_.
 
 In the ideal case, the only three things you will have to do are:
 
