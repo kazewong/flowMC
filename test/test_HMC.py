@@ -27,11 +27,11 @@ HMC = HMC(dual_moon_pe, True, {"step_size": step_size,"n_leapfrog": n_leapfrog})
 
 initial_Ham = jax.vmap(HMC.get_initial_hamiltonian)(rng_key_set[1], initial_position)
 
-HMC_kernel = HMC.make_hmc_kernel()
+HMC_kernel = HMC.make_kernel()
 
 print(HMC_kernel(rng_key_set[0], initial_position[0], initial_Ham[0]))
 
-HMC_update = HMC.make_hmc_update()
+HMC_update = HMC.make_update()
 HMC_update = jax.vmap(HMC_update, in_axes = (None, (0, 0, 0, 0)), out_axes=(0, 0, 0, 0))
 
 initial_position = jnp.repeat(initial_position[:,None], n_local_steps, 1)
@@ -44,4 +44,42 @@ HMC_update(1, state)
 
 HMC_sampler = HMC.make_sampler()
 
-state = HMC_sampler(rng_key_set[1], n_local_steps, initial_position)
+state = HMC_sampler(rng_key_set[1], n_local_steps, initial_position[:, 0])
+
+
+from flowMC.nfmodel.rqSpline import RQSpline
+from flowMC.sampler.Sampler import Sampler
+
+n_dim = 5
+n_chains = 2
+n_local_steps = 3
+n_global_steps = 3
+step_size = 0.1
+n_loop_training = 2
+n_loop_production = 2
+
+rng_key_set = initialize_rng_keys(n_chains, seed=42)
+
+initial_position = jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
+
+local_sampler_caller = lambda x: HMC.make_sampler()
+model = RQSpline(n_dim, 4, [32, 32], 8)
+
+print("Initializing sampler class")
+
+nf_sampler = Sampler(
+    n_dim,
+    rng_key_set,
+    local_sampler_caller,
+    {'dt':1e-2},
+    dual_moon_pe,
+    model   ,
+    n_loop_training=n_loop_training,
+    n_loop_production=n_loop_production,
+    n_local_steps=n_local_steps,
+    n_global_steps=n_global_steps,
+    n_chains=n_chains,
+    use_global=False,
+)
+
+nf_sampler.sample(initial_position)
