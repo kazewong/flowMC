@@ -1,5 +1,4 @@
-from flowMC.sampler.MALA import make_mala_kernel, make_mala_update, make_mala_sampler
-from flowMC.sampler.MALA import make_mala_sampler
+from flowMC.sampler.MALA import MALA
 from flowMC.utils.PRNG_keys import initialize_rng_keys
 import jax
 import jax.numpy as jnp
@@ -16,15 +15,68 @@ def dual_moon_pe(x):
 
 n_dim = 5
 n_chains = 15
+n_local_steps = 30
+step_size = 0.1
+n_leapfrog = 10
 
 rng_key_set = initialize_rng_keys(n_chains, seed=42)
 
 initial_position = jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
 
-def test_mala_kernel():
-    kernel = make_mala_kernel(dual_moon_pe)
-    update = make_mala_update(kernel)
-    sampler = make_mala_sampler(dual_moon_pe,jit=True)
+MALA_Sampler = MALA(dual_moon_pe, True, {"step_size": step_size})
 
-    kernel(rng_key_set[1][0], initial_position[0], dual_moon_pe(initial_position[0]), 1e-1)
-    sampler(rng_key_set[1],10,initial_position,{'dt':1e-1})
+MALA_Sampler_kernel = MALA_Sampler.make_kernel()
+
+
+MALA_Sampler_update = MALA_Sampler.make_update()
+MALA_Sampler_update = jax.vmap(MALA_Sampler_update, in_axes = (None, (0, 0, 0, 0)), out_axes=(0, 0, 0, 0))
+
+initial_position = jnp.repeat(initial_position[:,None], n_local_steps, 1)
+initial_logp = jnp.repeat(jax.vmap(dual_moon_pe)(initial_position[:,0])[:,None], n_local_steps, 1)[...,None]
+
+state = (rng_key_set[1], initial_position, initial_logp, jnp.zeros((n_chains, n_local_steps,1)))
+
+
+MALA_Sampler_update(1, state)
+
+MALA_Sampler_sampler = MALA_Sampler.make_sampler()
+
+state = MALA_Sampler_sampler(rng_key_set[1], n_local_steps, initial_position[:,0])
+
+
+from flowMC.nfmodel.rqSpline import RQSpline
+from flowMC.sampler.Sampler import Sampler
+
+n_dim = 5
+n_chains = 2
+n_local_steps = 3
+n_global_steps = 3
+step_size = 0.1
+n_loop_training = 2
+n_loop_production = 2
+
+rng_key_set = initialize_rng_keys(n_chains, seed=42)
+
+initial_position = jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
+
+local_sampler_caller = lambda x: MALA_Sampler.make_sampler()
+model = RQSpline(n_dim, 4, [32, 32], 8)
+
+print("Initializing sampler class")
+
+nf_sampler = Sampler(
+    n_dim,
+    rng_key_set,
+    local_sampler_caller,
+    {'dt':1e-2},
+    dual_moon_pe,
+    model   ,
+    n_loop_training=n_loop_training,
+    n_loop_production=n_loop_production,
+    n_local_steps=n_local_steps,
+    n_global_steps=n_global_steps,
+    n_chains=n_chains,
+    use_global=False,
+)
+
+nf_sampler.sample(initial_position)
