@@ -105,12 +105,12 @@ class RealNVP(nn.Module):
 
     Parameters
     ----------
+    n_layer : int
+        The number of affine coupling layers.
     n_features : int
         The number of features in the input.
     n_hidden : int
         The number of hidden units in the MLP.
-    n_layer : int
-        The number of affine coupling layers.
     dt : float
         Scaling factor for the affine coupling layer.
     base_mean : ndarray
