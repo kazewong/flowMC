@@ -36,6 +36,7 @@ class Sampler():
         nf_variable (None, optional): Mean and variance variables for the NF model. Defaults to None.
         keep_quantile (float, optional): Quantile of chains to keep when training the normalizing flow model. Defaults to 0..
         local_autotune (None, optional): Auto-tune function for the local sampler. Defaults to None.
+        train_thinning (int, optional): Thinning for the data used to train the normalizing flow. Defaults to 1.
 
     """
 
@@ -183,8 +184,9 @@ class Sampler():
         self.summary[summary_mode]['log_prob'] = jnp.append(
             self.summary[summary_mode]['log_prob'], log_prob, axis=1
         )
+
         self.summary[summary_mode]['local_accs'] = jnp.append(
-            self.summary[summary_mode]['local_accs'], local_acceptance, axis=1
+            self.summary[summary_mode]['local_accs'], local_acceptance[:,1:], axis=1
         )
 
         if self.use_global == True:
@@ -249,8 +251,9 @@ class Sampler():
             self.summary[summary_mode]['log_prob'] = jnp.append(
                 self.summary[summary_mode]['log_prob'], log_prob, axis=1
             )
+
             self.summary[summary_mode]['global_accs'] = jnp.append(
-                self.summary[summary_mode]['global_accs'], global_acceptance, axis=1
+                self.summary[summary_mode]['global_accs'], global_acceptance[:,1:], axis=1
             )
 
         last_step = self.summary[summary_mode]['chains'][:, -1]

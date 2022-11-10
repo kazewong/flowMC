@@ -36,7 +36,8 @@ extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.napoleon",
     "sphinx.ext.autosummary",
-    "myst_nb"
+    "myst_nb",
+    "sphinx_book_theme"
 ]
 
 
