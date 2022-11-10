@@ -13,12 +13,15 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-      - name: Build draft PDF
-        uses: openjournals/openjournals-draft-action@master
+      - name: TeX and PDF
+        uses: docker://openjournals/paperdraft:latest
         with:
           journal: joss
           # This should be the path to the paper within your repo.
-          paper-path: joss/paper.md
+          args: '-k joss/paper.md'
+        env:
+          GIT_SHA: $GITHUB_SHA
+          JOURNAL: joss
       - name: Upload
         uses: actions/upload-artifact@v1
         with:
@@ -26,4 +29,4 @@ jobs:
           # This is the output path where Pandoc will write the compiled
           # PDF. Note, this should be the same directory as the input
           # paper.md
-          path: joss/paper.pdf
+          path: joss/
