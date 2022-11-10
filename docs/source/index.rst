@@ -18,7 +18,7 @@ The code is open source under MIT license, and it is under active development.
 
 - Just-in-time compilation is supported.
 - Native support for GPU acceleration.
-- Suit for problems with multi-modality.
+- Suit for problems with multi-modality and complex geometry.
 
 
 Five steps to use flowMC's guide

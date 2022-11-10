@@ -36,6 +36,7 @@ class Sampler():
         nf_variable (None, optional): Mean and variance variables for the NF model. Defaults to None.
         keep_quantile (float, optional): Quantile of chains to keep when training the normalizing flow model. Defaults to 0..
         local_autotune (None, optional): Auto-tune function for the local sampler. Defaults to None.
+        train_thinning (int, optional): Thinning for the data used to train the normalizing flow. Defaults to 1.
 
     """
 
