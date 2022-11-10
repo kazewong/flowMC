@@ -18,7 +18,7 @@ jobs:
         with:
           journal: joss
           # This should be the path to the paper within your repo.
-          args: '-k paper/paper.md'
+          args: '-k joss/paper.md'
         env:
           GIT_SHA: $GITHUB_SHA
           JOURNAL: joss
@@ -29,4 +29,4 @@ jobs:
           # This is the output path where Pandoc will write the compiled
           # PDF. Note, this should be the same directory as the input
           # paper.md
-          path: paper/
+          path: joss/
