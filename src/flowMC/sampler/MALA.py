@@ -10,7 +10,7 @@ class MALA(LocalSamplerBase):
 
     def __init__(self, logpdf: Callable, jit: bool, params: dict) -> Callable:
         super().__init__(logpdf, jit, params)
-        self.step_size = params["step_size"]
+        self.params = params
         self.logpdf = logpdf
 
     def make_kernel(self, return_aux = False) -> Callable:
@@ -36,7 +36,7 @@ class MALA(LocalSamplerBase):
             proposal += jnp.dot(dt, jax.random.normal(this_key, shape=this_position.shape))
             return (proposal,dt), (proposal, this_log_prob, this_d_log)
 
-        def mala_kernel(rng_key, position, log_prob):
+        def mala_kernel(rng_key, position, log_prob, params = {"step_size": 0.1}):
 
             """
             Metropolis-adjusted Langevin algorithm kernel.
@@ -55,7 +55,7 @@ class MALA(LocalSamplerBase):
             """
             key1, key2 = jax.random.split(rng_key)
 
-            dt = self.step_size
+            dt = params['step_size']
             dt2 = dt * dt
 
             _, (proposal, logprob, d_logprob) = jax.lax.scan(
@@ -84,13 +84,13 @@ class MALA(LocalSamplerBase):
         mala_kernel = self.make_kernel()
 
         def mala_update(i, state):
-            key, positions, log_p, acceptance = state
+            key, positions, log_p, acceptance, params = state
             _, key = jax.random.split(key)
-            new_position, new_log_p, do_accept = mala_kernel(key, positions[i-1], log_p[i-1])
+            new_position, new_log_p, do_accept = mala_kernel(key, positions[i-1], log_p[i-1], params)
             positions = positions.at[i].set(new_position)
             log_p = log_p.at[i].set(new_log_p)
             acceptance = acceptance.at[i].set(do_accept)
-            return (key, positions, log_p, acceptance)
+            return (key, positions, log_p, acceptance, params)
         
         return mala_update
 
@@ -102,7 +102,7 @@ class MALA(LocalSamplerBase):
             mala_update = jax.jit(mala_update)
             lp = jax.jit(self.logpdf)
 
-        mala_update = jax.vmap(mala_update, in_axes = (None, (0, 0, 0, 0)), out_axes=(0, 0, 0, 0))
+        mala_update = jax.vmap(mala_update, in_axes = (None, (0, 0, 0, 0, None)), out_axes=(0, 0, 0, 0, None))
         lp = jax.vmap(lp)
 
         def mala_sampler(rng_key, n_steps, initial_position):
@@ -111,33 +111,32 @@ class MALA(LocalSamplerBase):
             acceptance = jnp.zeros((n_chains, n_steps))
             all_positions = (jnp.zeros((n_chains, n_steps) + initial_position.shape[-1:])) + initial_position[:, None]
             all_logp = (jnp.zeros((n_chains, n_steps)) + logp[:, None])
-            state = (rng_key, all_positions, all_logp, acceptance)
+            state = (rng_key, all_positions, all_logp, acceptance, self.params)
             for i in tqdm(range(1, n_steps)):
                 state = mala_update(i, state)
-            return state
+            return state[:-1]
 
         return mala_sampler 
 
 from tqdm import tqdm
 from functools import partialmethod
 
-def mala_sampler_autotune(mala_sampler, rng_key, n_steps, initial_position, sampler_params, max_iter = 30):
+def mala_sampler_autotune(mala_kernel_vmap, rng_key, initial_position, log_prob, params, max_iter = 30):
     tqdm.__init__ = partialmethod(tqdm.__init__, disable=True)
 
     counter = 0
-    dt = sampler_params['dt']
-    rng_keys_mcmc, positions, log_prob, local_acceptance, _ = mala_sampler(rng_key, n_steps, initial_position, {'dt':dt})
-    acceptance_rate = jnp.mean(local_acceptance)
+    position, log_prob, do_accept = mala_kernel_vmap(rng_key, initial_position, log_prob, params)
+    acceptance_rate = jnp.mean(do_accept)
     while (acceptance_rate < 0.3) or (acceptance_rate > 0.5):
         if counter > max_iter:
             print("Maximal number of iterations reached. Existing tuning with current parameters.")
             break
         if acceptance_rate < 0.3:
-            dt *= 0.8
+            params['step_size'] *= 0.8
         elif acceptance_rate > 0.5:
-            dt *= 1.25
+            params['step_size'] *= 1.25
         counter += 1
-        rng_keys_mcmc, positions, log_prob, local_acceptance, _ = mala_sampler(rng_keys_mcmc, n_steps, initial_position, {'dt':dt})
-        acceptance_rate = jnp.mean(local_acceptance)
+        position, log_prob, do_accept = mala_kernel_vmap(rng_key, initial_position, log_prob, params)
+        acceptance_rate = jnp.mean(do_accept)
     tqdm.__init__ = partialmethod(tqdm.__init__, disable=False)
-    return {"dt": dt}, mala_sampler
+    return params
