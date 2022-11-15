@@ -29,13 +29,12 @@ RWMCMC_kernel = RWMCMC.make_kernel()
 
 
 RWMCMC_update = RWMCMC.make_update()
-RWMCMC_update = jax.vmap(RWMCMC_update, in_axes = (None, (0, 0, 0, 0)), out_axes=(0, 0, 0, 0))
+RWMCMC_update = jax.vmap(RWMCMC_update, in_axes = (None, (0, 0, 0, 0, None)), out_axes=(0, 0, 0, 0, None))
 
 initial_position = jnp.repeat(initial_position[:,None], n_local_steps, 1)
 initial_logp = jnp.repeat(jax.vmap(dual_moon_pe)(initial_position[:,0])[:,None], n_local_steps, 1)[...,None]
 
-state = (rng_key_set[1], initial_position, initial_logp, jnp.zeros((n_chains, n_local_steps,1)))
-
+state = (rng_key_set[1], initial_position, initial_logp, jnp.zeros((n_chains, n_local_steps,1)), {"step_size": step_size})
 
 RWMCMC_update(1, state)
 
