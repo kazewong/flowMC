@@ -13,6 +13,7 @@ class HMC(LocalSamplerBase):
         self.potential = lambda x: -self.logpdf(x)
         self.grad_potential = jax.grad(self.potential)
         
+        self.params = params
         if "condition_matrix" in params:
             self.inverse_metric = params["condition_matrix"]
         else:
@@ -26,12 +27,12 @@ class HMC(LocalSamplerBase):
         else:
             raise NotImplementedError
 
-        self.kinetic = lambda p: 0.5*(p**2 * self.inverse_metric).sum()
+        self.kinetic = lambda p, params: 0.5*(p**2 * params['inverse_metric']).sum()
         self.grad_kinetic = jax.grad(self.kinetic)
 
-    def get_initial_hamiltonian(self, rng_key: jax.random.PRNGKey, position: jnp.array):
-        momentum = jax.random.normal(rng_key, shape=position.shape) * self.inverse_metric
-        return self.potential(position) + self.kinetic(momentum)
+    def get_initial_hamiltonian(self, rng_key: jax.random.PRNGKey, position: jnp.array, params: dict):
+        momentum = jax.random.normal(rng_key, shape=position.shape) * params['inverse_metric']
+        return self.potential(position) + self.kinetic(momentum, params)
 
     def make_kernel(self, return_aux = False) -> Callable:
         """
@@ -41,20 +42,20 @@ class HMC(LocalSamplerBase):
         """
 
         def leapfrog_kernal(carry, data):
-            position, momentum = carry
-            position = position + self.step_size * self.grad_kinetic(momentum)
-            momentum = momentum - self.step_size * self.grad_potential(position)
-            return (position, momentum), data
+            position, momentum, params = carry
+            position = position + params['step_size'] * self.grad_kinetic(momentum, params)
+            momentum = momentum - params['step_size'] * self.grad_potential(position)
+            return (position, momentum, params), data
 
 
-        def leapfrog_step(position, momentum):
-            momentum = momentum - 0.5 * self.step_size * self.grad_potential(position)
-            (position, momentum), _ = jax.lax.scan(leapfrog_kernal, (position, momentum), jnp.arange(self.n_leapfrog-1))
-            position = position + self.step_size * self.grad_kinetic(momentum)
-            momentum = momentum - 0.5*self.step_size * self.grad_potential(position)
+        def leapfrog_step(position, momentum, params: dict):
+            momentum = momentum - 0.5 * params['step_size'] * self.grad_potential(position)
+            (position, momentum, params), _ = jax.lax.scan(leapfrog_kernal, (position, momentum, params), jnp.arange(self.n_leapfrog-1))
+            position = position + params['step_size'] * self.grad_kinetic(momentum, params)
+            momentum = momentum - 0.5*params['step_size'] * self.grad_potential(position)
             return position, momentum
 
-        def hmc_kernel(rng_key, position, H):
+        def hmc_kernel(rng_key, position, H, params: dict):
             """
 
             Note that since the potential function is the negative log likelihood, hamiltonian is going down, but the likelihood value should go up.
@@ -66,9 +67,9 @@ class HMC(LocalSamplerBase):
             """
             key1, key2 = jax.random.split(rng_key)
 
-            momentum = jax.random.normal(key1, shape=position.shape) * self.inverse_metric
-            proposed_position, proposed_momentum = leapfrog_step(position, momentum)
-            proposed_ham = self.potential(proposed_position) + self.kinetic(proposed_momentum)
+            momentum = jax.random.normal(key1, shape=position.shape) * params['inverse_metric']
+            proposed_position, proposed_momentum = leapfrog_step(position, momentum, params)
+            proposed_ham = self.potential(proposed_position) + self.kinetic(proposed_momentum, params)
             log_acc = H - proposed_ham
             log_uniform = jnp.log(jax.random.uniform(key2))
 
@@ -95,15 +96,15 @@ class HMC(LocalSamplerBase):
         hmc_kernel = self.make_kernel()
 
         def hmc_update(i, state):
-            key, positions, log_Ham, acceptance = state
+            key, positions, log_Ham, acceptance, params = state
             _, key = jax.random.split(key)
             new_position, new_log_Ham, do_accept = hmc_kernel(
-                key, positions[i - 1], log_Ham[i - 1]
+                key, positions[i - 1], log_Ham[i - 1], params
             )
             positions = positions.at[i].set(new_position)
             log_Ham = log_Ham.at[i].set(new_log_Ham)
             acceptance = acceptance.at[i].set(do_accept)
-            return (key, positions, log_Ham, acceptance)
+            return (key, positions, log_Ham, acceptance, params)
 
         return hmc_update
 
@@ -113,15 +114,15 @@ class HMC(LocalSamplerBase):
         if self.jit:
             hmc_update = jax.jit(hmc_update)
 
-        hmc_update = jax.vmap(hmc_update, in_axes = (None, (0, 0, 0, 0)), out_axes=(0, 0, 0, 0))
-        lh = jax.vmap(self.get_initial_hamiltonian)
+        hmc_update = jax.vmap(hmc_update, in_axes = (None, (0, 0, 0, 0, None)), out_axes=(0, 0, 0, 0, None))
+        lh = jax.vmap(self.get_initial_hamiltonian, in_axes=(0, 0, None))
 
         def hmc_sampler(rng_key, n_steps, initial_position):
             
             keys = jax.vmap(jax.random.split)(rng_key)
             rng_key = keys[:, 0]
             rng_init = keys[:, 1]
-            logp = lh(rng_init,initial_position)
+            logp = lh(rng_init,initial_position, self.params)
             n_chains = rng_key.shape[0]
             acceptance = jnp.zeros(
                 (
@@ -148,19 +149,19 @@ class HMC(LocalSamplerBase):
                 )
                 + logp[:, None]
             )
-            state = (rng_key, all_positions, all_logp, acceptance)
+            state = (rng_key, all_positions, all_logp, acceptance, self.params)
             for i in tqdm(
                 range(1, n_steps), desc="Sampling Locally", miniters=int(n_steps / 10)
             ):
                 state = hmc_update(i, state)
-            return state
+            return state[:-1]
 
         return hmc_sampler
 
     def make_leapforg_kernel(self):
         def leapfrog_kernal(carry, data):
-            position, momentum = carry
-            position = position + self.step_size * self.grad_kinetic(momentum)
+            position, momentum, params = carry
+            position = position + self.step_size * self.grad_kinetic(momentum, params)
             momentum = momentum - self.step_size * self.grad_potential(position)
             return position, momentum
         return leapfrog_kernal
