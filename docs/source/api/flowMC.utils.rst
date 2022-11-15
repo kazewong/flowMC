@@ -4,14 +4,6 @@ flowMC.utils package
 Submodules
 ----------
 
-flowMC.utils.Analysis module
-----------------------------
-
-.. automodule:: flowMC.utils.Analysis
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 flowMC.utils.PRNG\_keys module
 ------------------------------
 
