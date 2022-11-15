@@ -57,13 +57,11 @@ To sample a N dimensional Gaussian, you would do something like:
     initial_position = jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
     model = RQSpline(n_dim, 3, [64, 64], 8)
     step_size = 1e-1
-    MALA_Sampler = MALA(log_posterior, True, {"step_size": step_size})
-    local_sampler_caller = lambda x: MALA_Sampler.make_sampler()
+    local_sampler = MALA(log_posterior, True, {"step_size": step_size})
 
     nf_sampler = Sampler(n_dim,
                         rng_key_set,
-                        local_sampler_caller,
-                        {"step_size": step_size},
+                        local_sampler,
                         log_posterior,
                         model,
                         n_local_steps = 50,
