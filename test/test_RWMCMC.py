@@ -1,4 +1,4 @@
-from flowMC.sampler.MALA import MALA, mala_sampler_autotune
+from flowMC.sampler.Gaussian_random_walk import GaussianRandomWalk
 from flowMC.utils.PRNG_keys import initialize_rng_keys
 import jax
 import jax.numpy as jnp
@@ -16,32 +16,31 @@ def dual_moon_pe(x):
 n_dim = 5
 n_chains = 15
 n_local_steps = 30
-step_size = 0.01
+step_size = 0.1
 n_leapfrog = 10
 
 rng_key_set = initialize_rng_keys(n_chains, seed=42)
 
 initial_position = jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
 
-MALA_Sampler = MALA(dual_moon_pe, True, {"step_size": step_size})
+RWMCMC = GaussianRandomWalk(dual_moon_pe, True, {"step_size": step_size})
 
-MALA_Sampler_kernel = MALA_Sampler.make_kernel()
+RWMCMC_kernel = RWMCMC.make_kernel()
 
 
-MALA_Sampler_update = MALA_Sampler.make_update()
-MALA_Sampler_update = jax.vmap(MALA_Sampler_update, in_axes = (None, (0, 0, 0, 0, None)), out_axes=(0, 0, 0, 0, None))
+RWMCMC_update = RWMCMC.make_update()
+RWMCMC_update = jax.vmap(RWMCMC_update, in_axes = (None, (0, 0, 0, 0, None)), out_axes=(0, 0, 0, 0, None))
 
 initial_position = jnp.repeat(initial_position[:,None], n_local_steps, 1)
 initial_logp = jnp.repeat(jax.vmap(dual_moon_pe)(initial_position[:,0])[:,None], n_local_steps, 1)[...,None]
 
-state = (rng_key_set[1], initial_position, initial_logp, jnp.zeros((n_chains, n_local_steps,1)), MALA_Sampler.params)
+state = (rng_key_set[1], initial_position, initial_logp, jnp.zeros((n_chains, n_local_steps,1)), {"step_size": step_size})
 
+RWMCMC_update(1, state)
 
-MALA_Sampler_update(1, state)
+RWMCMC_sampler = RWMCMC.make_sampler()
 
-MALA_Sampler_sampler = MALA_Sampler.make_sampler()
-
-state = MALA_Sampler_sampler(rng_key_set[1], n_local_steps, initial_position[:,0])
+state = RWMCMC_sampler(rng_key_set[1], n_local_steps, initial_position[:,0])
 
 
 from flowMC.nfmodel.rqSpline import RQSpline
@@ -66,7 +65,7 @@ print("Initializing sampler class")
 nf_sampler = Sampler(
     n_dim,
     rng_key_set,
-    MALA_Sampler,
+    RWMCMC,
     dual_moon_pe,
     model   ,
     n_loop_training=n_loop_training,
@@ -74,10 +73,7 @@ nf_sampler = Sampler(
     n_local_steps=n_local_steps,
     n_global_steps=n_global_steps,
     n_chains=n_chains,
-    local_autotune=mala_sampler_autotune,
     use_global=False,
 )
 
 nf_sampler.sample(initial_position)
-
-mala_kernel_vmap = jax.vmap(MALA_Sampler_kernel, in_axes = (0, 0, 0,  None), out_axes=(0, 0, 0))

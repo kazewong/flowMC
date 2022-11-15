@@ -1,61 +1,71 @@
-from turtle import pos
+from typing import Callable
 import jax
 import jax.numpy as jnp
-from functools import partial
+from jax.scipy.stats import multivariate_normal
+from tqdm import tqdm
+from flowMC.sampler.LocalSampler_Base import LocalSamplerBase
 
-# @partial(jax.jit, static_argnums=(1,))
-def rw_metropolis_kernel(rng_key, logpdf, position, log_prob, dt=0.1):
+class GaussianRandomWalk(LocalSamplerBase):
+  
+    def __init__(self, logpdf: Callable, jit: bool, params: dict) -> Callable:
+        super().__init__(logpdf, jit, params)
+        self.params = params
+        self.logpdf = logpdf
 
-    """Moves the chains by one step using the Random Walk Metropolis algorithm.
+    def make_kernel(self, return_aux = False) -> Callable:
+        def rw_kernel(rng_key, position, log_prob, params = {"step_size": 0.1}):
+            key1, key2 = jax.random.split(rng_key)
+            move_proposal = jax.random.normal(key1, shape=position.shape) * params['step_size']
+            proposal = position + move_proposal
+            proposal_log_prob = self.logpdf(proposal)
 
-    Attributes
-    ----------
-    rng_key: jax.random.PRNGKey
-      Key for the pseudo random number generator.
-    logpdf: function
-      Returns the log-probability of the model given a position.
-    position: jnp.ndarray, shape (n_dims,)
-      The starting position.
-    log_prob: float
-      The log probability at the starting position.
-    Returns
-    -------
-    Tuple
-        The next positions of the chains along with their log probability.
-    """
-    key1, key2 = jax.random.split(rng_key)
-    move_proposal = jax.random.normal(key1, shape=position.shape) * dt
-    proposal = position + move_proposal
-    proposal_log_prob = logpdf(proposal)
+            log_uniform = jnp.log(jax.random.uniform(key2))
+            do_accept = log_uniform < proposal_log_prob - log_prob
 
-    log_uniform = jnp.log(jax.random.uniform(key2))
-    do_accept = log_uniform < proposal_log_prob - log_prob
+            position = jnp.where(do_accept, proposal, position)
+            log_prob = jnp.where(do_accept, proposal_log_prob, log_prob)
+            return position, log_prob, do_accept
 
-    position = jnp.where(do_accept, proposal, position)
-    log_prob = jnp.where(do_accept, proposal_log_prob, log_prob)
-    return position, log_prob, do_accept
+        return rw_kernel
 
 
-# @partial(jax.jit, static_argnums=(1, 2))
-def rw_metropolis_sampler(rng_key, n_steps, logpdf, initial_position):
-    def mh_update_sol2(i, state):
-        key, positions, log_prob, acceptance = state
-        _, key = jax.random.split(key)
-        new_position, new_log_prob, do_accept = rw_metropolis_kernel(
-            key, logpdf, positions[i - 1], log_prob[i - 1]
-        )
-        positions = positions.at[i].set(new_position)
-        log_prob = log_prob.at[i].set(new_log_prob)
-        acceptance = acceptance.at[i].set(do_accept)
-        return (key, positions, log_prob, acceptance)
+    def make_update(self) -> Callable:
 
-    logp = logpdf(initial_position)
-    acceptance = jnp.zeros((n_steps,))
-    all_positions = jnp.zeros((n_steps,) + initial_position.shape) + initial_position
-    all_logp = jnp.zeros((n_steps,)) + logp
-    initial_state = (rng_key, all_positions, all_logp, acceptance)
-    rng_key, all_positions, all_logp, acceptance = jax.lax.fori_loop(
-        1, n_steps, mh_update_sol2, initial_state
-    )
+        rw_kernel = self.make_kernel()
 
-    return rng_key, all_positions, all_logp, acceptance
+        def rw_update(i, state):
+            key, positions, log_p, acceptance, params = state
+            _, key = jax.random.split(key)
+            new_position, new_log_p, do_accept = rw_kernel(key, positions[i-1], log_p[i-1], params)
+            positions = positions.at[i].set(new_position)
+            log_p = log_p.at[i].set(new_log_p)
+            acceptance = acceptance.at[i].set(do_accept)
+            return (key, positions, log_p, acceptance, params)
+        
+        return rw_update
+
+    def make_sampler(self) -> Callable:
+
+        rw_update = self.make_update()
+        lp = self.logpdf
+
+        if self.jit:
+            rw_update = jax.jit(rw_update)
+            lp = jax.jit(self.logpdf)
+
+        rw_update = jax.vmap(rw_update, in_axes = (None, (0, 0, 0, 0, None)), out_axes=(0, 0, 0, 0, None))
+        lp = jax.vmap(lp)
+
+        def rw_sampler(rng_key, n_steps, initial_position):
+            logp = lp(initial_position)
+            n_chains = rng_key.shape[0]
+            acceptance = jnp.zeros((n_chains, n_steps))
+            all_positions = (jnp.zeros((n_chains, n_steps) + initial_position.shape[-1:])) + initial_position[:, None]
+            all_logp = (jnp.zeros((n_chains, n_steps)) + logp[:, None])
+            state = (rng_key, all_positions, all_logp, acceptance, self.params)
+            for i in tqdm(range(1, n_steps)):
+                state = rw_update(i, state)
+            return state[:-1]
+
+        return rw_sampler
+

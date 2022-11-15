@@ -1,4 +1,4 @@
-from flowMC.sampler.MALA import MALA, mala_sampler_autotune
+from flowMC.sampler.HMC import HMC
 from flowMC.utils.PRNG_keys import initialize_rng_keys
 import jax
 import jax.numpy as jnp
@@ -16,32 +16,35 @@ def dual_moon_pe(x):
 n_dim = 5
 n_chains = 15
 n_local_steps = 30
-step_size = 0.01
+step_size = 0.1
 n_leapfrog = 10
 
 rng_key_set = initialize_rng_keys(n_chains, seed=42)
 
 initial_position = jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
 
-MALA_Sampler = MALA(dual_moon_pe, True, {"step_size": step_size})
+HMC = HMC(dual_moon_pe, True, {"step_size": step_size,"n_leapfrog": n_leapfrog, "inverse_metric": jnp.ones(n_dim)})
 
-MALA_Sampler_kernel = MALA_Sampler.make_kernel()
+initial_Ham = jax.vmap(HMC.get_initial_hamiltonian, in_axes=(0, 0, None))(rng_key_set[1], initial_position, HMC.params)
 
+HMC_kernel = HMC.make_kernel()
 
-MALA_Sampler_update = MALA_Sampler.make_update()
-MALA_Sampler_update = jax.vmap(MALA_Sampler_update, in_axes = (None, (0, 0, 0, 0, None)), out_axes=(0, 0, 0, 0, None))
+print(HMC_kernel(rng_key_set[0], initial_position[0], initial_Ham[0], HMC.params))
+
+HMC_update = HMC.make_update()
+HMC_update = jax.vmap(HMC_update, in_axes = (None, (0, 0, 0, 0, None)), out_axes=(0, 0, 0, 0, None))
 
 initial_position = jnp.repeat(initial_position[:,None], n_local_steps, 1)
-initial_logp = jnp.repeat(jax.vmap(dual_moon_pe)(initial_position[:,0])[:,None], n_local_steps, 1)[...,None]
+initial_Ham = jnp.repeat(initial_Ham[:,None], n_local_steps, 1)
 
-state = (rng_key_set[1], initial_position, initial_logp, jnp.zeros((n_chains, n_local_steps,1)), MALA_Sampler.params)
+state = (rng_key_set[1], initial_position, initial_Ham, jnp.zeros((n_chains, n_local_steps,1)), HMC.params)
 
 
-MALA_Sampler_update(1, state)
+HMC_update(1, state)
 
-MALA_Sampler_sampler = MALA_Sampler.make_sampler()
+HMC_sampler = HMC.make_sampler()
 
-state = MALA_Sampler_sampler(rng_key_set[1], n_local_steps, initial_position[:,0])
+state = HMC_sampler(rng_key_set[1], n_local_steps, initial_position[:, 0])
 
 
 from flowMC.nfmodel.rqSpline import RQSpline
@@ -66,7 +69,7 @@ print("Initializing sampler class")
 nf_sampler = Sampler(
     n_dim,
     rng_key_set,
-    MALA_Sampler,
+    HMC,
     dual_moon_pe,
     model   ,
     n_loop_training=n_loop_training,
@@ -74,10 +77,7 @@ nf_sampler = Sampler(
     n_local_steps=n_local_steps,
     n_global_steps=n_global_steps,
     n_chains=n_chains,
-    local_autotune=mala_sampler_autotune,
     use_global=False,
 )
 
 nf_sampler.sample(initial_position)
-
-mala_kernel_vmap = jax.vmap(MALA_Sampler_kernel, in_axes = (0, 0, 0,  None), out_axes=(0, 0, 0))
