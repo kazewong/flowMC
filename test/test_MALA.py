@@ -16,7 +16,7 @@ def dual_moon_pe(x):
 n_dim = 5
 n_chains = 15
 n_local_steps = 30
-step_size = 0.1
+step_size = 0.01
 n_leapfrog = 10
 
 rng_key_set = initialize_rng_keys(n_chains, seed=42)
@@ -59,7 +59,6 @@ rng_key_set = initialize_rng_keys(n_chains, seed=42)
 
 initial_position = jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
 
-local_sampler_caller = lambda x: MALA_Sampler.make_sampler()
 model = RQSpline(n_dim, 4, [32, 32], 8)
 
 print("Initializing sampler class")
@@ -67,8 +66,7 @@ print("Initializing sampler class")
 nf_sampler = Sampler(
     n_dim,
     rng_key_set,
-    local_sampler_caller,
-    {'dt':1e-2},
+    MALA_Sampler,
     dual_moon_pe,
     model   ,
     n_loop_training=n_loop_training,
@@ -76,10 +74,10 @@ nf_sampler = Sampler(
     n_local_steps=n_local_steps,
     n_global_steps=n_global_steps,
     n_chains=n_chains,
+    local_autotune=mala_sampler_autotune,
     use_global=False,
 )
 
 nf_sampler.sample(initial_position)
 
 mala_kernel_vmap = jax.vmap(MALA_Sampler_kernel, in_axes = (0, 0, 0,  None), out_axes=(0, 0, 0))
-params = mala_sampler_autotune(mala_kernel_vmap, rng_key_set[1], initial_position, jax.vmap(dual_moon_pe)(initial_position), {"step_size":1e-2}, max_iter = 100)

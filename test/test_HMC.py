@@ -62,7 +62,6 @@ rng_key_set = initialize_rng_keys(n_chains, seed=42)
 
 initial_position = jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
 
-local_sampler_caller = lambda x: HMC.make_sampler()
 model = RQSpline(n_dim, 4, [32, 32], 8)
 
 print("Initializing sampler class")
@@ -70,8 +69,7 @@ print("Initializing sampler class")
 nf_sampler = Sampler(
     n_dim,
     rng_key_set,
-    local_sampler_caller,
-    {'dt':1e-2},
+    HMC,
     dual_moon_pe,
     model   ,
     n_loop_training=n_loop_training,

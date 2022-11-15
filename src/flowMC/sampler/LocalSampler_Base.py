@@ -8,6 +8,7 @@ class LocalSamplerBase:
         """
         self.logpdf = logpdf
         self.jit = jit
+        self.params = params
 
     @abstractmethod
     def make_kernel(self, return_aux = False) -> Callable:

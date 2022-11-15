@@ -8,6 +8,7 @@ from flowMC.sampler.NF_proposal import make_nf_metropolis_sampler
 from flax.training import train_state  # Useful dataclass to keep train state
 import flax
 import optax
+from flowMC.sampler.LocalSampler_Base import LocalSamplerBase
 
 
 class Sampler():
@@ -44,8 +45,7 @@ class Sampler():
         self,
         n_dim: int,
         rng_key_set: Tuple,
-        local_sampler: Callable,
-        sampler_params: dict,
+        local_sampler: LocalSamplerBase,
         likelihood: Callable,
         nf_model: Callable,
         n_loop_training: int = 3,
@@ -69,8 +69,8 @@ class Sampler():
 
         self.likelihood = likelihood
         self.likelihood_vec = jax.jit(jax.vmap(self.likelihood))
-        self.sampler_params = sampler_params
-        self.local_sampler = local_sampler(likelihood)
+        self.local_sampler_class = local_sampler
+        self.local_sampler = local_sampler.make_sampler()
         self.local_autotune = local_autotune
 
         self.rng_keys_nf = rng_keys_nf
@@ -148,7 +148,7 @@ class Sampler():
         # Note that auto-tune function needs to have the same number of steps
         # as the actual sampling loop to avoid recompilation.
 
-        self.local_sampler_tuning(self.n_local_steps, initial_position)
+        self.local_sampler_tuning(initial_position)
         last_step = initial_position
         if self.use_global == True:
             last_step = self.global_sampler_tuning(last_step)
@@ -260,7 +260,7 @@ class Sampler():
 
         return last_step
 
-    def local_sampler_tuning(self, n_steps: int, initial_position: jnp.array, max_iter: int = 10):
+    def local_sampler_tuning(self, initial_position: jnp.array, max_iter: int = 100):
         """
         Tuning the local sampler. This runs a number of iterations of the local sampler,
         and then uses the acceptance rate to adjust the local sampler parameters.
@@ -274,8 +274,11 @@ class Sampler():
         """
         if self.local_autotune is not None:
             print("Autotune found, start tuning sampler_params")
-            self.sampler_params, self.local_sampler = self.local_autotune(
-                self.local_sampler, self.rng_keys_mcmc, n_steps, initial_position, self.sampler_params, max_iter)
+            kernel_vmap = jax.vmap(self.local_sampler_class.make_kernel(), in_axes = (0, 0, 0,  None), out_axes=(0, 0, 0))
+            self.local_sampler_class.params = self.local_autotune(
+                kernel_vmap, self.rng_keys_mcmc, initial_position, self.likelihood_vec(initial_position), self.local_sampler_class.params, max_iter)
+            self.local_sampler = self.local_sampler_class.make_sampler()
+
         else:
             print("No autotune found, use input sampler_params")
 
