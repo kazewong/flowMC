@@ -31,7 +31,7 @@ class HMC(LocalSamplerBase):
         self.grad_kinetic = jax.grad(self.kinetic)
 
     def get_initial_hamiltonian(self, rng_key: jax.random.PRNGKey, position: jnp.array, params: dict):
-        momentum = jax.random.normal(rng_key, shape=position.shape) * params['inverse_metric']
+        momentum = jax.random.normal(rng_key, shape=position.shape) * params['inverse_metric'] **-0.5
         return self.potential(position) + self.kinetic(momentum, params)
 
     def make_kernel(self, return_aux = False) -> Callable:
@@ -67,7 +67,7 @@ class HMC(LocalSamplerBase):
             """
             key1, key2 = jax.random.split(rng_key)
 
-            momentum = jax.random.normal(key1, shape=position.shape) * params['inverse_metric']
+            momentum = jax.random.normal(key1, shape=position.shape) * params['inverse_metric']**-0.5
             proposed_position, proposed_momentum = leapfrog_step(position, momentum, params)
             proposed_ham = self.potential(proposed_position) + self.kinetic(proposed_momentum, params)
             log_acc = H - proposed_ham
@@ -154,7 +154,9 @@ class HMC(LocalSamplerBase):
                 range(1, n_steps), desc="Sampling Locally", miniters=int(n_steps / 10)
             ):
                 state = hmc_update(i, state)
-            return state[:-1]
+
+            state = (state[0], state[1], -state[2], state[3])
+            return state
 
         return hmc_sampler
 
