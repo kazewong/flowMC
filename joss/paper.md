@@ -61,7 +61,7 @@ In a high dimensional space, sampling methods which leverage gradient informatio
 The computational cost of obtaining a gradient in this way is often of the same order as evaluating the target function itself, making gradient-based samplers favorable concerning the efficiency/accuracy trade-off.
 
 ***Learned transition kernels with normalizing flow***
-Posterior distributions of many real-world problems have non-trivial geometry, such as multi-modality and local correlations, which could drastically slow down the convergence of the sampler only based on gradient information.
+Posterior distributions of many real-world problems have non-trivial geometry, such as multimodality and local correlations, which could drastically slow down the convergence of the sampler only based on gradient information.
 To address this problem, `flowMC` also uses a generative model, namely a normalizing flow (NF) [@Papamakarios2019; @Kobyzev2021], that is trained to mimic the posterior distribution and used as a proposal in Metropolis-Hastings MCMC steps. Variants of this idea have been explored in the past few years [e.g., @Albergo2019; @Hoffman2019; @Parno2018, and references therein].
 Despite the growing interest in these methods, few accessible implementations for practitioners exist, especially with GPU and TPU support. Notably, a version of the NeuTra sampler [@Hoffman2019] is available in Pyro [@bingham2019pyro], and the PocoMC package [@Karamanis2022] implements a version of sequential Monte Carlo (SMC), including NFs.
 
