@@ -30,7 +30,7 @@ bibliography: paper.bib
 
 # Summary
 
-Across scientific fields, flexible models are required to understand complex physical processes. However, the estimation of model parameters becomes challenging as the dimension of the parameter space grows. A common strategy to explore parameter space is to sample through a Markov chain Monte Carlo (MCMC). Yet even MCMC methods can struggle to faithfully represent the parameter space when only relying on local updates.
+Across scientific fields, flexible models are required to understand complex physical processes. However, the estimation of model parameters becomes challenging as the dimension of the parameter space grows. A common strategy to explore parameter space is to sample through Markov chain Monte Carlo (MCMC). Yet even MCMC methods can struggle to faithfully represent the parameter space when only relying on local updates.
 
 `flowMC` is a Python library for accelerated MCMC leveraging deep generative modelling, built on top of the machine learning libraries JAX and Flax. At its core, `flowMC` uses a local sampler and a learnable global sampler in tandem to efficiently sample posterior distributions. While multiple chains of the local sampler generate samples over the region of interest in the target parameter space, the package uses these samples to train a normalizing flow model and then uses it to propose global jumps across the parameter space. The `flowMC`sampler can handle non-trivial geometry, such as multimodal distributions and distributions with local correlations. 
 
