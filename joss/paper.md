@@ -49,7 +49,7 @@ The tight integration of all the above features makes `flowMC` a highly performa
 Bayesian inference requires computing expectations with respect to a posterior distribution on parameters $\theta$ after collecting observations $\mathcal{D}$. This posterior is given by 
 
 $$
-p(\theta|\mathcal{D}) = \frac{\ell(\mathcal{D}|\theta) p_0(\theta)}{Z(\mathcal{D})}  
+p(\theta|\mathcal{D}) = \frac{\ell(\mathcal{D}|\theta) p_0(\theta)}{Z(\mathcal{D})},  
 $$
 
 where $\ell(\mathcal{D}|\theta)$ is the likelihood induced by the model, $p_0(\theta)$ the prior on the parameters and  $Z(\mathcal{D})$ the model evidence. 
