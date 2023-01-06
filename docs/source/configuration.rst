@@ -176,7 +176,7 @@ The rule of thumb here is: within memory and computational bandwith, choose the 
 model_init
 ^^^^^^^^^^
 
-Dictionary with keys ``params`` and ``variables`` allowing to use the model trained during a previous run of the NFSampler. These variables can be retrieved from the ``NFSampler.state`` after a run. An exemple is provided in :ref:`tutorials/mog_pretrain`.
+Dictionary with keys ``params`` and ``variables`` allowing to use the model trained during a previous run of the NFSampler. These variables can be retrieved from the ``NFSampler.state`` after a run. An exemple is provided in :ref:`tutorials`.
 
 
 
