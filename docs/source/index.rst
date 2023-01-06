@@ -52,4 +52,5 @@ User guide
    tutorials/analyzingChains
    tutorials/localKernels
    tutorials/normalizingFlow
+   tutorials/mog_pretrain
    
