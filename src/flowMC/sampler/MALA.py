@@ -17,16 +17,12 @@ class MALA(LocalSamplerBase):
         """
         Make a MALA kernel for a given logpdf.
 
-        Parameters
-        ----------
-        logpdf : Callable
-            The logpdf of the target distribution.
+        Args:
+            logpdf : (Callable) The logpdf of the target distribution.
 
-        Returns
-        -------
-        Callable
-            A MALA kernel.
-
+        Returns:
+            mala_kernel (Callable) A MALA kernel.
+            
         """
         def body(carry, this_key):
             this_position, dt = carry
