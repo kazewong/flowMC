@@ -5,6 +5,7 @@ import jax.numpy as jnp
 import distrax
 
 from flax import linen as nn  # The Linen API
+from flowMC.nfmodel import mlp
 
 
 class MLP(nn.Module):
@@ -48,6 +49,7 @@ class Conditioner(nn.Module):
             [
                 MLP([self.n_features] + list(self.hidden_size)),
                 nn.tanh,
+                init_weight_scale=1e-2,
                 nn.Dense(
                     self.n_features * self.num_bijector_params,
                     kernel_init=jax.nn.initializers.zeros,
