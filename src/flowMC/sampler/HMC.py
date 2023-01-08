@@ -6,6 +6,17 @@ from tqdm import tqdm
 from flowMC.sampler.LocalSampler_Base import LocalSamplerBase
 
 class HMC(LocalSamplerBase):
+    """
+
+    Hamiltonian Monte Carlo sampler class builiding the hmc_sampler method
+    from target logpdf.
+
+    Args:
+        logpdf: target logpdf function 
+        jit: whether to jit the sampler
+        params: dictionary of parameters for the sampler
+
+    """
     
     def __init__(self, logpdf: Callable, jit: bool, params: dict) -> Callable:
         super().__init__(logpdf, jit, params)
@@ -30,18 +41,26 @@ class HMC(LocalSamplerBase):
         self.kinetic = lambda p, params: 0.5*(p**2 * params['inverse_metric']).sum()
         self.grad_kinetic = jax.grad(self.kinetic)
 
-    def get_initial_hamiltonian(self, rng_key: jax.random.PRNGKey, position: jnp.array, params: dict):
+    def get_initial_hamiltonian(self, rng_key: jax.random.PRNGKey, position: jnp.array,
+                                params: dict):
+        """
+        
+        Compute the value of the Hamiltonian from positions with initial momentum draw
+        at random from the standard normal distribution.
+
+        """
+        
         momentum = jax.random.normal(rng_key, shape=position.shape) * params['inverse_metric'] **-0.5
         return self.potential(position) + self.kinetic(momentum, params)
 
-    def make_kernel(self, return_aux = False) -> Callable:
+    def make_kernel(self, return_aux=False) -> Callable:
         """
 
         Making HMC kernel for a single step
 
         """
 
-        def leapfrog_kernal(carry, data):
+        def leapfrog_kernel(carry, data):
             position, momentum, params = carry
             position = position + params['step_size'] * self.grad_kinetic(momentum, params)
             momentum = momentum - params['step_size'] * self.grad_potential(position)
@@ -50,7 +69,7 @@ class HMC(LocalSamplerBase):
 
         def leapfrog_step(position, momentum, params: dict):
             momentum = momentum - 0.5 * params['step_size'] * self.grad_potential(position)
-            (position, momentum, params), _ = jax.lax.scan(leapfrog_kernal, (position, momentum, params), jnp.arange(self.n_leapfrog-1))
+            (position, momentum, params), _ = jax.lax.scan(leapfrog_kernel, (position, momentum, params), jnp.arange(self.n_leapfrog-1))
             position = position + params['step_size'] * self.grad_kinetic(momentum, params)
             momentum = momentum - 0.5*params['step_size'] * self.grad_potential(position)
             return position, momentum
@@ -83,7 +102,7 @@ class HMC(LocalSamplerBase):
         if return_aux == False:
             return hmc_kernel
         else:
-            return hmc_kernel, leapfrog_kernal, leapfrog_step
+            return hmc_kernel, leapfrog_kernel, leapfrog_step
             
 
     def make_update(self) -> Callable:
@@ -109,6 +128,12 @@ class HMC(LocalSamplerBase):
         return hmc_update
 
     def make_sampler(self) -> Callable:
+        """
+        
+        Making HMC sampler function for multiple chains from initial positions
+
+        """
+
         hmc_update = self.make_update()
 
         if self.jit:
@@ -118,6 +143,12 @@ class HMC(LocalSamplerBase):
         lh = jax.vmap(self.get_initial_hamiltonian, in_axes=(0, 0, None))
 
         def hmc_sampler(rng_key, n_steps, initial_position):
+            """
+            Funtion to sample from the posterior distribution using HMC
+
+            Args:
+
+            """
             
             keys = jax.vmap(jax.random.split)(rng_key)
             rng_key = keys[:, 0]
@@ -161,12 +192,12 @@ class HMC(LocalSamplerBase):
         return hmc_sampler
 
     def make_leapforg_kernel(self):
-        def leapfrog_kernal(carry, data):
+        def leapfrog_kernel(carry, data):
             position, momentum, params = carry
             position = position + self.step_size * self.grad_kinetic(momentum, params)
             momentum = momentum - self.step_size * self.grad_potential(position)
             return position, momentum
-        return leapfrog_kernal
+        return leapfrog_kernel
 
 
 
