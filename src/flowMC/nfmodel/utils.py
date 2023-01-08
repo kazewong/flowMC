@@ -13,7 +13,6 @@ def make_training_loop(model):
 
     Returns:
         train_flow (Callable): wrapper function that trains the model.
-
     """
 
     def train_step(batch, state, variables):
@@ -75,6 +74,9 @@ def make_training_loop(model):
 
 
 def sample_nf(model, param, rng_key, n_sample, variables):
+    """  
+    Sample from a NF model given a set of parameters and accompanying variables. 
+    """
     rng_key, subkey = random.split(rng_key)
     samples = model.apply(
         {"params": param, "variables": variables}, subkey, n_sample, method=model.sample

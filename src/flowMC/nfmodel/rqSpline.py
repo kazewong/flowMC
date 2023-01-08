@@ -81,7 +81,6 @@ def scalar_affine(params: jnp.ndarray):
 
 
 class RQSpline(nn.Module):
-
     """
     Rational quadratic spline normalizing flow model using distrax.
 
@@ -162,6 +161,9 @@ class RQSpline(nn.Module):
         return distrax.Transformed(base_dist, flow).log_prob(x)
 
     def sample(self, rng: jax.random.PRNGKey, num_samples: int) -> jnp.array:
+        """"
+        Sample from the flow.
+        """
         base_dist, flow = self.make_flow()
         samples = distrax.Transformed(base_dist, flow).sample(
             seed=rng, sample_shape=(num_samples)

@@ -6,7 +6,6 @@ import numpy as np
 
 
 class MLP(nn.Module):
-
     """
     Multi-layer perceptron in Flax. We use a gaussian kernel with a standard deviation
     of `init_weight_scale=1e-4` by default.
@@ -17,7 +16,6 @@ class MLP(nn.Module):
         use_bias: (bool) Whether to use bias in the layers.
         init_weight_scale: (float) The initial weight scale for the layers.
         kernel_init: (callable) The kernel initializer for the layers.
-        
     """
 
     features: Sequence[int]
@@ -44,7 +42,6 @@ class MLP(nn.Module):
 
 
 class AffineCoupling(nn.Module):
-
     """
     Affine coupling layer. 
     (Defined in the RealNVP paper https://arxiv.org/abs/1605.08803)
@@ -88,9 +85,7 @@ class AffineCoupling(nn.Module):
 
 
 class RealNVP(nn.Module):
-
     """
-
     RealNVP mode defined in the paper https://arxiv.org/abs/1605.08803.
     MLP is needed to make sure the scaling between layers are more or less the same.
 
