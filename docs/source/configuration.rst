@@ -171,6 +171,14 @@ Unlike typical deep learning use case, since our training dataset is continuousl
 Therefore, using larger batch size is usually better.
 The rule of thumb here is: within memory and computational bandwith, choose the largest number that would not increase the training time.
 
+.. _model_init:
+   
+model_init
+^^^^^^^^^^
+
+Dictionary with keys ``params`` and ``variables`` allowing to use the model trained during a previous run of the NFSampler. These variables can be retrieved from the ``NFSampler.state`` after a run. An exemple is provided in :ref:`tutorials`.
+
+
 
 Only-if-you-know-what-you-are-doing arguments
 ---------------------------------------------
