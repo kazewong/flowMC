@@ -7,6 +7,14 @@ from flowMC.sampler.LocalSampler_Base import LocalSamplerBase
 
 
 class MALA(LocalSamplerBase):
+    """
+    Metropolis-adjusted Langevin algorithm sampler class builiding the mala_sampler method
+
+    Args:
+        logpdf: target logpdf function
+        jit: whether to jit the sampler
+        params: dictionary of parameters for the sampler
+    """
 
     def __init__(self, logpdf: Callable, jit: bool, params: dict) -> Callable:
         super().__init__(logpdf, jit, params)
@@ -22,7 +30,6 @@ class MALA(LocalSamplerBase):
 
         Returns:
             mala_kernel (Callable) A MALA kernel.
-            
         """
         def body(carry, this_key):
             this_position, dt = carry
@@ -33,7 +40,6 @@ class MALA(LocalSamplerBase):
             return (proposal,dt), (proposal, this_log_prob, this_d_log)
 
         def mala_kernel(rng_key, position, log_prob, params = {"step_size": 0.1}):
-
             """
             Metropolis-adjusted Langevin algorithm kernel.
             This function make a proposal and accept/reject it.
@@ -76,7 +82,9 @@ class MALA(LocalSamplerBase):
         return mala_kernel
 
     def make_update(self) -> Callable:
-
+        """
+        Make a MALA update function for multiple steps
+        """
         mala_kernel = self.make_kernel()
 
         def mala_update(i, state):
@@ -91,6 +99,9 @@ class MALA(LocalSamplerBase):
         return mala_update
 
     def make_sampler(self) -> Callable:
+        """
+        Make a MALA sampler for multiple chains given initial positions
+        """
         mala_update = self.make_update()
         lp = self.logpdf
 
@@ -118,6 +129,17 @@ from tqdm import tqdm
 from functools import partialmethod
 
 def mala_sampler_autotune(mala_kernel_vmap, rng_key, initial_position, log_prob, params, max_iter = 30):
+    """
+    Tune the step size of the MALA kernel using the acceptance rate.
+
+    Args:
+        mala_kernel_vmap (Callable): A MALA kernel
+        rng_key: Jax PRNGKey
+        initial_position (n_chains, n_dim): initial position of the chains
+        log_prob (n_chains, ): log-probability of the initial position
+        params (dict): parameters of the MALA kernel
+    """
+
     tqdm.__init__ = partialmethod(tqdm.__init__, disable=True)
 
     counter = 0

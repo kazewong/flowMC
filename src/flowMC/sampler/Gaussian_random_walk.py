@@ -5,14 +5,25 @@ from jax.scipy.stats import multivariate_normal
 from tqdm import tqdm
 from flowMC.sampler.LocalSampler_Base import LocalSamplerBase
 
+
 class GaussianRandomWalk(LocalSamplerBase):
-  
+    """
+    Gaussian random walk sampler class builiding the rw_sampler method
+
+    Args:
+        logpdf: target logpdf function 
+        jit: whether to jit the sampler
+        params: dictionary of parameters for the sampler
+    """
     def __init__(self, logpdf: Callable, jit: bool, params: dict) -> Callable:
         super().__init__(logpdf, jit, params)
         self.params = params
         self.logpdf = logpdf
 
     def make_kernel(self, return_aux = False) -> Callable:
+        """
+        Making a single update of the random walk
+        """
         def rw_kernel(rng_key, position, log_prob, params = {"step_size": 0.1}):
             key1, key2 = jax.random.split(rng_key)
             move_proposal = jax.random.normal(key1, shape=position.shape) * params['step_size']
@@ -30,6 +41,9 @@ class GaussianRandomWalk(LocalSamplerBase):
 
 
     def make_update(self) -> Callable:
+        """
+        Making a the random walk update function for multiple steps
+        """
 
         rw_kernel = self.make_kernel()
 
@@ -45,7 +59,9 @@ class GaussianRandomWalk(LocalSamplerBase):
         return rw_update
 
     def make_sampler(self) -> Callable:
-
+        """
+        Making the random walk sampler for multiple chains given initial positions
+        """
         rw_update = self.make_update()
         lp = self.logpdf
 

@@ -7,7 +7,6 @@ from flowMC.sampler.LocalSampler_Base import LocalSamplerBase
 
 class HMC(LocalSamplerBase):
     """
-
     Hamiltonian Monte Carlo sampler class builiding the hmc_sampler method
     from target logpdf.
 
@@ -15,7 +14,6 @@ class HMC(LocalSamplerBase):
         logpdf: target logpdf function 
         jit: whether to jit the sampler
         params: dictionary of parameters for the sampler
-
     """
     
     def __init__(self, logpdf: Callable, jit: bool, params: dict) -> Callable:
@@ -44,10 +42,8 @@ class HMC(LocalSamplerBase):
     def get_initial_hamiltonian(self, rng_key: jax.random.PRNGKey, position: jnp.array,
                                 params: dict):
         """
-        
         Compute the value of the Hamiltonian from positions with initial momentum draw
         at random from the standard normal distribution.
-
         """
         
         momentum = jax.random.normal(rng_key, shape=position.shape) * params['inverse_metric'] **-0.5
@@ -55,9 +51,7 @@ class HMC(LocalSamplerBase):
 
     def make_kernel(self, return_aux=False) -> Callable:
         """
-
         Making HMC kernel for a single step
-
         """
 
         def leapfrog_kernel(carry, data):
@@ -76,13 +70,13 @@ class HMC(LocalSamplerBase):
 
         def hmc_kernel(rng_key, position, H, params: dict):
             """
-
-            Note that since the potential function is the negative log likelihood, hamiltonian is going down, but the likelihood value should go up.
+            Note that since the potential function is the negative log likelihood, 
+            hamiltonian is going down, but the likelihood value should go up.
 
             Args:
-            rng_key (n_chains, 2): random key
-            position (n_chains, n_dim): current position
-            H (n_chains, ): Hamiltonian of the current position
+                rng_key (n_chains, 2): random key
+                position (n_chains, n_dim): current position
+                H (n_chains, ): Hamiltonian of the current position
             """
             key1, key2 = jax.random.split(rng_key)
 
@@ -107,9 +101,7 @@ class HMC(LocalSamplerBase):
 
     def make_update(self) -> Callable:
         """
-        
         Making HMC update function for multiple steps
-
         """
 
         hmc_kernel = self.make_kernel()
@@ -129,9 +121,7 @@ class HMC(LocalSamplerBase):
 
     def make_sampler(self) -> Callable:
         """
-        
         Making HMC sampler function for multiple chains from initial positions
-
         """
 
         hmc_update = self.make_update()
@@ -143,12 +133,6 @@ class HMC(LocalSamplerBase):
         lh = jax.vmap(self.get_initial_hamiltonian, in_axes=(0, 0, None))
 
         def hmc_sampler(rng_key, n_steps, initial_position):
-            """
-            Funtion to sample from the posterior distribution using HMC
-
-            Args:
-
-            """
             
             keys = jax.vmap(jax.random.split)(rng_key)
             rng_key = keys[:, 0]

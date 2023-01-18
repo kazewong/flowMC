@@ -11,10 +11,10 @@ def nf_metropolis_kernel(
     rng_key: jax.random.PRNGKey,
     proposal_position: jnp.ndarray,
     initial_position: jnp.ndarray,
-    proposal_pdf: jnp.ndarray,
-    proposal_nf_pdf: jnp.ndarray,
-    initial_pdf: jnp.ndarray,
-    initial_nf_pdf: jnp.ndarray,
+    log_proposal_pdf: jnp.ndarray,
+    log_proposal_nf_pdf: jnp.ndarray,
+    log_initial_pdf: jnp.ndarray,
+    log_initial_nf_pdf: jnp.ndarray,
 ):
 
     """
@@ -24,10 +24,10 @@ def nf_metropolis_kernel(
         rng_key: Jax PRNGKey.
         proposal_position: Proposed positions, shape (Ndim).
         initial_position: Initial positions, shape (Ndim).
-        proposal_pdf: Pdf value evaluate using the target function at the proposal position, shape (Ndim).
-        proposal_nf_pdf: Pdf value evaluate using the normalizing flow model at the proposal position, shape (Ndim).
-        initial_pdf: Pdf value evaluate using the target function at the initial position, shape (Ndim).
-        initial_nf_pdf: Pdf value evaluate using the normalizing flow model at the initial position, shape (Ndim).
+        log_proposal_pdf: Log-pdf value evaluate using the target function at the proposal position, shape (Ndim).
+        log_proposal_nf_pdf: Log-pdf value evaluate using the normalizing flow model at the proposal position, shape (Ndim).
+        log_initial_pdf: Log-pdf value evaluate using the target function at the initial position, shape (Ndim).
+        log_initial_nf_pdf: Log-pdf value evaluate using the normalizing flow model at the initial position, shape (Ndim).
 
     Returns:
         position: New positions, shape (Ndim).
@@ -37,12 +37,12 @@ def nf_metropolis_kernel(
     """
 
     rng_key, subkeys = random.split(rng_key, 2)
-    ratio = (proposal_pdf - initial_pdf) - (proposal_nf_pdf - initial_nf_pdf)
+    ratio = (log_proposal_pdf - log_initial_pdf) - (log_proposal_nf_pdf - log_initial_nf_pdf)
     u = jnp.log(jax.random.uniform(subkeys, ratio.shape))
     do_accept = u < ratio
     position = jnp.where(do_accept, proposal_position, initial_position)
-    log_prob = jnp.where(do_accept, proposal_pdf, initial_pdf)
-    log_prob_nf = jnp.where(do_accept, proposal_nf_pdf, initial_nf_pdf)
+    log_prob = jnp.where(do_accept, log_proposal_pdf, log_initial_pdf)
+    log_prob_nf = jnp.where(do_accept, log_proposal_nf_pdf, log_initial_nf_pdf)
     return position, log_prob, log_prob_nf, do_accept
 
 
@@ -51,12 +51,11 @@ nf_metropolis_kernel = vmap(nf_metropolis_kernel)
 
 @jax.jit
 def nf_metropolis_update(i: int, state: Tuple):
-
     """
     A multistep global sampling kernel for a given normalizing flow model.
 
     Args:
-        i: Number of iteration.
+        i: Number of current iteration.
         state: A tuple containing the current state of the sampler.
 
     """
@@ -101,9 +100,9 @@ def nf_metropolis_update(i: int, state: Tuple):
 
 
 def make_nf_metropolis_sampler(nf_model):
-
     """
-    A function make the normalizing flow sampler for a given normalizing flow model.
+    Make the normalizing flow sampler for a given normalizing flow model 
+    for multiple steps and from multiple initial positions.
 
     Args:
         nf_model: A normalizing flow model.
