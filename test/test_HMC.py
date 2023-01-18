@@ -25,19 +25,19 @@ initial_position = jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 
 
 HMC = HMC(dual_moon_pe, True, {"step_size": step_size,"n_leapfrog": n_leapfrog, "inverse_metric": jnp.ones(n_dim)})
 
-initial_Ham = jax.vmap(HMC.get_initial_hamiltonian, in_axes=(0, 0, None))(rng_key_set[1], initial_position, HMC.params)
+initial_PE = jax.vmap(HMC.potential)(initial_position)
 
 HMC_kernel = HMC.make_kernel()
 
-print(HMC_kernel(rng_key_set[0], initial_position[0], initial_Ham[0], HMC.params))
+print(HMC_kernel(rng_key_set[0], initial_position[0], initial_PE[0], HMC.params))
 
 HMC_update = HMC.make_update()
 HMC_update = jax.vmap(HMC_update, in_axes = (None, (0, 0, 0, 0, None)), out_axes=(0, 0, 0, 0, None))
 
 initial_position = jnp.repeat(initial_position[:,None], n_local_steps, 1)
-initial_Ham = jnp.repeat(initial_Ham[:,None], n_local_steps, 1)
+initial_PE = jnp.repeat(initial_PE[:,None], n_local_steps, 1)
 
-state = (rng_key_set[1], initial_position, initial_Ham, jnp.zeros((n_chains, n_local_steps,1)), HMC.params)
+state = (rng_key_set[1], initial_position, initial_PE, jnp.zeros((n_chains, n_local_steps,1)), HMC.params)
 
 
 HMC_update(1, state)
@@ -52,7 +52,7 @@ from flowMC.sampler.Sampler import Sampler
 
 n_dim = 5
 n_chains = 2
-n_local_steps = 3
+n_local_steps = 20
 n_global_steps = 3
 step_size = 0.1
 n_loop_training = 2
