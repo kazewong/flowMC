@@ -1,35 +1,11 @@
-from typing import Sequence, Callable, List
+from typing import Sequence, Callable
 import numpy as np
 import jax
 import jax.numpy as jnp
 import distrax
 
 from flax import linen as nn  # The Linen API
-from flowMC.nfmodel import mlp
-
-
-class MLP(nn.Module):
-    features: Sequence[int]
-    activation: Callable = nn.tanh
-    use_bias: bool = True
-    init_weight_scale: float = 1e-2
-    kernel_i: Callable = jax.nn.initializers.variance_scaling
-
-    def setup(self):
-        self.layers = [
-            nn.Dense(
-                feat,
-                use_bias=self.use_bias,
-                kernel_init=self.kernel_i(self.init_weight_scale, "fan_in", "normal"),
-            )
-            for feat in self.features
-        ]
-
-    def __call__(self, x):
-        for l, layer in enumerate(self.layers[:-1]):
-            x = self.activation(layer(x))
-        x = self.layers[-1](x)
-        return x
+from flowMC.nfmodel.mlp import MLP
 
 
 class Reshape(nn.Module):
