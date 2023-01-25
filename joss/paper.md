@@ -67,7 +67,7 @@ Despite the growing interest in these methods, few accessible implementations fo
 
 `flowMC` implements the method proposed by @Gabrie2021a. 
 As individual chains explore their local neighborhood through gradient-based MCMC steps, multiple chains train the NF to learn the global landscape of the posterior distribution. In turn, the chains can be propagated with a Metropolis-Hastings kernel using the NF to propose globally in the parameter space. The cycle of local sampling, NF tuning, and global sampling is repeated until obtaining chains of the desired length.
-The entire algorithm belongs to the class of adaptive MCMCs [@Andrieu2008], collecting information from the chain's previous steps to simultaneously improve the transition kernel. 
+The entire algorithm belongs to the class of adaptive MCMCs [@Andrieu2008], collecting information from the chains' previous steps to simultaneously improve the transition kernel. 
 Usual MCMC diagnostics can be applied to assess the robustness of the inference results, thereby avoiding the common concern of validating the NF model. 
 If further sampling from the posterior is necessary, the flow trained during a previous run can be reused without further training. 
 The mathematical detail of the method are explained in [@Gabrie2021a].
