@@ -60,7 +60,7 @@ In a high dimensional space, sampling methods which leverage gradient informatio
 
 
 ***Learned transition kernels with NFs***
-When the posterior distribution has a non-trivial geometry, such as multiple modes or spatially dependent correlation structures, samplers based on local updates are inefficient.
+When the posterior distribution has a non-trivial geometry, such as multiple modes or spatially dependent correlation structures (e.g, [neal2003slice]), samplers based on local updates are inefficient.
 To address this problem, `flowMC` also uses a generative model, namely a NF [@Papamakarios2019; @Kobyzev2021], that is trained to mimic the posterior distribution and used as a proposal in Metropolis-Hastings MCMC steps. Variants of this idea have been explored in the past few years [e.g., @Albergo2019; @Hoffman2019; @Parno2018].
 Despite the growing interest in these methods, few accessible implementations for practitioners exist, especially with GPU and TPU support. Notably, a version of the NeuTra sampler [@Hoffman2019] is available in Pyro [@bingham2019pyro], and the PocoMC package [@Karamanis2022] implements a version of sequential Monte Carlo (SMC), including NFs.
 
