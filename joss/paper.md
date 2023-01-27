@@ -29,7 +29,7 @@ bibliography: paper.bib
 ---
 
 # Summary
-Across scientific fields, the Bayesian framework is used to account for uncertainties in inference [@ellison2004bayesian,@lancaster2004introduction,@von2011bayesian]. However, for models with more than a few parameters, exact inference is intractable. A frequently used strategy is to approximately sample the posterior distribution on models' parameters with a Markov chain Monte Carlo (MCMC). Yet conventional MCMC methods relying on local updates can take a prohibitive time to converge when posterior distributions have complex geometries (see e.g., [@rubinstein_simulation_2017] for a textbook).
+Across scientific fields, the Bayesian framework is used to account for uncertainties in inference [@ellison2004bayesian; @lancaster2004introduction; @von2011bayesian]. However, for models with more than a few parameters, exact inference is intractable. A frequently used strategy is to approximately sample the posterior distribution on models' parameters with a Markov chain Monte Carlo (MCMC). Yet conventional MCMC methods relying on local updates can take a prohibitive time to converge when posterior distributions have complex geometries (see e.g., [@rubinstein_simulation_2017] for a textbook).
 
 `flowMC` is a Python library implementing accelerated MCMC leveraging deep generative modelling as proposed by @Gabrie2022, built on top of the machine learning libraries JAX [@jax2018github] and Flax [@flax2020github]. At its core, `flowMC` uses a combination of Metropolis-Hastings Markov kernels using local and global proposed moves. While multiple chains are run using local-update Markov kernels to generate approximate samples over the region of interest in the target parameter space, these samples are used to train a normalizing flow (NF) model to approximate the samples' density. The NF is then used in the independent Metropois-Hastings kernel to propose global jumps across the parameter space. The `flowMC` sampler can handle non-trivial geometry, such as multimodal distributions and distributions with local correlations. 
 
@@ -61,7 +61,7 @@ In a high dimensional space, sampling methods which leverage gradient informatio
 
 ***Learned transition kernels with NFs***
 When the posterior distribution has a non-trivial geometry, such as multiple modes or spatially dependent correlation structures (e.g, [@neal2003slice]), samplers based on local updates are inefficient.
-To address this problem, `flowMC` also uses a generative model, namely a NF [@Papamakarios2019; @Kobyzev2021], that is trained to mimic the posterior distribution and used as a proposal in Metropolis-Hastings MCMC steps. Variants of this idea have been explored in the past few years [e.g., @Albergo2019; @Hoffman2019; @Parno2018].
+To address this problem, `flowMC` also uses a generative model, namely a NF [@Papamakarios2019; @Kobyzev2021], that is trained to mimic the posterior distribution and used as a proposal in Metropolis-Hastings MCMC steps. Variants of this idea have been explored in the past few years [e.g., @Parno2018; @Albergo2019; @Hoffman2019].
 Despite the growing interest in these methods, few accessible implementations for practitioners exist, especially with GPU and TPU support. Notably, a version of the NeuTra sampler [@Hoffman2019] is available in Pyro [@bingham2019pyro], and the PocoMC package [@Karamanis2022] implements a version of sequential Monte Carlo (SMC), including NFs.
 
 `flowMC` implements the method proposed by @Gabrie2022. 
@@ -72,7 +72,6 @@ If further sampling from the posterior is necessary, the flow trained during a p
 The mathematical details of the method are explained in [@Gabrie2022; @Gabrie2021a].
 
 ***Use of accelerators***
-
 `flowMC` is built on top of JAX, that supports the use of GPU and TPU accelerators by default.
 Users can write code the same way as they would on a CPU, and the library will automatically detect the available accelerators and use them at run time.
 Furthermore, the library leverages JIT compilations to further improve the performance of the sampler.
