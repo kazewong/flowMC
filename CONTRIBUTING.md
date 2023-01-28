@@ -40,7 +40,11 @@ breaking changes.
 
 ### Do you intend to introduce an example or tutorial?
 
-
+Open a new GitHub pull request with the example or tutorial. The example should
+be self-contained and keep import from other packages to minimal. Leave the
+case-specific analysis detail out. For more extensive tutorial, we encourage the
+community to link the minimal example hosted on the flowMC documentation to
+documentation from other packages.
 
 ### Do you have question about the code?
 
