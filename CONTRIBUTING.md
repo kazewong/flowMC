@@ -16,7 +16,29 @@ and clear description**, as much relevant information as possible, and the
 simplest possible **code sample** demonstrating the expected behavior that is
 not occurring. Also label the issue with the bug label.
 
+### Did you write a patch that fixes a bug?
+
+Open a new GitHub pull request with the patch. Ensure the PR description clearly
+describes the problem and solution. Include the relevant issue number if
+applicable.
+
 ### Do you intend to add a new feature or change an existing feature?
+
+Please follow the following principle when you are thinking about adding a new
+feature or changing an existing feature:
+
+1. The new feature should be able to take advantage of `jax.jit` whenever possible.
+2. Light weight and modular implementation is preferred.
+3. The core package only does sampling. If you have a concrete example that
+   involves a complete analysis such as plotting and models, see the next
+   contribution guide.
+
+Suggestions for new features are welcome on [flowMC support
+group](https://groups.google.com/u/1/g/flowmc). Note that features related to the
+core algorithm are unlikely to be accepted since that may include a lot of
+breaking changes.
+
+### Do you intend to introduce an example or tutorial?
 
 
 
