@@ -1,9 +1,10 @@
 
 ### Expectations
 
-flowMC is developed and maintained in my spare time and, while I try to be responsive, I don't always get to every issue immediately.
-If it has been more than a week or two, feel free to ping me to try to get my attention.
-This is subject to changes as the community grows
+flowMC is developed and maintained in my spare time and, while I try to be
+responsive, I don't always get to every issue immediately. If it has been more
+than a week or two, feel free to ping me to try to get my attention. This is
+subject to changes as the community grows.
 
 ### Did you find a bug?
 
@@ -15,3 +16,12 @@ and clear description**, as much relevant information as possible, and the
 simplest possible **code sample** demonstrating the expected behavior that is
 not occurring. Also label the issue with the bug label.
 
+### Do you intend to add a new feature or change an existing feature?
+
+
+
+### Do you have question about the code?
+
+Do not open an issue. Instead, find whether there are already existing threads
+on the [flowMC support group](https://groups.google.com/u/1/g/flowmc). If not,
+please open a new conversation there.
