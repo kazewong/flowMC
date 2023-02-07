@@ -1,4 +1,4 @@
-# FlowMC
+# flowMC
 
 **Normalizing-flow enhanced sampling package for probabilistic inference**
 
@@ -11,7 +11,7 @@
 
 ![flowMC_logo](./docs//source/logo_0810.png)
 
-FlowMC is a Jax-based python package for normalizing-flow enhanced Markov chain Monte Carlo (MCMC) sampling.
+flowMC is a Jax-based python package for normalizing-flow enhanced Markov chain Monte Carlo (MCMC) sampling.
 The code is open source under MIT license, and it is under active development.
 
 - Just-in-time compilation is supported.
