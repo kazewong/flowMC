@@ -12,12 +12,10 @@ def test_HMC():
     n_dim = 2
     n_chains = 1
     HMC_obj = HMC(log_posterior, True, {"step_size": 1,"n_leapfrog": 5, "inverse_metric": jnp.ones(n_dim)})
-    HMC_kernel = HMC_obj.make_kernel()
 
     rng_key_set = initialize_rng_keys(n_chains, seed=42)
 
     initial_position = jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
-
     initial_PE = jax.vmap(HMC_obj.potential)(initial_position)
 
     HMC_kernel, leapfrog_kernel, leapfrog_step = HMC_obj.make_kernel(return_aux=True)
@@ -45,6 +43,19 @@ def test_HMC():
     # Test whether the HMC kernel can recover moment of a Gaussian
 
     # Test acceptance rate goes to one when step size is small
+
+    HMC_obj = HMC(log_posterior, True, {"step_size": 0.00001,"n_leapfrog": 5, "inverse_metric": jnp.ones(n_dim)})
+    HMC_kernel = HMC_obj.make_kernel()
+
+    n_chains = 100
+    rng_key_set = initialize_rng_keys(n_chains, seed=42)
+
+    initial_position = jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
+    initial_PE = jax.vmap(HMC_obj.potential)(initial_position)
+
+    result = jax.vmap(HMC_kernel, in_axes = (0, 0, 0, None), out_axes=(0, 0, 0))(rng_key_set[1], initial_position, initial_PE, HMC_obj.params)
+
+    assert result[2].all()
 
 def test_MALA_deterministic():
     n_dim = 2
