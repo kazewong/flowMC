@@ -40,8 +40,6 @@ def test_HMC():
     assert jnp.allclose(rev_position, initial_position)
     assert jnp.allclose(initial_PE, HMC_obj.potential(rev_position))
 
-    # Test whether the HMC kernel can recover moment of a Gaussian
-
     # Test acceptance rate goes to one when step size is small
 
     HMC_obj = HMC(log_posterior, True, {"step_size": 0.00001,"n_leapfrog": 5, "inverse_metric": jnp.ones(n_dim)})
@@ -98,13 +96,3 @@ def test_Gaussian_random_walk_deterministic():
     assert jnp.allclose(result1[0],result2[0])
     assert result1[1]==result2[1]
     assert result1[2]==result2[2]
-
-def test_HMC_moment():
-    pass
-
-def test_MALA_moment():
-    pass
-
-def test_Gaussian_random_walk_moment():
-    pass
-
