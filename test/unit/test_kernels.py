@@ -79,29 +79,7 @@ class TestMALA:
         rng_key_set = initialize_rng_keys(n_chains, seed=42)
 
         initial_position = jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
-
         initial_logp = log_posterior(initial_position)
-
-    # Test acceptance rate goes to one when the step size is small
-
-    MALA_obj = MALA(log_posterior, True, {"step_size": 0.00001})
-    MALA_kernel = MALA_obj.make_kernel()
-
-    n_chains = 100
-    rng_key_set = initialize_rng_keys(n_chains, seed=42)
-
-    initial_position = jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
-    initial_logp = jax.vmap(log_posterior)(initial_position)
-
-    result = jax.vmap(MALA_kernel, in_axes = (0, 0, 0, None), out_axes=(0, 0, 0))(rng_key_set[1], initial_position, initial_logp, MALA_obj.params)
-
-    assert result[2].all()
-
-def test_Gaussian_random_walk_deterministic():
-    n_dim = 2
-    n_chains = 1
-    GRW_obj = GaussianRandomWalk(log_posterior, True, {"step_size": 1})
-    GRW_kernel = GRW_obj.make_kernel()
 
         result1 = (MALA_kernel(rng_key_set[0], initial_position[0], initial_logp, MALA_obj.params))
         result2 = (MALA_kernel(rng_key_set[0], initial_position[0], initial_logp, MALA_obj.params))
@@ -109,6 +87,31 @@ def test_Gaussian_random_walk_deterministic():
         assert jnp.allclose(result1[0],result2[0])
         assert result1[1]==result2[1]
         assert result1[2]==result2[2]
+
+    def test_MALA_acceptance_rate(self):
+        # Test acceptance rate goes to one when the step size is small
+
+        MALA_obj = MALA(log_posterior, True, {"step_size": 0.00001})
+        MALA_kernel = MALA_obj.make_kernel()
+
+        n_chains = 100
+        n_dim = 2
+        rng_key_set = initialize_rng_keys(n_chains, seed=42)
+
+        initial_position = jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
+        initial_logp = jax.vmap(log_posterior)(initial_position)
+
+        result = jax.vmap(MALA_kernel, in_axes = (0, 0, 0, None), out_axes=(0, 0, 0))(rng_key_set[1], initial_position, initial_logp, MALA_obj.params)
+
+        assert result[2].all()
+
+def test_Gaussian_random_walk_deterministic():
+    n_dim = 2
+    n_chains = 1
+    GRW_obj = GaussianRandomWalk(log_posterior, True, {"step_size": 1})
+    GRW_kernel = GRW_obj.make_kernel()
+
+
 
 class TestGRW():
 
@@ -120,21 +123,29 @@ class TestGRW():
 
         rng_key_set = initialize_rng_keys(n_chains, seed=42)
 
-    assert jnp.allclose(result1[0],result2[0])
-    assert result1[1]==result2[1]
-    assert result1[2]==result2[2]
+        initial_position = jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
+        initial_logp = log_posterior(initial_position)
 
-    # Test acceptance rate goes to one when the step size is small
+        result1 = (GRW_kernel(rng_key_set[0], initial_position[0], initial_logp, GRW_obj.params))
+        result2 = (GRW_kernel(rng_key_set[0], initial_position[0], initial_logp, GRW_obj.params))
 
-    GRW_obj = GaussianRandomWalk(log_posterior, True, {"step_size": 0.00001})
-    GRW_kernel = GRW_obj.make_kernel()
+        assert jnp.allclose(result1[0],result2[0])
+        assert result1[1]==result2[1]
+        assert result1[2]==result2[2]
 
-    n_chains = 100
-    rng_key_set = initialize_rng_keys(n_chains, seed=42)
+    def test_Gaussian_random_walk_acceptance_rate(self):
+        # Test acceptance rate goes to one when the step size is small
 
-    initial_position = jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
-    initial_logp = jax.vmap(log_posterior)(initial_position)
+        n_dim = 2
+        GRW_obj = GaussianRandomWalk(log_posterior, True, {"step_size": 0.00001})
+        GRW_kernel = GRW_obj.make_kernel()
 
-    result = jax.vmap(GRW_kernel, in_axes = (0, 0, 0, None), out_axes=(0, 0, 0))(rng_key_set[1], initial_position, initial_logp, GRW_obj.params)
+        n_chains = 100
+        rng_key_set = initialize_rng_keys(n_chains, seed=42)
 
-    assert result[2].all()
+        initial_position = jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
+        initial_logp = jax.vmap(log_posterior)(initial_position)
+
+        result = jax.vmap(GRW_kernel, in_axes = (0, 0, 0, None), out_axes=(0, 0, 0))(rng_key_set[1], initial_position, initial_logp, GRW_obj.params)
+
+        assert result[2].all()
