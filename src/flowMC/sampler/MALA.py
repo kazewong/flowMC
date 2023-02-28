@@ -138,6 +138,7 @@ def mala_sampler_autotune(mala_kernel_vmap, rng_key, initial_position, log_prob,
         initial_position (n_chains, n_dim): initial position of the chains
         log_prob (n_chains, ): log-probability of the initial position
         params (dict): parameters of the MALA kernel
+        max_iter (int): maximal number of iterations to tune the step size
     """
 
     tqdm.__init__ = partialmethod(tqdm.__init__, disable=True)
