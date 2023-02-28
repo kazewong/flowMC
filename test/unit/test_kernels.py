@@ -68,6 +68,22 @@ class TestHMC:
 
         assert result[2].all()
 
+    def test_HMC_close_gaussian(self):
+        n_dim = 2
+        n_chains = 1
+        HMC_obj = HMC(log_posterior, True, {"step_size": 1,"n_leapfrog": 5, "inverse_metric": jnp.ones(n_dim)})
+
+        rng_key_set = initialize_rng_keys(n_chains, seed=42)
+
+        initial_position = jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
+
+        HMC_sampler = HMC_obj.make_sampler()
+
+        result = HMC_sampler(rng_key_set[1], 10000, initial_position)
+
+        assert jnp.isclose(jnp.mean(result[1]),0,atol=1e-2)
+        assert jnp.isclose(jnp.var(result[1]),1,atol=1e-2)
+
 class TestMALA:
 
     def test_MALA_deterministic(self):
@@ -105,14 +121,23 @@ class TestMALA:
 
         assert result[2].all()
 
-def test_Gaussian_random_walk_deterministic():
-    n_dim = 2
-    n_chains = 1
-    GRW_obj = GaussianRandomWalk(log_posterior, True, {"step_size": 1})
-    GRW_kernel = GRW_obj.make_kernel()
+    def test_MALA_close_gaussian(self):
+        n_dim = 2
+        n_chains = 1
+        MALA_obj = MALA(log_posterior, True, {"step_size": 1})
 
+        rng_key_set = initialize_rng_keys(n_chains, seed=42)
 
+        initial_position = jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
 
+        MALA_sampler = MALA_obj.make_sampler()
+
+        result = MALA_sampler(rng_key_set[1], 30000, initial_position)
+
+        assert jnp.isclose(jnp.mean(result[1]),0,atol=1e-2)
+        assert jnp.isclose(jnp.var(result[1]),1,atol=1e-2)
+
+    
 class TestGRW():
 
     def test_Gaussian_random_walk_deterministic(self):
@@ -149,3 +174,19 @@ class TestGRW():
         result = jax.vmap(GRW_kernel, in_axes = (0, 0, 0, None), out_axes=(0, 0, 0))(rng_key_set[1], initial_position, initial_logp, GRW_obj.params)
 
         assert result[2].all()
+
+    def test_Gaussian_random_walk_close_gaussian(self):
+        n_dim = 2
+        n_chains = 1
+        GRW_obj = GaussianRandomWalk(log_posterior, True, {"step_size": 1})
+
+        rng_key_set = initialize_rng_keys(n_chains, seed=42)
+
+        initial_position = jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
+
+        GRW_sampler = GRW_obj.make_sampler()
+
+        result = GRW_sampler(rng_key_set[1], 30000, initial_position)
+
+        assert jnp.isclose(jnp.mean(result[1]),0,atol=1e-2)
+        assert jnp.isclose(jnp.var(result[1]),1,atol=1e-2)
