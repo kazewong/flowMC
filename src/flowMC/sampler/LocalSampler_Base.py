@@ -4,6 +4,7 @@ class LocalSamplerBase:
 
     def __init__(self, logpdf: Callable, jit: bool, params: dict) -> Callable:
         """
+        Initialize the sampler class
         """
         self.logpdf = logpdf
         self.jit = jit
