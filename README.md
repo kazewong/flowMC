@@ -61,7 +61,7 @@ To visualize the inference results in the examples, we requrie the following pac
     * corner
     * arviz
 
-
+The test suite is based on pytest. To run the tests, one needs to install `pytest` and run `pytest` at the root directory of this repo.
 
 # Attribution
 
