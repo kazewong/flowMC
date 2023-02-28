@@ -9,11 +9,10 @@ def make_training_loop(model):
     Create a function that trains an NF model.
 
     Args:
-        model: a neural network model with a `loss` method.
+        model: a neural network model with a `log_prob` method.
 
     Returns:
         train_flow (Callable): wrapper function that trains the model.
-
     """
 
     def train_step(batch, state, variables):
@@ -75,6 +74,20 @@ def make_training_loop(model):
 
 
 def sample_nf(model, param, rng_key, n_sample, variables):
+    """  
+    Sample from a NF model given a set of parameters and accompanying variables. 
+
+    Args:
+        model: a neural network model with a `sample` method.
+        param: a set of parameters for the model.
+        rng_key: a random number generator key.
+        n_sample: number of samples to draw.
+        variables: a set of variables for the model (see realnvp.py and ).
+
+    Returns:
+        rng_key: a new random number generator key.
+        samples: a set of samples from the model.
+    """
     rng_key, subkey = random.split(rng_key)
     samples = model.apply(
         {"params": param, "variables": variables}, subkey, n_sample, method=model.sample

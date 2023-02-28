@@ -168,7 +168,6 @@ class Sampler():
 
         Returns:
             chains (jnp.array): Samples from the posterior. Shape (n_chains, n_local_steps + n_global_steps, n_dim)
-
         """
 
         if training == True:
@@ -289,7 +288,8 @@ class Sampler():
         Tuning the global sampler. This runs both the local sampler and the global sampler,
         and train the normalizing flow on the run.
         To adapt the normalizing flow, we need to keep certain amount of the data generated during the sampling.
-        The data is stored in the summary dictionary.
+        The data is stored in the summary dictionary and can be accessed through the `get_sampler_state` method.
+        This tuning run is meant to be followed by a production run as defined below.
 
         Args:
             initial_position (Device Array): Initial position for the sampler, shape (n_chains, n_dim)
@@ -305,8 +305,11 @@ class Sampler():
         """
         Sampling procedure that produce the final set of samples.
         The main difference between this and the global tuning step is
-        we do not train the normalizing flow in order to main detail balance.
-        The data is stored in the summary dictionary.
+        we do not train the normalizing flow, omitting training allows to maintain detail balance.
+        The data is stored in the summary dictionary and can be accessed through the `get_sampler_state` method.
+
+        Args:
+            initial_position (Device Array): Initial position for the sampler, shape (n_chains, n_dim)
         
         """
         print("Starting Production run")
@@ -335,7 +338,6 @@ class Sampler():
 
     def sample_flow(self, n_samples: int) -> jnp.ndarray:
         """
-
         Sample from the normalizing flow.
 
         Args:

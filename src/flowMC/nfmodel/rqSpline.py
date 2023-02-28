@@ -1,34 +1,11 @@
-from typing import Sequence, Callable, List
+from typing import Sequence, Callable
 import numpy as np
 import jax
 import jax.numpy as jnp
 import distrax
 
 from flax import linen as nn  # The Linen API
-
-
-class MLP(nn.Module):
-    features: Sequence[int]
-    activation: Callable = nn.tanh
-    use_bias: bool = True
-    init_weight_scale: float = 1e-2
-    kernel_i: Callable = jax.nn.initializers.variance_scaling
-
-    def setup(self):
-        self.layers = [
-            nn.Dense(
-                feat,
-                use_bias=self.use_bias,
-                kernel_init=self.kernel_i(self.init_weight_scale, "fan_in", "normal"),
-            )
-            for feat in self.features
-        ]
-
-    def __call__(self, x):
-        for l, layer in enumerate(self.layers[:-1]):
-            x = self.activation(layer(x))
-        x = self.layers[-1](x)
-        return x
+from flowMC.nfmodel.mlp import MLP
 
 
 class Reshape(nn.Module):
@@ -46,8 +23,9 @@ class Conditioner(nn.Module):
     def setup(self):
         self.conditioner = nn.Sequential(
             [
-                MLP([self.n_features] + list(self.hidden_size)),
+                MLP([self.n_features] + list(self.hidden_size),
                 nn.tanh,
+                init_weight_scale=1e-2),
                 nn.Dense(
                     self.n_features * self.num_bijector_params,
                     kernel_init=jax.nn.initializers.zeros,
@@ -81,22 +59,19 @@ def scalar_affine(params: jnp.ndarray):
 
 
 class RQSpline(nn.Module):
-
     """
     Rational quadratic spline normalizing flow model using distrax.
 
-    Parameters
-    ----------
-    n_features : int
-        Number of features in the data.
-    num_layers : int
-        Number of layers in the flow.
-    num_bins : int
-        Number of bins in the spline.
-    hidden_size : Sequence[int]
-        Size of the hidden layers in the conditioner.
-    spline_range : Sequence[float]
-        Range of the spline.
+    Args:
+        n_features : (int) Number of features in the data.
+        num_layers : (int) Number of layers in the flow.
+        num_bins : (int) Number of bins in the spline.
+        hidden_size : (Sequence[int]) Size of the hidden layers in the conditioner.
+        spline_range : (Sequence[float]) Range of the spline.
+    
+    Properties:
+        base_mean: (ndarray) Mean of Gaussian base distribution
+        base_cov: (ndarray) Covariance of Gaussian base distribution
     """
 
     n_features: int
@@ -168,6 +143,9 @@ class RQSpline(nn.Module):
         return distrax.Transformed(base_dist, flow).log_prob(x)
 
     def sample(self, rng: jax.random.PRNGKey, num_samples: int) -> jnp.array:
+        """"
+        Sample from the flow.
+        """
         base_dist, flow = self.make_flow()
         samples = distrax.Transformed(base_dist, flow).sample(
             seed=rng, sample_shape=(num_samples)
