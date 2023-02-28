@@ -8,21 +8,15 @@ from flax.training import train_state  # Useful dataclass to keep train state
 import optax  # Optimizers
 import flax
 
-from sklearn.datasets import make_moons
-import matplotlib.pyplot as plt
-
-
-
 def test_realNVP():
 
-    data = jnp.array(make_moons(n_samples=100, noise=0.05)[0])
+    key1, rng, init_rng = jax.random.split(jax.random.PRNGKey(0), 3)
+    data = jax.random.normal(key1, (100,2))
 
     num_epochs = 5
     batch_size = 100
     learning_rate = 0.001
     momentum = 0.9
-
-    key1, rng, init_rng = jax.random.split(jax.random.PRNGKey(0), 3)
 
     model = RealNVP(2, 2, 16, 1)
     def create_train_state(rng, learning_rate, momentum):
@@ -48,15 +42,14 @@ def test_realNVP():
 
 def test_rqSpline():
 
-
-    data = jnp.array(make_moons(n_samples=100, noise=0.05)[0])
+    key1, rng, init_rng = jax.random.split(jax.random.PRNGKey(0), 3)
+    data = jax.random.normal(key1, (100,2))
 
     num_epochs = 5
     batch_size = 100
     learning_rate = 0.001
     momentum = 0.9
 
-    key1, rng, init_rng = jax.random.split(jax.random.PRNGKey(0), 3)
     model = RQSpline(2, 4, [16, 16], 8)
 
     def create_train_state(rng, learning_rate, momentum):
