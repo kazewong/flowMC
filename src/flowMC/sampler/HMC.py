@@ -76,7 +76,7 @@ class HMC(LocalSamplerBase):
             Args:
                 rng_key (n_chains, 2): random key
                 position (n_chains, n_dim): current position
-                H (n_chains, ): Hamiltonian of the current position
+                PE (n_chains, ): Potential energy of the current position
             """
             key1, key2 = jax.random.split(rng_key)
 
