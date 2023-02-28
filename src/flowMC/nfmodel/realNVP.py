@@ -58,6 +58,8 @@ class RealNVP(nn.Module):
         n_features: (int) The number of features in the input.
         n_hidden: (int) The number of hidden units in the MLP.
         dt: (float) Scaling factor for the affine coupling layer.
+
+    Properties:
         base_mean: (ndarray) Mean of Gaussian base distribution
         base_cov: (ndarray) Covariance of Gaussian base distribution
     """

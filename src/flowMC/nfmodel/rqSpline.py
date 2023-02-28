@@ -68,6 +68,10 @@ class RQSpline(nn.Module):
         num_bins : (int) Number of bins in the spline.
         hidden_size : (Sequence[int]) Size of the hidden layers in the conditioner.
         spline_range : (Sequence[float]) Range of the spline.
+    
+    Properties:
+        base_mean: (ndarray) Mean of Gaussian base distribution
+        base_cov: (ndarray) Covariance of Gaussian base distribution
     """
 
     n_features: int
