@@ -145,13 +145,13 @@ def mala_sampler_autotune(mala_kernel_vmap, rng_key, initial_position, log_prob,
     counter = 0
     position, log_prob, do_accept = mala_kernel_vmap(rng_key, initial_position, log_prob, params)
     acceptance_rate = jnp.mean(do_accept)
-    while (acceptance_rate < 0.3) or (acceptance_rate > 0.5):
+    while (acceptance_rate <= 0.3) or (acceptance_rate >= 0.5):
         if counter > max_iter:
             print("Maximal number of iterations reached. Existing tuning with current parameters.")
             break
-        if acceptance_rate < 0.3:
+        if acceptance_rate <= 0.3:
             params['step_size'] *= 0.8
-        elif acceptance_rate > 0.5:
+        elif acceptance_rate >= 0.5:
             params['step_size'] *= 1.25
         counter += 1
         position, log_prob, do_accept = mala_kernel_vmap(rng_key, initial_position, log_prob, params)

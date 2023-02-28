@@ -41,6 +41,7 @@ User guide
    configuration
    examples
    FAQ
+   contribution
    api/modules
    
 .. toctree::
@@ -52,4 +53,5 @@ User guide
    tutorials/analyzingChains
    tutorials/localKernels
    tutorials/normalizingFlow
+   tutorials/mog_pretrain
    
