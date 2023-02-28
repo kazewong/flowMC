@@ -41,6 +41,7 @@ User guide
    configuration
    examples
    FAQ
+   contribution
    api/modules
    
 .. toctree::
