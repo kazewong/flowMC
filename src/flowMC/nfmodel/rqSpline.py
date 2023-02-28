@@ -23,9 +23,9 @@ class Conditioner(nn.Module):
     def setup(self):
         self.conditioner = nn.Sequential(
             [
-                MLP([self.n_features] + list(self.hidden_size)),
+                MLP([self.n_features] + list(self.hidden_size),
                 nn.tanh,
-                init_weight_scale=1e-2,
+                init_weight_scale=1e-2),
                 nn.Dense(
                     self.n_features * self.num_bijector_params,
                     kernel_init=jax.nn.initializers.zeros,
