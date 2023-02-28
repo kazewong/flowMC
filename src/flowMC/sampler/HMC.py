@@ -183,4 +183,4 @@ class HMC(LocalSamplerBase):
             position = position + self.step_size * self.grad_kinetic(momentum, params)
             momentum = momentum - self.step_size * self.grad_potential(position)
             return position, momentum
-        return leapfrog_kernal
+        return leapfrog_kernel
