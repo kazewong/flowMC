@@ -3,7 +3,7 @@
 
 flowMC is developed and maintained in my spare time and, while I try to be
 responsive, I don't always get to every issue immediately. If it has been more
-than a week or two, feel free to ping me to try to get my attention. This is
+than a week or two, feel free to ping me (@kazewong) to try to get my attention. This is
 subject to changes as the community grows.
 
 ### Did you find a bug?
