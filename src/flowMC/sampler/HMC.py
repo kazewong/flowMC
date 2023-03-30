@@ -16,7 +16,7 @@ class HMC(LocalSamplerBase):
         params: dictionary of parameters for the sampler
     """
     
-    def __init__(self, logpdf: Callable, jit: bool, params: dict) -> Callable:
+    def __init__(self, logpdf: Callable, jit: bool, params: dict, verbose: bool = False) -> Callable:
         super().__init__(logpdf, jit, params)
 
         self.potential = lambda x: -self.logpdf(x)
@@ -38,6 +38,7 @@ class HMC(LocalSamplerBase):
 
         self.kinetic = lambda p, params: 0.5*(p**2 * params['inverse_metric']).sum()
         self.grad_kinetic = jax.grad(self.kinetic)
+        self.verbose = verbose
 
     def get_initial_hamiltonian(self, rng_key: jax.random.PRNGKey, position: jnp.array,
                                 params: dict):
@@ -167,9 +168,13 @@ class HMC(LocalSamplerBase):
                 + logp[:, None]
             )
             state = (rng_key, all_positions, all_logp, acceptance, self.params)
-            for i in tqdm(
-                range(1, n_steps), desc="Sampling Locally", miniters=int(n_steps / 10)
-            ):
+
+            if self.verbose:
+                iterator_loop = tqdm(range(1, n_steps), desc="Sampling Locally", miniters=int(n_steps / 10))
+            else:
+                iterator_loop = range(1, n_steps)
+
+            for i in iterator_loop:
                 state = hmc_update(i, state)
 
             state = (state[0], state[1], -state[2], state[3])
