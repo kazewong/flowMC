@@ -9,6 +9,7 @@ from flax.training import train_state  # Useful dataclass to keep train state
 import flax
 import optax
 from flowMC.sampler.LocalSampler_Base import LocalSamplerBase
+from tqdm import tqdm
 
 
 class Sampler():
@@ -297,7 +298,10 @@ class Sampler():
         """
         print("Training normalizing flow")
         last_step = initial_position
-        for _ in range(self.n_loop_training):
+        for _ in tqdm(
+                range(self.n_loop_training),
+                desc="Tuning global sampler",
+                ):
             last_step = self.sampling_loop(last_step, training=True)
         return last_step
 
@@ -314,7 +318,10 @@ class Sampler():
         """
         print("Starting Production run")
         last_step = initial_position
-        for _ in range(self.n_loop_production):
+        for _ in tqdm(
+                range(self.n_loop_production),
+                desc="Production run",
+                ):
             last_step = self.sampling_loop(last_step)
         return last_step
 
