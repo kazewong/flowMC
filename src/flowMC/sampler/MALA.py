@@ -16,10 +16,11 @@ class MALA(LocalSamplerBase):
         params: dictionary of parameters for the sampler
     """
 
-    def __init__(self, logpdf: Callable, jit: bool, params: dict) -> Callable:
+    def __init__(self, logpdf: Callable, jit: bool, params: dict, verbose: bool = False) -> Callable:
         super().__init__(logpdf, jit, params)
         self.params = params
         self.logpdf = logpdf
+        self.verbose = verbose
 
     def make_kernel(self, return_aux = False) -> Callable:
         """
@@ -119,7 +120,11 @@ class MALA(LocalSamplerBase):
             all_positions = (jnp.zeros((n_chains, n_steps) + initial_position.shape[-1:])) + initial_position[:, None]
             all_logp = (jnp.zeros((n_chains, n_steps)) + logp[:, None])
             state = (rng_key, all_positions, all_logp, acceptance, self.params)
-            for i in tqdm(range(1, n_steps)):
+            if self.verbose:
+                iterator_loop = tqdm(range(1, n_steps), desc="Sampling Locally", miniters=int(n_steps / 10))
+            else:
+                iterator_loop = range(1, n_steps)
+            for i in iterator_loop:
                 state = mala_update(i, state)
             return state[:-1]
 
