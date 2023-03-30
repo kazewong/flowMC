@@ -94,3 +94,21 @@ def sample_nf(model, param, rng_key, n_sample, variables):
     )
     # samples = jnp.flip(samples[0],axis=1)
     return rng_key, samples
+
+def eval_nf(model, param, x, variables):
+    """
+    Evaluate a NF model given a set of parameters and accompanying variables.
+
+    Args:
+        model: a neural network model with a `log_prob` method.
+        param: a set of parameters for the model.
+        x: a set of points to evaluate the model at.
+        variables: a set of variables for the model (see realnvp.py and ).
+
+    Returns:
+        log_prob: the log probability of the model at the given points.
+    """
+    log_prob = model.apply(
+        {"params": param, "variables": variables}, x, method=model.log_prob
+    )
+    return log_prob

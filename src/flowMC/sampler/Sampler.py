@@ -3,7 +3,7 @@ from typing import Callable, Tuple
 import jax
 import jax.numpy as jnp
 import numpy as np
-from flowMC.nfmodel.utils import sample_nf, make_training_loop
+from flowMC.nfmodel.utils import sample_nf, make_training_loop, eval_nf
 from flowMC.sampler.NF_proposal import make_nf_metropolis_sampler
 from flax.training import train_state  # Useful dataclass to keep train state
 import flax
@@ -362,6 +362,24 @@ class Sampler():
             self.variables,
         )
         return nf_samples
+
+    def evalulate_flow(self, samples: jnp.ndarray) -> jnp.ndarray:
+        """
+        Evaluate the log probability of the normalizing flow.
+
+        Args:
+            samples (Device Array): Samples to evaluate.
+
+        Returns:
+            Device Array: Log probability of the samples.
+        """
+        log_prob = eval_nf(
+            self.nf_model,
+            self.state.params,
+            samples,
+            self.variables,
+        )
+        return log_prob
 
     def reset(self):
         """
