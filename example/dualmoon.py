@@ -8,7 +8,7 @@ import numpy as np
 from flowMC.nfmodel.realNVP import RealNVP
 from flowMC.nfmodel.rqSpline import RQSpline
 from flowMC.nfmodel.utils import *
-from flowMC.sampler.MALA import make_mala_sampler, mala_sampler_autotune
+from flowMC.sampler.MALA import MALA
 from flowMC.sampler.Sampler import Sampler
 from flowMC.utils.PRNG_keys import initialize_rng_keys
 
@@ -47,15 +47,12 @@ model = RQSpline(n_dim, 10, [128, 128], 8)
 
 MALA_Sampler = MALA(dual_moon_pe, True, {"step_size": 1e-1})
 
-local_sampler_caller = lambda x: MALA_Sampler.make_sampler()
-
 print("Initializing sampler class")
 
 nf_sampler = Sampler(
     n_dim,
     rng_key_set,
-    local_sampler_caller,
-    {'dt':1e-1},
+    MALA_Sampler,
     dual_moon_pe,
     model,
     n_loop_training=n_loop_training,
