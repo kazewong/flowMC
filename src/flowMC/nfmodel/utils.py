@@ -46,9 +46,12 @@ def make_training_loop(model):
 
         return value, state
 
-    def train_flow(rng, state, variables, data, num_epochs, batch_size):
+    def train_flow(rng, state, variables, data, num_epochs, batch_size, verbose: bool = False):
         loss_values = jnp.zeros(num_epochs)
-        pbar = trange(num_epochs, desc="Training NF", miniters=int(num_epochs / 10))
+        if verbose:
+            pbar = trange(num_epochs, desc="Training NF", miniters=int(num_epochs / 10))
+        else:
+            pbar = range(num_epochs)
         best_state = state
         best_loss = 1e9
         for epoch in pbar:
@@ -61,12 +64,13 @@ def make_training_loop(model):
             if loss_values[epoch] < best_loss:
                 best_state = state
                 best_loss = loss_values[epoch]
-            if num_epochs > 10:
-                if epoch % int(num_epochs / 10) == 0:
-                    pbar.set_description(f"Training NF, current loss: {value:.3f}")
-            else:
-                if epoch == num_epochs:
-                    pbar.set_description(f"Training NF, current loss: {value:.3f}")
+            if verbose:
+                if num_epochs > 10:
+                    if epoch % int(num_epochs / 10) == 0:
+                        pbar.set_description(f"Training NF, current loss: {value:.3f}")
+                else:
+                    if epoch == num_epochs:
+                        pbar.set_description(f"Training NF, current loss: {value:.3f}")
 
         return rng, best_state, loss_values
 

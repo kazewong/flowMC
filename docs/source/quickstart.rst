@@ -21,8 +21,10 @@ At the time of writing this documentation page, this is the command to install J
 
 .. code-block::
 
-    pip install --upgrade "jax[cuda]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+    pip install --upgrade "jax[cuda]==0.4.1" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 
+[Warning]: Note that newer versions of JAX clashes with Flax and distrax, which
+are the dependencies of flowMC. Therefore, we pin the version of JAX to 0.4.1.
 
 If you want to install the latest version of flowMC, you can clone this repo and install it locally:
 
