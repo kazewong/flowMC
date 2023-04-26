@@ -108,7 +108,7 @@ class RQSpline(nn.Module):
 
         self.bijector_fn = bijector_fn
 
-    def make_flow(self, scale=1.):
+    def make_flow(self, scale: float =1.):
         mask = (jnp.arange(0, self.n_features) % 2).astype(bool)
         mask_all = (jnp.zeros(self.n_features)).astype(bool)
         layers = []
@@ -137,12 +137,12 @@ class RQSpline(nn.Module):
 
         return base_dist, flow
 
-    def __call__(self, x: jnp.array, scale=1.) -> jnp.array:
+    def __call__(self, x: jnp.array, scale: float =1.) -> jnp.array:
         x = (x-self.base_mean.value)/jnp.sqrt(jnp.diag(self.base_cov.value))
         base_dist, flow = self.make_flow(scale=scale)
         return distrax.Transformed(base_dist, flow).log_prob(x)
 
-    def sample(self, rng: jax.random.PRNGKey, num_samples: int, scale = 1.) -> jnp.array:
+    def sample(self, rng: jax.random.PRNGKey, num_samples: int, scale: float = 1.) -> jnp.array:
         """"
         Sample from the flow.
         """
@@ -154,3 +154,10 @@ class RQSpline(nn.Module):
 
     def log_prob(self, x: jnp.array) -> jnp.array:
         return self.vmap_call(x)
+    
+    def log_prob_scaled(self, x:jnp.array, scale:float = 1.):
+
+        get_logprob = jax.jit(jax.vmap(self.__call__, in_axes=[0, None]))
+        logprob = get_logprob(x, scale)
+        
+        return logprob
