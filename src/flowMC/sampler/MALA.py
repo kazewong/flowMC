@@ -21,6 +21,9 @@ class MALA(LocalSamplerBase):
         self.params = params
         self.logpdf = logpdf
         self.verbose = verbose
+        self.kernel = None
+        self.update = None
+        self.sampler = None
 
     def make_kernel(self, return_aux = False) -> Callable:
         """
@@ -33,14 +36,14 @@ class MALA(LocalSamplerBase):
             mala_kernel (Callable) A MALA kernel.
         """
         def body(carry, this_key):
-            this_position, dt = carry
+            this_position, dt, data = carry
             dt2 = dt*dt
-            this_log_prob, this_d_log = jax.value_and_grad(self.logpdf)(this_position)
+            this_log_prob, this_d_log = jax.value_and_grad(self.logpdf)(this_position, data)
             proposal = this_position + jnp.dot(dt2, this_d_log) / 2
             proposal += jnp.dot(dt, jax.random.normal(this_key, shape=this_position.shape))
             return (proposal,dt), (proposal, this_log_prob, this_d_log)
 
-        def mala_kernel(rng_key, position, log_prob, params = {"step_size": 0.1}):
+        def mala_kernel(rng_key, position, log_prob, data, params = {"step_size": 0.1}):
             """
             Metropolis-adjusted Langevin algorithm kernel.
             This function make a proposal and accept/reject it.
@@ -49,6 +52,8 @@ class MALA(LocalSamplerBase):
                 rng_key (n_chains, 2): random key
                 position (n_chains, n_dim): current position
                 log_prob (n_chains, ): log-probability of the current position
+                data: data to be passed to the logpdf
+                params: dictionary of parameters for the sampler
 
             Returns:
                 position (n_chains, n_dim): the new poisiton of the chain
@@ -62,7 +67,7 @@ class MALA(LocalSamplerBase):
             dt2 = dt * dt
 
             _, (proposal, logprob, d_logprob) = jax.lax.scan(
-                body, (position, dt), jnp.array([key1, key1])
+                body, (position, dt, data), jnp.array([key1, key1])
             )
 
             ratio = logprob[1] - logprob[0]
@@ -80,30 +85,35 @@ class MALA(LocalSamplerBase):
             log_prob = jnp.where(do_accept, logprob[1], logprob[0])
             return position, log_prob, do_accept
 
+        self.kernel = mala_kernel()
         return mala_kernel
 
     def make_update(self) -> Callable:
         """
         Make a MALA update function for multiple steps
         """
-        mala_kernel = self.make_kernel()
+        if self.kernel is None:
+            mala_kernel = self.make_kernel()
 
         def mala_update(i, state):
             key, positions, log_p, acceptance, params = state
             _, key = jax.random.split(key)
-            new_position, new_log_p, do_accept = mala_kernel(key, positions[i-1], log_p[i-1], params)
+            new_position, new_log_p, do_accept = mala_kernel(key, positions[i-1], log_p[i-1], data, params)
             positions = positions.at[i].set(new_position)
             log_p = log_p.at[i].set(new_log_p)
             acceptance = acceptance.at[i].set(do_accept)
             return (key, positions, log_p, acceptance, params)
         
+        self.update = mala_update
         return mala_update
 
     def make_sampler(self) -> Callable:
         """
         Make a MALA sampler for multiple chains given initial positions
         """
-        mala_update = self.make_update()
+
+        if self.update is None:
+            mala_update = self.make_update()
         lp = self.logpdf
 
         if self.jit:
@@ -128,6 +138,7 @@ class MALA(LocalSamplerBase):
                 state = mala_update(i, state)
             return state[:-1]
 
+        self.sampler = mala_sampler
         return mala_sampler 
 
 from tqdm import tqdm
