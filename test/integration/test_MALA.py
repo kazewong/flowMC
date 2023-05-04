@@ -25,7 +25,7 @@ initial_position = jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 
 
 MALA_Sampler = MALA(dual_moon_pe, True, {"step_size": step_size})
 
-MALA_Sampler.precompilation(10, None)
+MALA_Sampler.precompilation(n_chains, n_dim, n_local_steps, None)
 
 
 initial_position = jnp.repeat(initial_position[:,None], n_local_steps, 1)

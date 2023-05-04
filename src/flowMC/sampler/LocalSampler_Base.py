@@ -26,6 +26,7 @@ class LocalSamplerBase:
         self.sampler = self.make_sampler()
 
         if self.jit == True:
+            self.logpdf_vmap = jax.jit(self.logpdf_vmap)
             self.kernel = jax.jit(self.kernel)
             self.kernel_vmap = jax.jit(self.kernel_vmap)
             self.update = jax.jit(self.update)
@@ -35,7 +36,7 @@ class LocalSamplerBase:
         
         key = jax.random.split(jax.random.PRNGKey(0), n_chains)
 
-        self.logpdf_vmap
+        self.logpdf_vmap(jnp.ones((n_chains, n_dims)), data)
         self.kernel_vmap(key, jnp.ones((n_chains, n_dims)), jnp.ones((n_chains, 1)), data, self.params)
         self.update_vmap(1, (key, jnp.ones((n_chains, n_step, n_dims)), jnp.ones((n_chains, n_step, 1)),jnp.zeros((n_chains, n_step, 1)), data, self.params))
         
