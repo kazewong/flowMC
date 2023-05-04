@@ -4,7 +4,7 @@ import jax
 import jax.numpy as jnp
 from jax.scipy.special import logsumexp
 
-def dual_moon_pe(x):
+def dual_moon_pe(x, data=None):
     """
     Term 2 and 3 separate the distribution and smear it along the first and second dimension
     """
@@ -29,19 +29,19 @@ MALA_Sampler_kernel = MALA_Sampler.make_kernel()
 
 
 MALA_Sampler_update = MALA_Sampler.make_update()
-MALA_Sampler_update = jax.vmap(MALA_Sampler_update, in_axes = (None, (0, 0, 0, 0, None)), out_axes=(0, 0, 0, 0, None))
+MALA_Sampler_update = jax.vmap(MALA_Sampler_update, in_axes = (None, (0, 0, 0, 0, None, None)), out_axes=(0, 0, 0, 0, None, None))
 
 initial_position = jnp.repeat(initial_position[:,None], n_local_steps, 1)
 initial_logp = jnp.repeat(jax.vmap(dual_moon_pe)(initial_position[:,0])[:,None], n_local_steps, 1)[...,None]
 
-state = (rng_key_set[1], initial_position, initial_logp, jnp.zeros((n_chains, n_local_steps,1)), MALA_Sampler.params)
+state = (rng_key_set[1], initial_position, initial_logp, jnp.zeros((n_chains, n_local_steps,1)), None, MALA_Sampler.params)
 
 
 MALA_Sampler_update(1, state)
 
 MALA_Sampler_sampler = MALA_Sampler.make_sampler()
 
-state = MALA_Sampler_sampler(rng_key_set[1], n_local_steps, initial_position[:,0])
+state = MALA_Sampler_sampler(rng_key_set[1], n_local_steps, initial_position[:,0], None)
 
 
 from flowMC.nfmodel.rqSpline import RQSpline
