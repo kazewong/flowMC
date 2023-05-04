@@ -131,7 +131,7 @@ class MALA(LocalSamplerBase):
                 iterator_loop = range(1, n_steps)
             for i in iterator_loop:
                 state = self.update_vmap(i, state)
-            return state[:-1]
+            return state[:-2]
 
         self.sampler = mala_sampler
         return mala_sampler 

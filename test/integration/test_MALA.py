@@ -8,6 +8,7 @@ def dual_moon_pe(x, data=None):
     """
     Term 2 and 3 separate the distribution and smear it along the first and second dimension
     """
+    print("compile count")
     term1 = 0.5 * ((jnp.linalg.norm(x) - 2) / 0.1) ** 2
     term2 = -0.5 * ((x[:1] + jnp.array([-3.0, 3.0])) / 0.8) ** 2
     term3 = -0.5 * ((x[1:2] + jnp.array([-3.0, 3.0])) / 0.6) ** 2
@@ -63,9 +64,9 @@ print("Initializing sampler class")
 nf_sampler = Sampler(
     n_dim,
     rng_key_set,
+    None,
     MALA_Sampler,
-    dual_moon_pe,
-    model   ,
+    model,
     n_loop_training=n_loop_training,
     n_loop_production=n_loop_production,
     n_local_steps=n_local_steps,
@@ -75,6 +76,5 @@ nf_sampler = Sampler(
     use_global=False,
 )
 
-nf_sampler.sample(initial_position)
+nf_sampler.sample(initial_position, None)
 
-mala_kernel_vmap = jax.vmap(MALA_Sampler_kernel, in_axes = (0, 0, 0,  None), out_axes=(0, 0, 0))
