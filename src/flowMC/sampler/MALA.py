@@ -21,7 +21,7 @@ class MALA(LocalSamplerBase):
         super().__init__(logpdf, jit, params)
         self.params = params
         self.logpdf = logpdf
-        self.logpdf_vmap = jax.vmap(logpdf)
+        self.logpdf_vmap = jax.vmap(logpdf, in_axes=(0, None))
         self.verbose = verbose
         self.kernel = None
         self.kernel_vmap = None
@@ -29,6 +29,18 @@ class MALA(LocalSamplerBase):
         self.update_vmap = None
         self.sampler = None
         self.use_autotune = use_autotune
+
+    def precompilation(self, n_chains, data):
+        if self.jit == True:
+            self.kernel = jax.jit(self.make_kernel())
+            self.kernel_vmap = jax.jit(jax.vmap(self.kernel, in_axes = (0, 0, 0,  None), out_axes=(0, 0, 0)))
+            self.update = jax.jit(self.make_update())
+            self.update_vmap = jax.jit(jax.vmap(self.update, in_axes = (None, (0, 0, 0, 0, None, None)), out_axes=(0, 0, 0, 0, None, None)))
+        else:
+            self.kernel = self.make_kernel()
+            self.kernel_vmap = jax.vmap(self.kernel)
+            self.update = self.make_update()
+            self.update_vmap = jax.vmap(self.update, in_axes = (None, (0, 0, 0, 0, None, None)), out_axes=(0, 0, 0, 0, None, None))
 
     def make_kernel(self, return_aux = False) -> Callable:
         """
@@ -97,7 +109,7 @@ class MALA(LocalSamplerBase):
         Make a MALA update function for multiple steps
         """
         if self.kernel is None:
-            self.kernel = self.make_kernel()
+            raise ValueError("Kernel not defined. Please run make_kernel first.")
 
         def mala_update(i, state):
             key, positions, log_p, acceptance, data, params = state
@@ -117,13 +129,9 @@ class MALA(LocalSamplerBase):
         """
 
         if self.update is None:
-            self.update = self.make_update()
+            raise ValueError("Update function not defined. Please run make_update first.")
 
-        if self.jit:
-            self.update = jax.jit(self.update)
-            self.logpdf = jax.jit(self.logpdf)
 
-        self.update_vmap = jax.vmap(self.update, in_axes = (None, (0, 0, 0, 0, None, None)), out_axes=(0, 0, 0, 0, None, None))
 
         def mala_sampler(rng_key, n_steps, initial_position, data):
             logp = self.logpdf_vmap(initial_position)
@@ -144,7 +152,7 @@ class MALA(LocalSamplerBase):
         return mala_sampler 
 
 
-    def mala_sampler_autotune(mala_kernel_vmap, rng_key, initial_position, log_prob, params, max_iter = 30):
+    def mala_sampler_autotune(rng_key, initial_position, log_prob, params, max_iter = 30):
         """
         Tune the step size of the MALA kernel using the acceptance rate.
 
