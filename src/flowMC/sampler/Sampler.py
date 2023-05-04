@@ -39,7 +39,7 @@ class Sampler():
         keep_quantile (float, optional): Quantile of chains to keep when training the normalizing flow model. Defaults to 0..
         local_autotune (None, optional): Auto-tune function for the local sampler. Defaults to None.
         train_thinning (int, optional): Thinning for the data used to train the normalizing flow. Defaults to 1.
-        model_init (dic, optional): Dictionnary with keys "params" and "variables" for the NF model. Defaults to None.
+        model_init (dic, optional): Dictionary with keys "params" and "variables" for the NF model. Defaults to None.
     """
 
     def __init__(
@@ -69,11 +69,7 @@ class Sampler():
     ):
         rng_key_init, rng_keys_mcmc, rng_keys_nf, init_rng_keys_nf = rng_key_set
 
-        self.likelihood = likelihood
-        self.likelihood_vec = jax.jit(jax.vmap(self.likelihood))
-        self.local_sampler_class = local_sampler
-        self.local_sampler = local_sampler.make_sampler()
-        self.local_autotune = local_autotune
+        # Copying input into the model
 
         self.rng_keys_nf = rng_keys_nf
         self.rng_keys_mcmc = rng_keys_mcmc
@@ -90,8 +86,16 @@ class Sampler():
         self.batch_size = batch_size
         self.use_global = use_global
         self.logging = logging
+        self.keep_quantile = keep_quantile
+        self.train_thinning = train_thinning
 
+        # Initialized local and global samplers
 
+        self.likelihood = likelihood
+        self.likelihood_vec = jax.jit(jax.vmap(self.likelihood))
+        self.local_sampler_class = local_sampler
+        self.local_sampler = local_sampler.make_sampler()
+        self.local_autotune = local_autotune
         self.nf_model = nf_model
         if model_init is None:
             model_init = nf_model.init(init_rng_keys_nf, jnp.ones((1, self.n_dim)))
@@ -99,23 +103,17 @@ class Sampler():
         self.variables = model_init["variables"]
         if nf_variable is not None:
             self.variables = self.variables
-
-        self.keep_quantile = keep_quantile
         self.global_sampler = make_nf_metropolis_sampler(self.nf_model)
         
-        self.train_thinning = train_thinning
         self.nf_training_loop, train_epoch, train_step = make_training_loop(
             self.nf_model
         )
         tx = optax.adam(self.learning_rate, self.momentum)
-        # tx = optax.chain(
-        #     optax.adaptive_grad_clip(1, eps=0.001),
-        #     optax.adam(self.learning_rate, self.momentum)
-        # )
         self.state = train_state.TrainState.create(
             apply_fn=nf_model.apply, params=params, tx=tx
         )
 
+        # Initialized result dictionary
         training = {}
         training["chains"] = jnp.empty((self.n_chains, 0, self.n_dim))
         training["log_prob"] = jnp.empty((self.n_chains, 0))
