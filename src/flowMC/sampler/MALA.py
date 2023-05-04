@@ -42,6 +42,8 @@ class MALA(LocalSamplerBase):
             self.update = self.make_update()
             self.update_vmap = jax.vmap(self.update, in_axes = (None, (0, 0, 0, 0, None, None)), out_axes=(0, 0, 0, 0, None, None))
 
+        self.sampler = self.make_sampler()
+
     def make_kernel(self, return_aux = False) -> Callable:
         """
         Make a MALA kernel for a given logpdf.
@@ -134,7 +136,7 @@ class MALA(LocalSamplerBase):
 
 
         def mala_sampler(rng_key, n_steps, initial_position, data):
-            logp = self.logpdf_vmap(initial_position)
+            logp = self.logpdf_vmap(initial_position, data)
             n_chains = rng_key.shape[0]
             acceptance = jnp.zeros((n_chains, n_steps))
             all_positions = (jnp.zeros((n_chains, n_steps) + initial_position.shape[-1:])) + initial_position[:, None]
@@ -152,7 +154,7 @@ class MALA(LocalSamplerBase):
         return mala_sampler 
 
 
-    def mala_sampler_autotune(rng_key, initial_position, log_prob, params, max_iter = 30):
+    def mala_sampler_autotune(self, rng_key, initial_position, log_prob, data, params, max_iter = 30):
         """
         Tune the step size of the MALA kernel using the acceptance rate.
 
@@ -168,7 +170,7 @@ class MALA(LocalSamplerBase):
         tqdm.__init__ = partialmethod(tqdm.__init__, disable=True)
 
         counter = 0
-        position, log_prob, do_accept = mala_kernel_vmap(rng_key, initial_position, log_prob, params)
+        position, log_prob, do_accept = self.kernel_vmap(rng_key, initial_position, log_prob, data, params)
         acceptance_rate = jnp.mean(do_accept)
         while (acceptance_rate <= 0.3) or (acceptance_rate >= 0.5):
             if counter > max_iter:
@@ -179,7 +181,7 @@ class MALA(LocalSamplerBase):
             elif acceptance_rate >= 0.5:
                 params['step_size'] *= 1.25
             counter += 1
-            position, log_prob, do_accept = mala_kernel_vmap(rng_key, initial_position, log_prob, params)
+            position, log_prob, do_accept = self.kernel_vmap(rng_key, initial_position, log_prob, data, params)
             acceptance_rate = jnp.mean(do_accept)
         tqdm.__init__ = partialmethod(tqdm.__init__, disable=False)
         return params

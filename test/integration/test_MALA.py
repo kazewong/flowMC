@@ -1,4 +1,4 @@
-from flowMC.sampler.MALA import MALA, mala_sampler_autotune
+from flowMC.sampler.MALA import MALA
 from flowMC.utils.PRNG_keys import initialize_rng_keys
 import jax
 import jax.numpy as jnp
@@ -25,11 +25,8 @@ initial_position = jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 
 
 MALA_Sampler = MALA(dual_moon_pe, True, {"step_size": step_size})
 
-MALA_Sampler_kernel = MALA_Sampler.make_kernel()
+MALA_Sampler.precompilation(10, None)
 
-
-MALA_Sampler_update = MALA_Sampler.make_update()
-MALA_Sampler_update = jax.vmap(MALA_Sampler_update, in_axes = (None, (0, 0, 0, 0, None, None)), out_axes=(0, 0, 0, 0, None, None))
 
 initial_position = jnp.repeat(initial_position[:,None], n_local_steps, 1)
 initial_logp = jnp.repeat(jax.vmap(dual_moon_pe)(initial_position[:,0])[:,None], n_local_steps, 1)[...,None]
@@ -37,7 +34,7 @@ initial_logp = jnp.repeat(jax.vmap(dual_moon_pe)(initial_position[:,0])[:,None],
 state = (rng_key_set[1], initial_position, initial_logp, jnp.zeros((n_chains, n_local_steps,1)), None, MALA_Sampler.params)
 
 
-MALA_Sampler_update(1, state)
+MALA_Sampler.update_vmap(1, state)
 
 MALA_Sampler_sampler = MALA_Sampler.make_sampler()
 
@@ -74,7 +71,7 @@ nf_sampler = Sampler(
     n_local_steps=n_local_steps,
     n_global_steps=n_global_steps,
     n_chains=n_chains,
-    local_autotune=mala_sampler_autotune,
+    # local_autotune=mala_sampler_autotune,
     use_global=False,
 )
 
