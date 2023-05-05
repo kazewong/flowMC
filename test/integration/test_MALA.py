@@ -21,7 +21,7 @@ n_local_steps = 30
 step_size = 0.01
 n_leapfrog = 10
 
-data = jnp.array(np.random.normal(5))
+data = jnp.arange(5)
 
 rng_key_set = initialize_rng_keys(n_chains, seed=42)
 
