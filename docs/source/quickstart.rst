@@ -49,8 +49,10 @@ To sample a N dimensional Gaussian, you would do something like:
     from flowMC.utils.PRNG_keys import initialize_rng_keys
     from flowMC.nfmodel.utils import *
 
-    def log_posterior(x):
-        return -0.5 * jnp.sum(x ** 2)
+    def log_posterior(x, data):
+        return -0.5 * jnp.sum((x-data) ** 2)
+
+    data = jnp.arange(5)
 
     n_dim = 5
     n_chains = 10
@@ -63,8 +65,8 @@ To sample a N dimensional Gaussian, you would do something like:
 
     nf_sampler = Sampler(n_dim,
                         rng_key_set,
+                        jnp.arange(n_dim),
                         local_sampler,
-                        log_posterior,
                         model,
                         n_local_steps = 50,
                         n_global_steps = 50,
@@ -73,7 +75,7 @@ To sample a N dimensional Gaussian, you would do something like:
                         batch_size = 1000,
                         n_chains = n_chains)
 
-    nf_sampler.sample(initial_position)
+    nf_sampler.sample(initial_position, data)
     chains,log_prob,local_accs, global_accs = nf_sampler.get_sampler_state().values()
 
 For more examples, have a look at the :ref:`tutorials`. 
