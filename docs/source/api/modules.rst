@@ -1,5 +1,5 @@
-src
-===
+flowMC
+======
 
 .. toctree::
    :maxdepth: 4

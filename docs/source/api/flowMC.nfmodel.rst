@@ -4,6 +4,14 @@ flowMC.nfmodel package
 Submodules
 ----------
 
+flowMC.nfmodel.mlp module
+-------------------------
+
+.. automodule:: flowMC.nfmodel.mlp
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 flowMC.nfmodel.realNVP module
 -----------------------------
 

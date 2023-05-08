@@ -12,6 +12,22 @@ flowMC.sampler.Gaussian\_random\_walk module
    :undoc-members:
    :show-inheritance:
 
+flowMC.sampler.HMC module
+-------------------------
+
+.. automodule:: flowMC.sampler.HMC
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+flowMC.sampler.LocalSampler\_Base module
+----------------------------------------
+
+.. automodule:: flowMC.sampler.LocalSampler_Base
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 flowMC.sampler.MALA module
 --------------------------
 
