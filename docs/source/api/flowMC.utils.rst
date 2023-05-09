@@ -20,14 +20,6 @@ flowMC.utils.PythonFunctionWrap module
    :undoc-members:
    :show-inheritance:
 
-flowMC.utils.progressBar module
--------------------------------
-
-.. automodule:: flowMC.utils.progressBar
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 Module contents
 ---------------
 

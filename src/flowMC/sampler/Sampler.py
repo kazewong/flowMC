@@ -39,15 +39,15 @@ class Sampler():
         keep_quantile (float, optional): Quantile of chains to keep when training the normalizing flow model. Defaults to 0..
         local_autotune (None, optional): Auto-tune function for the local sampler. Defaults to None.
         train_thinning (int, optional): Thinning for the data used to train the normalizing flow. Defaults to 1.
-        model_init (dic, optional): Dictionnary with keys "params" and "variables" for the NF model. Defaults to None.
+        model_init (dic, optional): Dictionary with keys "params" and "variables" for the NF model. Defaults to None.
     """
 
     def __init__(
         self,
         n_dim: int,
         rng_key_set: Tuple,
+        data: jnp.ndarray,
         local_sampler: LocalSamplerBase,
-        likelihood: Callable,
         nf_model: Callable,
         n_loop_training: int = 3,
         n_loop_production: int = 3,
@@ -69,11 +69,7 @@ class Sampler():
     ):
         rng_key_init, rng_keys_mcmc, rng_keys_nf, init_rng_keys_nf = rng_key_set
 
-        self.likelihood = likelihood
-        self.likelihood_vec = jax.jit(jax.vmap(self.likelihood))
-        self.local_sampler_class = local_sampler
-        self.local_sampler = local_sampler.make_sampler()
-        self.local_autotune = local_autotune
+        # Copying input into the model
 
         self.rng_keys_nf = rng_keys_nf
         self.rng_keys_mcmc = rng_keys_mcmc
@@ -90,8 +86,17 @@ class Sampler():
         self.batch_size = batch_size
         self.use_global = use_global
         self.logging = logging
+        self.keep_quantile = keep_quantile
+        self.train_thinning = train_thinning
 
+        # Initialized local and global samplers
 
+        self.local_sampler_class = local_sampler
+        self.local_sampler_class.precompilation(n_chains=n_chains, n_dims=n_dim, n_step=n_local_steps, data=data)
+        self.local_sampler = self.local_sampler_class.sampler
+
+        self.local_autotune = local_autotune
+        self.likelihood_vec = self.local_sampler_class.logpdf_vmap
         self.nf_model = nf_model
         if model_init is None:
             model_init = nf_model.init(init_rng_keys_nf, jnp.ones((1, self.n_dim)))
@@ -99,23 +104,17 @@ class Sampler():
         self.variables = model_init["variables"]
         if nf_variable is not None:
             self.variables = self.variables
-
-        self.keep_quantile = keep_quantile
         self.global_sampler = make_nf_metropolis_sampler(self.nf_model)
         
-        self.train_thinning = train_thinning
         self.nf_training_loop, train_epoch, train_step = make_training_loop(
             self.nf_model
         )
         tx = optax.adam(self.learning_rate, self.momentum)
-        # tx = optax.chain(
-        #     optax.adaptive_grad_clip(1, eps=0.001),
-        #     optax.adam(self.learning_rate, self.momentum)
-        # )
         self.state = train_state.TrainState.create(
             apply_fn=nf_model.apply, params=params, tx=tx
         )
 
+        # Initialized result dictionary
         training = {}
         training["chains"] = jnp.empty((self.n_chains, 0, self.n_dim))
         training["log_prob"] = jnp.empty((self.n_chains, 0))
@@ -133,7 +132,7 @@ class Sampler():
         self.summary['training'] = training
         self.summary['production'] = production
 
-    def sample(self, initial_position):
+    def sample(self, initial_position, data):
         """
         Sample from the posterior using the local sampler.
 
@@ -151,14 +150,14 @@ class Sampler():
         # Note that auto-tune function needs to have the same number of steps
         # as the actual sampling loop to avoid recompilation.
 
-        self.local_sampler_tuning(initial_position)
+        self.local_sampler_tuning(initial_position, data)
         last_step = initial_position
         if self.use_global == True:
-            last_step = self.global_sampler_tuning(last_step)
+            last_step = self.global_sampler_tuning(last_step, data)
 
-        last_step = self.production_run(last_step)
+        last_step = self.production_run(last_step, data)
 
-    def sampling_loop(self, initial_position: jnp.array, training=False) -> jnp.array:
+    def sampling_loop(self, initial_position: jnp.array, data: jnp.array, training=False) -> jnp.array:
         """
         One sampling loop that iterate through the local sampler and potentially the global sampler.
         If training is set to True, the loop will also train the normalizing flow model.
@@ -177,7 +176,7 @@ class Sampler():
             summary_mode = 'production'
 
         self.rng_keys_mcmc, positions, log_prob, local_acceptance = self.local_sampler(
-            self.rng_keys_mcmc, self.n_local_steps, initial_position
+            self.rng_keys_mcmc, self.n_local_steps, initial_position, data
         )
 
         self.summary[summary_mode]['chains'] = jnp.append(
@@ -245,6 +244,7 @@ class Sampler():
                 self.variables,
                 self.likelihood_vec,
                 positions[:, -1],
+                data,
             )
 
             self.summary[summary_mode]['chains'] = jnp.append(
@@ -262,7 +262,7 @@ class Sampler():
 
         return last_step
 
-    def local_sampler_tuning(self, initial_position: jnp.array, max_iter: int = 100):
+    def local_sampler_tuning(self, initial_position: jnp.array, data: jnp.array, max_iter: int = 100):
         """
         Tuning the local sampler. This runs a number of iterations of the local sampler,
         and then uses the acceptance rate to adjust the local sampler parameters.
@@ -276,15 +276,15 @@ class Sampler():
         """
         if self.local_autotune is not None:
             print("Autotune found, start tuning sampler_params")
-            kernel_vmap = jax.vmap(self.local_sampler_class.make_kernel(), in_axes = (0, 0, 0,  None), out_axes=(0, 0, 0))
-            self.local_sampler_class.params = self.local_autotune(
-                kernel_vmap, self.rng_keys_mcmc, initial_position, self.likelihood_vec(initial_position), self.local_sampler_class.params, max_iter)
-            self.local_sampler = self.local_sampler_class.make_sampler()
+            kernel_vmap = self.local_sampler.kernel_vmap
+            self.local_sampler.params = self.local_autotune(
+                kernel_vmap, self.rng_keys_mcmc, initial_position, self.likelihood_vec(initial_position), data, self.local_sampler.params, max_iter)
+            self.local_sampler = self.local_sampler.make_sampler()
 
         else:
             print("No autotune found, use input sampler_params")
 
-    def global_sampler_tuning(self, initial_position: jnp.ndarray) -> jnp.array:
+    def global_sampler_tuning(self, initial_position: jnp.ndarray, data: jnp.array) -> jnp.array:
         """
         Tuning the global sampler. This runs both the local sampler and the global sampler,
         and train the normalizing flow on the run.
@@ -302,10 +302,10 @@ class Sampler():
                 range(self.n_loop_training),
                 desc="Tuning global sampler",
                 ):
-            last_step = self.sampling_loop(last_step, training=True)
+            last_step = self.sampling_loop(last_step, data, training=True)
         return last_step
 
-    def production_run(self, initial_position: jnp.ndarray) -> jnp.array:
+    def production_run(self, initial_position: jnp.ndarray, data: jnp.array) -> jnp.array:
         """
         Sampling procedure that produce the final set of samples.
         The main difference between this and the global tuning step is
@@ -322,7 +322,7 @@ class Sampler():
                 range(self.n_loop_production),
                 desc="Production run",
                 ):
-            last_step = self.sampling_loop(last_step)
+            last_step = self.sampling_loop(last_step, data)
         return last_step
 
     def get_sampler_state(self, training: bool=False) -> dict:

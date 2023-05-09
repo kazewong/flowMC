@@ -117,6 +117,7 @@ def make_nf_metropolis_sampler(nf_model):
                 nf_variables: Normalizing flow variables.
                 target_pdf: Target pdf.
                 initial_position: Initial position.
+                data: Data.
 
             Returns:
                 rng_key: Current state of random key
@@ -146,7 +147,7 @@ def make_nf_metropolis_sampler(nf_model):
     sample_nf = jax.jit(sample_nf, static_argnums=(1))
 
     def nf_metropolis_sampler(
-        rng_key, n_steps, nf_param, nf_variables, target_pdf, initial_position
+        rng_key, n_steps, nf_param, nf_variables, target_pdf, initial_position, data
     ):
         rng_key, *subkeys = random.split(rng_key, 3)
 
@@ -155,7 +156,7 @@ def make_nf_metropolis_sampler(nf_model):
         log_pdf_nf_initial = eval_nf_logprob(
             initial_position, nf_param, nf_variables
         )
-        log_pdf_initial = target_pdf(initial_position)
+        log_pdf_initial = target_pdf(initial_position, data)
 
         if total_sample > n_sample_max:
             proposal_position = jnp.zeros((total_sample, initial_position.shape[-1]))
@@ -176,7 +177,7 @@ def make_nf_metropolis_sampler(nf_model):
                 ].set(eval_nf_logprob(local_samples, nf_param, nf_variables))
                 log_pdf_proposal = log_pdf_proposal.at[
                     i * n_sample_max : (i + 1) * n_sample_max
-                ].set(target_pdf(local_samples))
+                ].set(target_pdf(local_samples, data))
                 local_key, subkey = random.split(local_key, 2)
 
         else:
@@ -186,7 +187,7 @@ def make_nf_metropolis_sampler(nf_model):
             log_pdf_nf_proposal = eval_nf_logprob(
                 proposal_position, nf_param, nf_variables
             )
-            log_pdf_proposal = target_pdf(proposal_position)
+            log_pdf_proposal = target_pdf(proposal_position, data)
 
         proposal_position = proposal_position.reshape(
             n_steps, initial_position.shape[0], initial_position.shape[1]

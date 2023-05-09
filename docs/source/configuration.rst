@@ -15,11 +15,11 @@ This page contains information about the most important hyperparameters which af
 +-----------------------+--------------------------+-----------------------+
 | :ref:`local_sampler`  | :ref:`n_loop_training`   | :ref:`nf_variable`    |
 +-----------------------+--------------------------+-----------------------+
-| :ref:`sampler_params` | :ref:`n_loop_production` | :ref:`local_autotune` |
+| :ref:`data`           | :ref:`n_loop_production` | :ref:`local_autotune` |
 +-----------------------+--------------------------+-----------------------+
-| :ref:`likelihood`     | :ref:`n_local_steps`     | :ref:`train_thinning` |
+| :ref:`nf_model`       | :ref:`n_local_steps`     | :ref:`train_thinning` |
 +-----------------------+--------------------------+-----------------------+
-| :ref:`nf_model`       | :ref:`n_global_steps`    |                       |
+|                       | :ref:`n_global_steps`    |                       |
 +-----------------------+--------------------------+-----------------------+
 |                       | :ref:`n_epochs`          |                       |
 +-----------------------+--------------------------+-----------------------+
@@ -51,26 +51,21 @@ rng_key_set
 
 The set of Jax generated PRNG_keys.
 
+.. _data:
+
+data
+^^^^
+
+The data you want to sample from. This is used to precompile the kernels used during the sampling.
+Note that you keep the shape of the data consistent between runs, otherwise it would trigger recompilation.
+If your likelihood does not take any data arguments, simply put it as None should work.
+
 .. _local_sampler:
 
 local_sampler
 ^^^^^^^^^^^^^
 
 Specific local sampler you want to use.
-
-.. _sampler_params:
-
-sampler_params
-^^^^^^^^^^^^^^
-
-Specific parameters from a particular local sampler.
-
-.. _likelihood:
-
-likelihood
-^^^^^^^^^^
-
-Target log-probability density function you want to sample.
 
 .. _nf_model:
 
