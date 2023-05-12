@@ -19,6 +19,7 @@ class EvolutionaryOptimizer:
     def optimize(self, objective, bound, n_loops = 100, seed = 9527):
         rng = jax.random.PRNGKey(seed)
         progress_bar = tqdm.tqdm(range(n_loops), "Generation: ") if self.verbose else range(n_loops)
+        self.bound = bound
         self.state = self.strategy.initialize(rng, self.es_params)
         for i in progress_bar:
             rng, rng_gen, rng_eval = jax.random.split(rng, 3)
@@ -28,7 +29,7 @@ class EvolutionaryOptimizer:
             self.state = self.strategy.tell(x, fitness.astype(jnp.float32), state, self.es_params)
             if self.verbose: progress_bar.set_description(f"Generation: {i}, Fitness: {fitness.mean():.4f}")
 
-        return self.state
-
     def get_result(self):
-        return self.state
+        best_member = self.state.best_member* (self.bound[:, 1] - self.bound[:, 0]) + self.bound[:, 0]
+        best_fitness = self.state.best_fitness
+        return best_member, best_fitness
