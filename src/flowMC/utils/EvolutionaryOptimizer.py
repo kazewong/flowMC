@@ -27,7 +27,7 @@ class EvolutionaryOptimizer:
             theta = x * (bound[:, 1] - bound[:, 0]) + bound[:, 0]
             fitness = objective(theta)
             self.state = self.strategy.tell(x, fitness.astype(jnp.float32), state, self.es_params)
-            if self.verbose: progress_bar.set_description(f"Generation: {i}, Fitness: {fitness.mean():.4f}")
+            if self.verbose: progress_bar.set_description(f"Generation: {i}, Fitness: {self.state.best_fitness:.4f}")
 
     def get_result(self):
         best_member = self.state.best_member* (self.bound[:, 1] - self.bound[:, 0]) + self.bound[:, 0]
