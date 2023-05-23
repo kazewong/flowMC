@@ -20,11 +20,11 @@ sys.path.append(os.path.abspath(".."))
 # -- Project information -----------------------------------------------------
 
 project = "flowMC"
-copyright = "2022, Kaze Wong, Marylou Gabrié"
+copyright = "2023, Kaze Wong, Marylou Gabrié"
 author = "Kaze Wong, Marylou Gabrié & contributors"
 
 # The full version, including alpha/beta/rc tags
-release = "0.0.4"
+release = "0.2.0"
 master_doc = "index"
 
 # -- General configuration ---------------------------------------------------
