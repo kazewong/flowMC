@@ -2,7 +2,7 @@
 
 **Normalizing-flow enhanced sampling package for probabilistic inference**
 
-<a href="https://flowmc.readthedocs.io/en/latest/">
+<a href="https://flowmc.readthedocs.io/en/main/">
 <img src="https://badgen.net/badge/Read/the doc/blue" alt="doc"/>
 </a>
 <a href="https://github.com/kazewong/FlowMC/blob/Packaging/LICENSE">
