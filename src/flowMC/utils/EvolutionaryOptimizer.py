@@ -74,6 +74,17 @@ class EvolutionaryOptimizer:
             if self.verbose: progress_bar.set_description(f"Generation: {i}, Fitness: {self.state.best_fitness:.4f}")
 
     def get_result(self):
+        """
+        Get the best member and the best fitness.
+
+        Returns
+        -------
+        best_member : (ndims,) ndarray
+            The best member.
+        best_fitness : float
+            The best fitness.
+        """
+
         best_member = self.state.best_member* (self.bound[:, 1] - self.bound[:, 0]) + self.bound[:, 0]
         best_fitness = self.state.best_fitness
         return best_member, best_fitness
