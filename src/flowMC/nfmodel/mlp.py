@@ -1,7 +1,7 @@
-from typing import Sequence, Callable, List
+from typing import Callable, List, Iterable
 import jax
-from flax import linen as nn
 import equinox as eqx
+from jaxtyping import Array
     
 class MLP(eqx.Module):
     r"""Multilayer perceptron.
@@ -19,7 +19,7 @@ class MLP(eqx.Module):
     activation: Callable = jax.nn.relu
     use_bias: bool = True
 
-    def __init__(self, shape, key):
+    def __init__(self, shape: Iterable[int], key: jax.random.PRNGKey):
         self.layers = []
         for i in range(len(shape) - 2):
             key, subkey = jax.random.split(key)
@@ -28,7 +28,7 @@ class MLP(eqx.Module):
         key, subkey = jax.random.split(key)
         self.layers.append(eqx.nn.Linear(shape[-2], shape[-1], key=subkey, use_bias=self.use_bias))
 
-    def __call__(self, x):
+    def __call__(self, x: Array):
         for layer in self.layers:
             x = layer(x)
         return x
