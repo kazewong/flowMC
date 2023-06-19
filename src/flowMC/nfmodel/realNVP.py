@@ -1,11 +1,11 @@
-from typing import Sequence, Callable
 import jax
 import jax.numpy as jnp
-from flax import linen as nn
 import numpy as np
+import equinox as eqx
 from flowMC.nfmodel.mlp import MLP
+from jaxtyping import Array
 
-class AffineCoupling(nn.Module):
+class AffineCoupling(eqx.Module):
     """
     Affine coupling layer. 
     (Defined in the RealNVP paper https://arxiv.org/abs/1605.08803)
@@ -17,17 +17,19 @@ class AffineCoupling(nn.Module):
         mask: (ndarray) Alternating mask for the affine coupling layer.
         dt: (float) Scaling factor for the affine coupling layer.
     """
-
-    n_features: int
-    n_hidden: int
-    mask: jnp.array
     dt: float = 1
 
-    def setup(self):
-        self.scale_MLP = MLP([self.n_features, self.n_hidden, self.n_features])
-        self.translate_MLP = MLP([self.n_features, self.n_hidden, self.n_features])
+    def __init__(self, n_features: int, n_hidden: int, mask:Array, key: jax.random.PRNGKey):
+        self.mask = mask
+        key, scale_subkey, translate_subkey = jax.random.split(key, 3)
+        features = [n_features, n_hidden, n_features]
+        self.scale_MLP = MLP(features, key=scale_subkey, activation=jax.nn.tanh)
+        self.translate_MLP = MLP(features, key=translate_subkey, activation=jax.nn.tanh)
 
-    def __call__(self, x):
+    def __call__(self, x: Array):
+        return self.forward(x)
+
+    def forward(self, x: Array):
         s = self.mask * self.scale_MLP(x * (1 - self.mask))
         s = jnp.tanh(s)
         t = self.mask * self.translate_MLP(x * (1 - self.mask))
@@ -48,7 +50,7 @@ class AffineCoupling(nn.Module):
         return outputs, log_det
 
 
-class RealNVP(nn.Module):
+class RealNVP(eqx.Module):
     """
     RealNVP mode defined in the paper https://arxiv.org/abs/1605.08803.
     MLP is needed to make sure the scaling between layers are more or less the same.
