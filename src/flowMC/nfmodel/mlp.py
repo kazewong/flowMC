@@ -1,8 +1,8 @@
-from typing import Sequence, Callable
+from typing import Sequence, Callable, List
 import jax
-import jax.numpy as jnp
 from flax import linen as nn
-import numpy as np
+import equinox as eqx
+
 
 
 class MLP(nn.Module):
@@ -38,4 +38,27 @@ class MLP(nn.Module):
         for l, layer in enumerate(self.layers[:-1]):
             x = self.activation(layer(x))
         x = self.layers[-1](x)
+        return x
+    
+class MLP(eqx.Module):
+    layers: List
+    activation: Callable = jax.nn.relu
+    use_bias: bool = True
+
+    def __init__(self, shape, key):
+        self.layers = []
+        for i in range(len(shape) - 2):
+            key, subkey = jax.random.split(key)
+            self.layers.append(
+                eqx.nn.Linear(shape[i], shape[i + 1], key=subkey, use_bias=self.use_bias),
+                jax.nn.relu,
+            )
+        key, subkey = jax.random.split(key)
+        self.layers.append(
+            eqx.nn.Linear(shape[-2], shape[-1], key=subkey, use_bias=self.use_bias),
+        )
+
+    def __call__(self, x):
+        for layer in self.layers:
+            x = layer(x)
         return x
