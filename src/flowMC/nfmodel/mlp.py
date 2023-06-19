@@ -49,14 +49,10 @@ class MLP(eqx.Module):
         self.layers = []
         for i in range(len(shape) - 2):
             key, subkey = jax.random.split(key)
-            self.layers.append(
-                eqx.nn.Linear(shape[i], shape[i + 1], key=subkey, use_bias=self.use_bias),
-                jax.nn.relu,
-            )
+            self.layers.append(eqx.nn.Linear(shape[i], shape[i + 1], key=subkey, use_bias=self.use_bias))
+            self.layers.append(self.activation)
         key, subkey = jax.random.split(key)
-        self.layers.append(
-            eqx.nn.Linear(shape[-2], shape[-1], key=subkey, use_bias=self.use_bias),
-        )
+        self.layers.append(eqx.nn.Linear(shape[-2], shape[-1], key=subkey, use_bias=self.use_bias))
 
     def __call__(self, x):
         for layer in self.layers:
