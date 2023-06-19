@@ -6,18 +6,6 @@ import equinox as eqx
 
 
 class MLP(nn.Module):
-    """
-    Multi-layer perceptron in Flax. We use a gaussian kernel with a standard deviation
-    of `init_weight_scale=1e-4` by default.
-
-    Args:
-        features: (list of int) The number of features in each layer.
-        activation: (callable) The activation function at each level
-        use_bias: (bool) Whether to use bias in the layers.
-        init_weight_scale: (float) The initial weight scale for the layers.
-        kernel_init: (callable) The kernel initializer for the layers.
-    """
-
     features: Sequence[int]
     activation: Callable = nn.relu
     use_bias: bool = True
@@ -41,6 +29,17 @@ class MLP(nn.Module):
         return x
     
 class MLP(eqx.Module):
+    r"""Multilayer perceptron.
+
+    Args:
+        shape (Iterable[int]): Shape of the MLP. The first element is the input dimension, the last element is the output dimension.
+        key (jax.random.PRNGKey): Random key.
+
+    Attributes:
+        layers (List): List of layers.
+        activation (Callable): Activation function.
+        use_bias (bool): Whether to use bias.        
+    """
     layers: List
     activation: Callable = jax.nn.relu
     use_bias: bool = True
