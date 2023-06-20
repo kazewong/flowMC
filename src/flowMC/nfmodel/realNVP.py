@@ -82,6 +82,23 @@ class RealNVP(NFModel):
     _base_mean: Array
     _base_cov: Array
 
+    @property
+    def n_layer(self):
+        return len(self.affine_coupling)
+
+    @property
+    def n_features(self):
+        return self.affine_coupling[0].n_features
+
+    @property
+    def base_mean(self):
+        return jax.lax.stop_gradient(self._base_mean)
+
+    @property
+    def base_cov(self):
+        return jax.lax.stop_gradient(self._base_cov)
+
+
     def __init__(self, n_layer: int, n_features: int, n_hidden: int, key: jax.random.PRNGKey, dt: float = 1, **kwargs):
         affine_coupling = []
         for i in range(n_layer):
@@ -104,21 +121,6 @@ class RealNVP(NFModel):
         else:
             self._base_cov = jnp.eye(n_features)
 
-    @property
-    def n_layer(self):
-        return len(self.affine_coupling)
-
-    @property
-    def n_features(self):
-        return self.affine_coupling[0].n_features
-
-    @property
-    def base_mean(self):
-        return jax.lax.stop_gradient(self._base_mean)
-
-    @property
-    def base_cov(self):
-        return jax.lax.stop_gradient(self._base_cov)
 
     def __call__(self, x: Array) -> Tuple[Array, Array]:
         log_det = 0
