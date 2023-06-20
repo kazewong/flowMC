@@ -1,7 +1,11 @@
 from abc import abstractmethod
-from equinox import Module
+import equinox as eqx
 
-class NFModel(Module):
+class NFModel(eqx.Module):
+
+    @abstractmethod
+    def __init__(self):
+        return NotImplemented
 
     @abstractmethod
     def __call__(self, x):

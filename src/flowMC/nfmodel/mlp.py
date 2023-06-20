@@ -32,3 +32,11 @@ class MLP(eqx.Module):
         for layer in self.layers:
             x = layer(x)
         return x
+    
+    @property
+    def n_input(self) -> int:
+        return self.layers[0].in_features
+    
+    @property
+    def n_output(self) -> int:
+        return self.layers[-1].out_features
