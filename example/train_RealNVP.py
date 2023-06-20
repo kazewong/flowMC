@@ -1,4 +1,5 @@
 from flowMC.nfmodel.realNVP import RealNVP
+from flowMC.nfmodel.rqSpline import RQSpline
 import jax
 import jax.numpy as jnp  # JAX NumPy
 
@@ -26,7 +27,9 @@ data = jnp.array(data[0])
 
 key1, rng, init_rng = jax.random.split(jax.random.PRNGKey(0), 3)
 
-model = RealNVP(n_layers, 2, n_hidden, rng, 1., base_cov = jnp.cov(data.T), base_mean = jnp.mean(data, axis=0))
+# model = RealNVP(n_layers, 2, n_hidden, rng, 1., base_cov = jnp.cov(data.T), base_mean = jnp.mean(data, axis=0))
+model = RQSpline(2, 6, [128,128], 8, rng)
+
 
 @eqx.filter_value_and_grad
 def loss_fn(model, x):

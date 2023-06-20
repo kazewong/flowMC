@@ -17,20 +17,18 @@ class MLP(eqx.Module):
         use_bias (bool): Whether to use bias.        
     """
     layers: List
-    activation: Callable = jax.nn.relu
-    use_bias: bool = True
 
-    def __init__(self, shape: Iterable[int], key: jax.random.PRNGKey, scale: float = 1e-4):
+    def __init__(self, shape: Iterable[int], key: jax.random.PRNGKey, scale: float = 1e-4, activation: Callable = jax.nn.relu, use_bias: bool = True):
         self.layers = []
         for i in range(len(shape) - 2):
             key, subkey1, subkey2 = jax.random.split(key, 3)
-            layer = eqx.nn.Linear(shape[i], shape[i + 1], key=subkey1, use_bias=self.use_bias)
+            layer = eqx.nn.Linear(shape[i], shape[i + 1], key=subkey1, use_bias=use_bias)
             weight = jax.random.normal(subkey2, (shape[i + 1], shape[i]))*jnp.sqrt(scale/shape[i])
             layer = eqx.tree_at(lambda l: l.weight, layer, weight)
             self.layers.append(layer)
-            self.layers.append(self.activation)
+            self.layers.append(activation)
         key, subkey = jax.random.split(key)
-        self.layers.append(eqx.nn.Linear(shape[-2], shape[-1], key=subkey, use_bias=self.use_bias))
+        self.layers.append(eqx.nn.Linear(shape[-2], shape[-1], key=subkey, use_bias=use_bias))
 
     def __call__(self, x: Array):
         for layer in self.layers:

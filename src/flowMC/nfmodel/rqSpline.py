@@ -157,6 +157,50 @@ class RQSpline(nn.Module):
     def log_prob(self, x: jnp.array) -> jnp.array:
         return self.vmap_call(x)
 
+class Reshape(eqx.Module):
+    shape: Sequence[int]
+
+    def __call__(self, x):
+        return jnp.reshape(x.T, self.shape)
+
+
+class Conditioner(eqx.Module):
+    conditioner: list
+
+    def __init__(self, n_features: int, hidden_size: Sequence[int], num_bijector_params: int, key: jax.random.PRNGKey):
+        key, mlp_key, linear_key = jax.random.split(key, 3)
+        mlp = MLP([n_features] + list(hidden_size), key=mlp_key, scale=1e-2, activation=jax.nn.tanh)
+        linear_layer = eqx.nn.Linear(hidden_size[-1], n_features*num_bijector_params, key=linear_key, use_bias=True)
+        weight = jnp.zeros((n_features*num_bijector_params, hidden_size[-1]))
+        bias = jnp.zeros(n_features*num_bijector_params)
+        linear = eqx.tree_at(lambda l: l.weight, linear_layer, weight)
+        linear = eqx.tree_at(lambda l: l.bias, linear, bias)
+
+        self.conditioner = [mlp, linear,
+                Reshape((n_features, num_bijector_params)),
+            ]
+
+    def __call__(self, x):
+        for layer in self.conditioner:
+            x = layer(x)
+        return x
+
+
+class Scalar(eqx.Module):
+    shifts: Array
+    scales: Array
+
+    def __init__(self, n_features: int):
+        self.shifts = jnp.zeros(n_features)
+        self.scales = jnp.ones(n_features)
+
+    def __call__(self, x):
+        return self.scales, self.shifts
+
+
+def scalar_affine(params: jnp.ndarray):
+    return distrax.ScalarAffine(scale=params[0], shift=params[1])
+
 class RQSpline(NFModel):
     r""" Rational quadratic spline normalizing flow model using distrax.
 
@@ -184,7 +228,13 @@ class RQSpline(NFModel):
     def base_cov(self):
         return jax.lax.stop_gradient(self._base_cov)
 
-    def __init__(self, n_features: int, num_layers: int, hidden_size: Sequence[int], num_bins: int, spline_range: Sequence[float] = (-10.0, 10.0), **kwargs):
+    def __init__(self,
+                n_features: int,
+                num_layers: int,
+                hidden_size: Sequence[int],
+                num_bins: int,
+                key: jax.random.PRNGKey,
+                spline_range: Sequence[float] = (-10.0, 10.0), **kwargs):
 
         if kwargs.get("base_mean") is not None:
             self._base_mean = kwargs.get("base_mean")
@@ -198,8 +248,9 @@ class RQSpline(NFModel):
         conditioner = []
         scalar = []
         for i in range(num_layers):
+            key, conditioner_key= jax.random.split(key)
             conditioner.append(
-                Conditioner(n_features, hidden_size, 3 * num_bins + 1)
+                Conditioner(n_features, hidden_size, 3 * num_bins + 1, key=conditioner_key)
             )
             scalar.append(Scalar(n_features))
 
@@ -239,10 +290,12 @@ class RQSpline(NFModel):
         return self.flow.log_prob(x)
 
     def sample(self, rng_key: jax.random.PRNGKey, n_samples: int) -> Array:
-        return super().sample(rng_key, n_samples)
+        return self.flow.sample(seed=rng_key, sample_shape=(n_samples,))
 
     def inverse(self, x: Array) -> Tuple[Array, Array]:
         return super().inverse(x)
 
+    inverse_vmap = jax.vmap(inverse, in_axes=(None, 0))
+
     def log_prob(self, x: Array) -> Array:
-        return super().log_prob(x)
+        return self.__call__(x)
