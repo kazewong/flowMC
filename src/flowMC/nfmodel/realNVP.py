@@ -4,7 +4,7 @@ import jax.numpy as jnp
 import numpy as np
 import equinox as eqx
 from flowMC.nfmodel.base import NFModel
-from flowMC.nfmodel.mlp import MLP
+from flowMC.nfmodel.common import MLP, MaskedCouplingLayer, AffineTransformation
 from jaxtyping import Array
 
 class AffineCoupling(eqx.Module):
@@ -78,17 +78,15 @@ class RealNVP(NFModel):
         base_cov: (ndarray) Covariance of Gaussian base distribution
     """
 
-    affine_coupling: List[AffineCoupling]
+    affine_coupling: List[MaskedCouplingLayer]
     _base_mean: Array
     _base_cov: Array
+    n_features: int
 
     @property
     def n_layer(self):
         return len(self.affine_coupling)
 
-    @property
-    def n_features(self):
-        return self.affine_coupling[0].n_features
 
     @property
     def base_mean(self):
@@ -100,16 +98,20 @@ class RealNVP(NFModel):
 
 
     def __init__(self, n_layer: int, n_features: int, n_hidden: int, key: jax.random.PRNGKey, dt: float = 1, **kwargs):
+        self.n_features = n_features
         affine_coupling = []
         for i in range(n_layer):
-            key, subkey = jax.random.split(key)
+            key, scale_subkey, shift_subkey = jax.random.split(key, 3)
             mask = np.ones(n_features)
             mask[int(n_features / 2):] = 0
             if i % 2 == 0:
                 mask = 1 - mask
             mask = jnp.array(mask)
+            scale_MLP = MLP([n_features, n_hidden, n_features], key=scale_subkey)
+            shift_MLP = MLP([n_features, n_hidden, n_features], key=shift_subkey)
             affine_coupling.append(
-                AffineCoupling(n_features, n_hidden, mask, subkey, dt=dt)
+                # AffineCoupling(n_features, n_hidden, mask, scale_subkey, dt=dt)
+                MaskedCouplingLayer(AffineTransformation(scale_MLP, shift_MLP), mask)
             )
         self.affine_coupling = affine_coupling
         if kwargs.get("base_mean") is not None:
@@ -128,6 +130,9 @@ class RealNVP(NFModel):
             x, log_det_i = self.affine_coupling[i](x)
             log_det += log_det_i
         return x, log_det
+
+    def forward(self, x: Array) -> Tuple[Array, Array]:
+        return __call__(x)
 
     def inverse(self, x: Array) -> Tuple[Array, Array]:
         x = (x-self.base_mean)/jnp.sqrt(jnp.diag(self.base_cov))

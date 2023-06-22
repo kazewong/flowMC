@@ -60,26 +60,24 @@ class MaskedCouplingLayer(Bijection):
     """
 
     _mask: Array
-    conditioner: eqx.Module
     bijector: Bijection
 
     @property
     def mask(self):
         return jax.lax.stop_gradient(self._mask)
 
-    def __init__(self, conditioner: eqx.Module, bijector: Bijection, mask: Array):
-        self.conditioner = conditioner
+    def __init__(self, bijector: Bijection, mask: Array):
         self.bijector = bijector
         self._mask = mask
 
     def forward(self, x: Array) -> Tuple[Array, Array]:
-        y, log_det = self.bijector(self.conditioner(x*self.mask))
+        y, log_det = self.bijector(x, x*self.mask)
         y = (1-self.mask)*y + self.mask*x
         log_det = ((1-self.mask)*log_det).sum()
         return y, log_det
 
     def inverse(self, x: Array) -> Tuple[Array, Array]:
-        y, log_det = self.bijector.inverse(self.conditioner(x*self.mask))
+        y, log_det = self.bijector.inverse(x, x*self.mask)
         y = (1-self.mask)*y + self.mask*x
         log_det = ((1-self.mask)*log_det).sum()
         return y, log_det
@@ -94,17 +92,20 @@ class AffineTransformation(Bijection):
         self.shift_MLP = shift_MLP
         self.dt = dt
 
-    def forward(self, x: Array) -> Tuple[Array, Array]:
-        shift = self.shift_MLP(x) * self.dt
-        scale = self.scale_MLP(x) * self.dt
-        log_det = jnp.sum(scale)
-        y = x + shift * jnp.exp(scale)
+    def __call__(self, x: Array, condition_x: Array) -> Tuple[Array, Array]:
+        return self.forward(x, condition_x)
+
+    def forward(self, x: Array, condition_x: Array) -> Tuple[Array, Array]:
+        scale = jnp.tanh(self.scale_MLP(condition_x)) * self.dt
+        shift = self.shift_MLP(condition_x) * self.dt
+        log_det = scale
+        y = (x + shift) * jnp.exp(scale)
         return y, log_det
 
-    def inverse(self, x: Array) -> Tuple[Array, Array]:
-        shift = self.shift_MLP(x) * self.dt
-        scale = self.scale_MLP(x) * self.dt
-        log_det = -jnp.sum(scale)
+    def inverse(self, x: Array, condition_x: Array) -> Tuple[Array, Array]:
+        scale = jnp.tanh(self.scale_MLP(condition_x)) * self.dt
+        shift = self.shift_MLP(condition_x) * self.dt
+        log_det = -scale
         y = x  * jnp.exp(-scale) - shift
         return y, log_det
 
