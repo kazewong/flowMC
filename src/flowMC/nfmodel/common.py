@@ -82,7 +82,7 @@ class MaskedCouplingLayer(Bijection):
         log_det = ((1-self.mask)*log_det).sum()
         return y, log_det
 
-class AffineTransformation(Bijection):
+class MLPAffine(Bijection):
     scale_MLP: MLP
     shift_MLP: MLP
     dt: float = 1
@@ -96,6 +96,8 @@ class AffineTransformation(Bijection):
         return self.forward(x, condition_x)
 
     def forward(self, x: Array, condition_x: Array) -> Tuple[Array, Array]:
+        # Note that this note output log_det as an array instead of a number.
+        # This is because we need to sum over the log_det in the masked coupling layer.
         scale = jnp.tanh(self.scale_MLP(condition_x)) * self.dt
         shift = self.shift_MLP(condition_x) * self.dt
         log_det = scale
@@ -109,3 +111,23 @@ class AffineTransformation(Bijection):
         y = x  * jnp.exp(-scale) - shift
         return y, log_det
 
+class ScalarAffine(Bijection):
+    scale: float
+    shift: float
+
+    def __init__(self, scale: float, shift: float):
+        self.scale = scale
+        self.shift = shift
+
+    def __call__(self, x: Array) -> Tuple[Array, Array]:
+        return self.forward(x)
+
+    def forward(self, x: Array) -> Tuple[Array, Array]:
+        y = (x + self.shift) * jnp.exp(self.scale)
+        log_det = self.scale
+        return y, log_det
+
+    def inverse(self, x: Array) -> Tuple[Array, Array]:
+        y = x * jnp.exp(-self.scale) - self.shift
+        log_det = -self.scale
+        return y, log_det

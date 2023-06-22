@@ -4,7 +4,7 @@ import jax.numpy as jnp
 import numpy as np
 import equinox as eqx
 from flowMC.nfmodel.base import NFModel
-from flowMC.nfmodel.common import MLP, MaskedCouplingLayer, AffineTransformation
+from flowMC.nfmodel.common import MLP, MaskedCouplingLayer, MLPAffine
 from jaxtyping import Array
 
 class AffineCoupling(eqx.Module):
@@ -111,7 +111,7 @@ class RealNVP(NFModel):
             shift_MLP = MLP([n_features, n_hidden, n_features], key=shift_subkey)
             affine_coupling.append(
                 # AffineCoupling(n_features, n_hidden, mask, scale_subkey, dt=dt)
-                MaskedCouplingLayer(AffineTransformation(scale_MLP, shift_MLP), mask)
+                MaskedCouplingLayer(MLPAffine(scale_MLP, shift_MLP), mask)
             )
         self.affine_coupling = affine_coupling
         if kwargs.get("base_mean") is not None:

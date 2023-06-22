@@ -19,10 +19,10 @@ batch_size = 10000
 learning_rate = 0.001
 momentum = 0.9
 n_layers = 10
-n_hidden = 100
+n_hidden = 128
 dt = 1 / n_layers
 
-data = make_moons(n_samples=10000, noise=0.05)
+data = make_moons(n_samples=20000, noise=0.05)
 data = jnp.array(data[0])
 
 key1, rng, init_rng = jax.random.split(jax.random.PRNGKey(0), 3)
@@ -51,5 +51,3 @@ for step in range(num_epochs):
 
 
 nf_samples = model.sample(jax.random.PRNGKey(124098),1000)
-import numpy as np
-np.save("nf_samples.npy",nf_samples)
