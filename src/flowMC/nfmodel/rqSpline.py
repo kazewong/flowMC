@@ -8,7 +8,7 @@ import equinox as eqx
 from flax import linen as nn
 from flowMC.nfmodel.base import NFModel, Bijection
 from flowMC.nfmodel.mlp import MLP
-from flowMC.nfmodel.common import MaskedCouplingLayer
+from flowMC.nfmodel.common import MaskedCouplingLayer, ScalarAffine
 
 class MaskedCouplingRQSpline(NFModel):
     r""" Rational quadratic spline normalizing flow model using distrax.
@@ -63,31 +63,24 @@ class MaskedCouplingRQSpline(NFModel):
             )
             scalar.append(Scalar(n_features))
 
-        bijector_fn = lambda x: distrax.RationalQuadraticSpline(
-            x, range_min=spline_range[0], range_max=spline_range[1]
-        )
         mask = (jnp.arange(0, n_features) % 2).astype(bool)
         mask_all = (jnp.zeros(n_features)).astype(bool)
         layers = []
         for i in range(num_layers):
             layers.append(
-                distrax.MaskedCoupling(
-                    mask=mask_all, bijector=scalar_affine, conditioner=scalar[i]
-                )
+                MaskedCouplingLayer(ScalarAffine(1.,0.), mask_all)
             )
             layers.append(
-                distrax.MaskedCoupling(
-                    mask=mask,
-                    bijector=bijector_fn,
-                    conditioner=conditioner[i],
-                )
+                MaskedCouplingLayer(RQSpline(), mask)
             )
             mask = jnp.logical_not(mask)
 
     def __call__(self, x: Array) -> Tuple[Array, Array]:
+        
         x = (x-self.base_mean)/jnp.sqrt(jnp.diag(self.base_cov))
-        flow = distrax.Transformed(self.base, self.flow)
-        return flow.log_prob(x)
+        for layer in self.layers:
+            x = layer(x)
+        return x
 
     def sample(self, rng_key: jax.random.PRNGKey, n_samples: int) -> Array:
         flow = distrax.Transformed(self.base, self.flow)

@@ -125,14 +125,14 @@ class RealNVP(NFModel):
 
 
     def __call__(self, x: Array) -> Tuple[Array, Array]:
+        return self.forward(x)
+
+    def forward(self, x: Array) -> Tuple[Array, Array]:
         log_det = 0
         for i in range(self.n_layer):
             x, log_det_i = self.affine_coupling[i](x)
             log_det += log_det_i
         return x, log_det
-
-    def forward(self, x: Array) -> Tuple[Array, Array]:
-        return __call__(x)
 
     def inverse(self, x: Array) -> Tuple[Array, Array]:
         x = (x-self.base_mean)/jnp.sqrt(jnp.diag(self.base_cov))
