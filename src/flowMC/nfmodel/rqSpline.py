@@ -10,6 +10,7 @@ from flowMC.nfmodel.base import NFModel  # The Linen API
 from flowMC.nfmodel.mlp import MLP
 
 
+
 class Reshape(nn.Module):
     shape: Sequence[int]
 
@@ -218,7 +219,8 @@ class RQSpline(NFModel):
 
     _base_mean: Array
     _base_cov: Array
-    flow: distrax.Transformed
+    flow: distrax.BijectorLike
+    base: distrax.DistributionLike
 
     @property
     def base_mean(self):
@@ -275,22 +277,23 @@ class RQSpline(NFModel):
             )
             mask = jnp.logical_not(mask)
 
-        flow = distrax.Inverse(distrax.Chain(layers))
-        base_dist = distrax.Independent(
+        self.flow = distrax.Inverse(distrax.Chain(layers))
+        self.base = distrax.Independent(
             distrax.MultivariateNormalFullCovariance(
                 loc=jnp.zeros(n_features),
                 covariance_matrix=jnp.eye(n_features),
             )
         )
 
-        self.flow = distrax.Transformed(base_dist, flow)
 
     def __call__(self, x: Array) -> Tuple[Array, Array]:
         x = (x-self.base_mean)/jnp.sqrt(jnp.diag(self.base_cov))
-        return self.flow.log_prob(x)
+        flow = distrax.Transformed(self.base, self.flow)
+        return flow.log_prob(x)
 
     def sample(self, rng_key: jax.random.PRNGKey, n_samples: int) -> Array:
-        return self.flow.sample(seed=rng_key, sample_shape=(n_samples,))
+        flow = distrax.Transformed(self.base, self.flow)
+        return flow.sample(seed=rng_key, sample_shape=(n_samples,))
 
     def inverse(self, x: Array) -> Tuple[Array, Array]:
         return super().inverse(x)

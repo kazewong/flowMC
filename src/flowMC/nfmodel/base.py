@@ -9,9 +9,8 @@ class NFModel(eqx.Module):
     def __init__(self):
         return NotImplemented
 
-    @abstractmethod
     def __call__(self, x: Array) -> Tuple[Array, Array]:
-        return NotImplemented
+        return self.forward(x)
     
     @abstractmethod
     def log_prob(self, x: Array) -> Array:
@@ -22,10 +21,26 @@ class NFModel(eqx.Module):
         return NotImplemented
 
     @abstractmethod
-    def inverse(self, x: Array) -> Tuple[Array, Array]:
+    def forward(self, x: Array) -> Tuple[Array, Array]:
         return NotImplemented
 
     @abstractmethod
-    def inverse_vmap(self, x: Array) -> Tuple[Array, Array]:
+    def inverse(self, x: Array) -> Tuple[Array, Array]:
         return NotImplemented
 
+class Bijection(eqx.Module):
+
+    @abstractmethod
+    def __init__(self):
+        return NotImplemented
+
+    def __call__(self, x: Array) -> Tuple[Array, Array]:
+        return self.forward(x)
+
+    @abstractmethod
+    def forward(self, x: Array) -> Tuple[Array, Array]:
+        return NotImplemented
+
+    @abstractmethod
+    def inverse(self, x: Array) -> Tuple[Array, Array]:
+        return NotImplemented
