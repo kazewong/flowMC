@@ -76,7 +76,7 @@ class MaskedCouplingRQSpline(NFModel):
             mask = jnp.logical_not(mask)
 
     def __call__(self, x: Array) -> Tuple[Array, Array]:
-        
+
         x = (x-self.base_mean)/jnp.sqrt(jnp.diag(self.base_cov))
         for layer in self.layers:
             x = layer(x)
@@ -96,6 +96,18 @@ class MaskedCouplingRQSpline(NFModel):
 
 
 class RQSpline(Bijection):
+
+    _range_min: float
+    _range_max: float
+    params: Array # 3 * num_bins + 1, [width, height, derivative] * num_bins + [intercept]
+
+    @property
+    def range_min(self):
+        return jax.lax.stop_gradient(self._range_min)
+
+    @property
+    def range_max(self):
+        return jax.lax.stop_gradient(self._range_max)
 
     def __init__(self):
         super().__init__()
