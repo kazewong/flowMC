@@ -2,34 +2,36 @@ import jax
 import jax.numpy as jnp  # JAX NumPy
 import jax.random as random  # JAX random
 from tqdm import trange
+import optax
+import equinox as eqx
+from flowMC.nfmodel.base import NFModel
+from typing import Callable, Tuple
+from jaxtyping import Array, PRNGKeyArray
 
 
-def make_training_loop(model):
+def make_training_loop(model: eqx.Module, optim: optax.GradientTransformation) -> Callable:
     """
     Create a function that trains an NF model.
 
     Args:
-        model: a neural network model with a `log_prob` method.
+        model (eqx.Model): NF model to train.
+        optim (optax.GradientTransformation): Optimizer.
 
     Returns:
-        train_flow (Callable): wrapper function that trains the model.
+        train_flow: Function that trains the model.
     """
+    @eqx.filter_value_and_grad
+    def loss_fn(model, x):
+        return -jnp.mean(jax.vmap(model.log_prob)(x))
 
-    def train_step(batch, state, variables):
-        def loss(params):
-            log_det = model.apply(
-                {"params": params, "variables": variables}, batch, method=model.log_prob
-            )
-            return -jnp.mean(log_det)
+    @eqx.filter_jit
+    def train_step(model, x, opt_state):
+        loss, grads = loss_fn(model, x)
+        updates, opt_state = optim.update(grads, opt_state)
+        model = eqx.apply_updates(model, updates)
+        return loss, model, opt_state
 
-        grad_fn = jax.value_and_grad(loss)
-        value, grad = grad_fn(state.params)
-        state = state.apply_gradients(grads=grad)
-        return value, state
-
-    train_step = jax.jit(train_step)
-
-    def train_epoch(rng, state, variables, train_ds, batch_size):
+    def train_epoch(rng, model, state, train_ds, batch_size):
         """Train for a single epoch."""
         train_ds_size = len(train_ds)
         steps_per_epoch = train_ds_size // batch_size
@@ -40,29 +42,30 @@ def make_training_loop(model):
             perms = perms.reshape((steps_per_epoch, batch_size))
             for perm in perms:
                 batch = train_ds[perm, ...]
-                value, state = train_step(batch, state, variables)
+                value, model, state = train_step(model, batch, state)
         else:
-            value, state = train_step(train_ds, state, variables)
+            value, model, state = train_step(model, train_ds, state)
+            
+        return value, model, state
 
-        return value, state
-
-    def train_flow(rng, state, variables, data, num_epochs, batch_size, verbose: bool = False):
+    def train_flow(rng, model, data, num_epochs, batch_size, verbose: bool = False):
+        state = optim.init(eqx.filter(model,eqx.is_array))
         loss_values = jnp.zeros(num_epochs)
         if verbose:
             pbar = trange(num_epochs, desc="Training NF", miniters=int(num_epochs / 10))
         else:
             pbar = range(num_epochs)
-        best_state = state
+        best_model = model
         best_loss = 1e9
         for epoch in pbar:
             # Use a separate PRNG key to permute image data during shuffling
             rng, input_rng = jax.random.split(rng)
             # Run an optimization step over a training batch
-            value, state = train_epoch(input_rng, state, variables, data, batch_size)
+            value, model, state = train_epoch(input_rng, model, state, data, batch_size)
             # print('Train loss: %.3f' % value)
             loss_values = loss_values.at[epoch].set(value)
             if loss_values[epoch] < best_loss:
-                best_state = state
+                best_model = model
                 best_loss = loss_values[epoch]
             if verbose:
                 if num_epochs > 10:
@@ -72,47 +75,38 @@ def make_training_loop(model):
                     if epoch == num_epochs:
                         pbar.set_description(f"Training NF, current loss: {value:.3f}")
 
-        return rng, best_state, loss_values
+        return rng, best_model, loss_values
 
     return train_flow, train_epoch, train_step
 
 
-def sample_nf(model, param, rng_key, n_sample, variables):
+def sample_nf(model: NFModel, rng_key: jax.random.PRNGKey, n_sample: int) -> Tuple[jax.random.PRNGKeyArray, Array]:
     """  
     Sample from a NF model given a set of parameters and accompanying variables. 
 
     Args:
-        model: a neural network model with a `sample` method.
-        param: a set of parameters for the model.
-        rng_key: a random number generator key.
-        n_sample: number of samples to draw.
-        variables: a set of variables for the model (see realnvp.py and ).
+        model (NFModel): NF model to sample from.
+        rng_key (jax.random.PRNGKey): Random number generator key.
+        n_sample (int): Number of samples to draw.
 
     Returns:
-        rng_key: a new random number generator key.
-        samples: a set of samples from the model.
+        rng_key (jax.random.PRNGKey): Random number generator key.
+        samples (Array): Samples from the NF model.
     """
     rng_key, subkey = random.split(rng_key)
-    samples = model.apply(
-        {"params": param, "variables": variables}, subkey, n_sample, method=model.sample
-    )
-    # samples = jnp.flip(samples[0],axis=1)
+    samples = model.sample(subkey, n_sample)
     return rng_key, samples
 
-def eval_nf(model, param, x, variables):
+def eval_nf(model: NFModel, x: jnp.ndarray) -> Array:
     """
     Evaluate a NF model given a set of parameters and accompanying variables.
 
     Args:
-        model: a neural network model with a `log_prob` method.
-        param: a set of parameters for the model.
-        x: a set of points to evaluate the model at.
-        variables: a set of variables for the model (see realnvp.py and ).
+        model (NFModel): NF model to evaluate.
+        x (jnp.ndarray): Input data.
 
     Returns:
-        log_prob: the log probability of the model at the given points.
+        log_prob (Array): Log probability of the input data.
     """
-    log_prob = model.apply(
-        {"params": param, "variables": variables}, x, method=model.log_prob
-    )
+    log_prob = model.log_prob(x)
     return log_prob

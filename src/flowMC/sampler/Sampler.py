@@ -98,10 +98,6 @@ class Sampler():
         self.local_autotune = local_autotune
         self.likelihood_vec = self.local_sampler_class.logpdf_vmap
         self.nf_model = nf_model
-        if model_init is None:
-            model_init = nf_model.init(init_rng_keys_nf, jnp.ones((1, self.n_dim)))
-        params = model_init["params"]
-        self.variables = model_init["variables"]
         if nf_variable is not None:
             self.variables = self.variables
         self.global_sampler = make_nf_metropolis_sampler(self.nf_model)
@@ -110,9 +106,6 @@ class Sampler():
             self.nf_model
         )
         tx = optax.adam(self.learning_rate, self.momentum)
-        self.state = train_state.TrainState.create(
-            apply_fn=nf_model.apply, params=params, tx=tx
-        )
 
         # Initialized result dictionary
         training = {}
@@ -221,8 +214,6 @@ class Sampler():
 
                 self.rng_keys_nf, self.state, loss_values = self.nf_training_loop(
                     self.rng_keys_nf,
-                    self.state,
-                    self.variables,
                     flat_chain,
                     self.n_epochs,
                     self.batch_size,
@@ -240,8 +231,6 @@ class Sampler():
             ) = self.global_sampler(
                 self.rng_keys_nf,
                 self.n_global_steps,
-                self.state.params,
-                self.variables,
                 self.likelihood_vec,
                 positions[:, -1],
                 data,

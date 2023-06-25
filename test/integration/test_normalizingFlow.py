@@ -1,5 +1,5 @@
 from flowMC.nfmodel.realNVP import RealNVP
-from flowMC.nfmodel.rqSpline import RQSpline
+from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
 import jax
 import jax.numpy as jnp  # JAX NumPy
 
@@ -18,27 +18,17 @@ def test_realNVP():
     learning_rate = 0.001
     momentum = 0.9
 
-    model = RealNVP(2, 2, 16, 1)
-    def create_train_state(rng, learning_rate, momentum):
-        params = model.init(rng, jnp.ones((1, 2)))["params"]
-        tx = optax.adam(learning_rate, momentum)
-        return train_state.TrainState.create(apply_fn=model.apply, params=params, tx=tx)
+    model = RealNVP(4, 2, 32, rng, 1., base_cov = jnp.cov(data.T), base_mean = jnp.mean(data, axis=0))
+    optim = optax.adam(learning_rate, momentum)
 
-    state = create_train_state(init_rng, learning_rate, momentum)
 
-    variables = model.init(rng, jnp.ones((1, 2)))["variables"]
-    variables = variables.unfreeze()
-    variables["base_mean"] = jnp.mean(data, axis=0)
-    variables["base_cov"] = jnp.cov(data.T)
-    variables = flax.core.freeze(variables)
-
-    train_flow, train_epoch, train_step = make_training_loop(model)
-    rng, state, loss_values = train_flow(
-        rng, state, variables, data, num_epochs, batch_size
+    train_flow, train_epoch, train_step = make_training_loop(model, optim)
+    rng, best_model, loss_values = train_flow(
+        rng, model, data, num_epochs, batch_size
     )
-
     rng_key_nf = jax.random.PRNGKey(124098)
-    sample_nf(model, state.params, rng_key_nf, 10000, variables)
+    model.sample(rng_key_nf, 10000)
+
 
 def test_rqSpline():
 
@@ -50,24 +40,13 @@ def test_rqSpline():
     learning_rate = 0.001
     momentum = 0.9
 
-    model = RQSpline(2, 4, [16, 16], 8)
+    model = MaskedCouplingRQSpline(2, 4, [32,32], 4 , rng, base_mean = jnp.mean(data, axis=0), base_cov = jnp.cov(data.T))
+    optim = optax.adam(learning_rate, momentum)
 
-    def create_train_state(rng, learning_rate, momentum):
-        params = model.init(rng, jnp.ones((1, 2)))["params"]
-        tx = optax.adam(learning_rate, momentum)
-        return train_state.TrainState.create(apply_fn=model.apply, params=params, tx=tx)
 
-    state = create_train_state(init_rng, learning_rate, momentum)
-
-    variables = model.init(rng, jnp.ones((1, 2)))["variables"]
-    variables = variables.unfreeze()
-    variables["base_mean"] = jnp.mean(data, axis=0)
-    variables["base_cov"] = jnp.cov(data.T)
-    variables = flax.core.freeze(variables)
-
-    train_flow, train_epoch, train_step = make_training_loop(model)
-    rng, state, loss_values = train_flow(
-        rng, state, variables, data, num_epochs, batch_size
+    train_flow, train_epoch, train_step = make_training_loop(model, optim)
+    rng, best_model, loss_values = train_flow(
+        rng, model, data, num_epochs, batch_size, verbose = True
     )
     rng_key_nf = jax.random.PRNGKey(124098)
-    sample_nf(model, state.params, rng_key_nf, 10000, variables)
+    model.sample(rng_key_nf, 10000)

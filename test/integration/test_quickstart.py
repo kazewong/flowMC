@@ -1,6 +1,6 @@
 import jax
 import jax.numpy as jnp
-from flowMC.nfmodel.rqSpline import RQSpline
+from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
 from flowMC.sampler.MALA import MALA
 from flowMC.sampler.Sampler import Sampler
 from flowMC.utils.PRNG_keys import initialize_rng_keys
@@ -16,7 +16,7 @@ n_chains = 10
 
 rng_key_set = initialize_rng_keys(n_chains, seed=42)
 initial_position = jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
-model = RQSpline(n_dim, 3, [64, 64], 8)
+model = MaskedCouplingRQSpline(n_dim, 3, [64, 64], 8, jax.random.PRNGKey(21))
 step_size = 1e-1
 local_sampler = MALA(log_posterior, True, {"step_size": step_size})
 
