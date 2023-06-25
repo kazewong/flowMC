@@ -98,14 +98,10 @@ class Sampler():
         self.local_autotune = local_autotune
         self.likelihood_vec = self.local_sampler_class.logpdf_vmap
         self.nf_model = nf_model
-        if nf_variable is not None:
-            self.variables = self.variables
         self.global_sampler = make_nf_metropolis_sampler(self.nf_model)
-        
-        self.nf_training_loop, train_epoch, train_step = make_training_loop(
-            self.nf_model
-        )
+
         tx = optax.adam(self.learning_rate, self.momentum)
+        self.nf_training_loop, train_epoch, train_step = make_training_loop(self.nf_model, tx)
 
         # Initialized result dictionary
         training = {}
@@ -207,13 +203,11 @@ class Sampler():
                     flat_chain = jnp.repeat(flat_chain, (self.max_samples // flat_chain.shape[0])+1, axis=0)
                     flat_chain = flat_chain[:self.max_samples]
 
-                variables = self.variables.unfreeze()
-                variables["base_mean"] = jnp.mean(flat_chain, axis=0)
-                variables["base_cov"] = jnp.cov(flat_chain.T)
-                self.variables = flax.core.freeze(variables)
+
 
                 self.rng_keys_nf, self.state, loss_values = self.nf_training_loop(
                     self.rng_keys_nf,
+                    self.nf_model,
                     flat_chain,
                     self.n_epochs,
                     self.batch_size,

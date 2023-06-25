@@ -21,10 +21,9 @@ def test_realNVP():
     model = RealNVP(4, 2, 32, rng, 1., base_cov = jnp.cov(data.T), base_mean = jnp.mean(data, axis=0))
     optim = optax.adam(learning_rate, momentum)
 
-
     train_flow, train_epoch, train_step = make_training_loop(model, optim)
     rng, best_model, loss_values = train_flow(
-        rng, model, data, num_epochs, batch_size
+        rng, model, data, num_epochs, batch_size, verbose = True
     )
     rng_key_nf = jax.random.PRNGKey(124098)
     model.sample(rng_key_nf, 10000)

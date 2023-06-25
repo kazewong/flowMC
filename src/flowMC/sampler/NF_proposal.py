@@ -130,7 +130,7 @@ def make_nf_metropolis_sampler(nf_model: NFModel):
     """
 
     eval_nf_logprob = jax.jit(jax.vmap(nf_model.log_prob))
-    sample_nf = jax.jit(nf_model, static_argnums=(1))
+    sample_nf = jax.jit(nf_model.sample, static_argnums=(1))
 
     def nf_metropolis_sampler(
         rng_key, n_steps, target_pdf, initial_position, data
