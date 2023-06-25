@@ -28,7 +28,7 @@ data = jnp.array(data[0])
 key1, rng, init_rng = jax.random.split(jax.random.PRNGKey(0), 3)
 
 # model = RealNVP(n_layers, 2, n_hidden, rng, 1., base_cov = jnp.cov(data.T), base_mean = jnp.mean(data, axis=0))
-model = MaskedCouplingRQSpline(2, 6, [32], 10 , rng)
+model = MaskedCouplingRQSpline(2, 10, [128,128], 8 , rng)
 
 
 @eqx.filter_value_and_grad
@@ -50,5 +50,5 @@ for step in range(num_epochs):
     print(f"step={step}, loss={loss}")
 
 
-nf_samples = model.sample(jax.random.PRNGKey(124098),1000)
+nf_samples = model.sample(jax.random.PRNGKey(124098),5000)
  

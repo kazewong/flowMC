@@ -366,7 +366,7 @@ class MaskedCouplingRQSpline(NFModel):
         layers = []
         for i in range(num_layers):
             layers.append(
-                MaskedCouplingLayer(ScalarAffine(1.,0.), mask_all)
+                MaskedCouplingLayer(ScalarAffine(0.,0.), mask_all)
             )
             layers.append(
                 MaskedCouplingLayer(RQSpline(conditioner[i], spline_range[0], spline_range[1]), mask)
