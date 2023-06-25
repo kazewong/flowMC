@@ -51,6 +51,10 @@ class MLP(eqx.Module):
     def n_output(self) -> int:
         return self.layers[-1].out_features
 
+    @property
+    def dtype(self) -> jnp.dtype:
+        return self.layers[0].weight.dtype
+
 
 class MaskedCouplingLayer(Bijection):
 
@@ -112,22 +116,22 @@ class MLPAffine(Bijection):
         return y, log_det
 
 class ScalarAffine(Bijection):
-    scale: float
-    shift: float
+    scale: Array
+    shift: Array
 
     def __init__(self, scale: float, shift: float):
-        self.scale = scale
-        self.shift = shift
+        self.scale = jnp.array(scale)
+        self.shift = jnp.array(shift)
 
-    def __call__(self, x: Array) -> Tuple[Array, Array]:
-        return self.forward(x)
+    def __call__(self, x: Array, condition_x: Array) -> Tuple[Array, Array]:
+        return self.forward(x, condition_x)
 
-    def forward(self, x: Array) -> Tuple[Array, Array]:
+    def forward(self, x: Array, condition_x: Array) -> Tuple[Array, Array]:
         y = (x + self.shift) * jnp.exp(self.scale)
         log_det = self.scale
         return y, log_det
 
-    def inverse(self, x: Array) -> Tuple[Array, Array]:
+    def inverse(self, x: Array, condition_x: Array) -> Tuple[Array, Array]:
         y = x * jnp.exp(-self.scale) - self.shift
         log_det = -self.scale
         return y, log_det
