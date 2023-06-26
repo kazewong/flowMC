@@ -2,7 +2,7 @@ from logging import lastResort
 from typing import Callable, Tuple
 import jax.numpy as jnp
 from flowMC.nfmodel.utils import sample_nf, make_training_loop, eval_nf
-from flowMC.sampler.NF_proposal import make_nf_metropolis_sampler
+from flowMC.sampler.NF_proposal import nf_metropolis_sampler
 import optax
 from flowMC.sampler.LocalSampler_Base import LocalSamplerBase
 from flowMC.nfmodel.base import NFModel
@@ -95,7 +95,7 @@ class Sampler():
         self.local_autotune = local_autotune
         self.likelihood_vec = self.local_sampler_class.logpdf_vmap
         self.nf_model = nf_model
-        self.global_sampler = make_nf_metropolis_sampler(self.nf_model)
+        # self.global_sampler = make_nf_metropolis_sampler(self.nf_model)
 
         tx = optax.adam(self.learning_rate, self.momentum)
         self.nf_training_loop, train_epoch, train_step = make_training_loop(tx)
@@ -217,7 +217,8 @@ class Sampler():
                 log_prob,
                 log_prob_nf,
                 global_acceptance,
-            ) = self.global_sampler(
+            ) = nf_metropolis_sampler(
+                self.nf_model,
                 self.rng_keys_nf,
                 self.n_global_steps,
                 self.likelihood_vec,
