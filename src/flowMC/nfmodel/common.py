@@ -5,7 +5,7 @@ import jax.numpy as jnp
 from jaxtyping import Array
 import equinox as eqx
 
-from flowMC.nfmodel.base import Bijection
+from flowMC.nfmodel.base import Bijection, Distribution
 
 import jax
 import jax.numpy as jnp
@@ -135,3 +135,15 @@ class ScalarAffine(Bijection):
         y = x * jnp.exp(-self.scale) - self.shift
         log_det = -self.scale
         return y, log_det
+
+class Gaussian(Distribution):
+
+    def __init__(self, mean: Array, cov: Array):
+        self.mean = mean
+        self.cov = cov
+
+    def log_prob(self, x: Array) -> Array:
+        return jax.scipy.stats.multivariate_normal.logpdf(x, self.mean, self.cov)
+
+    def sample(self, key: jax.random.PRNGKey) -> Array:
+        return jax.random.normal(key, self.mean.shape)*jnp.sqrt(self.cov) + self.mean

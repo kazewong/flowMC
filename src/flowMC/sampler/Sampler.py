@@ -5,6 +5,7 @@ from flowMC.nfmodel.utils import sample_nf, make_training_loop, eval_nf
 from flowMC.sampler.NF_proposal import make_nf_metropolis_sampler
 import optax
 from flowMC.sampler.LocalSampler_Base import LocalSamplerBase
+from flowMC.nfmodel.base import NFModel
 from tqdm import tqdm
 
 
@@ -44,7 +45,7 @@ class Sampler():
         rng_key_set: Tuple,
         data: jnp.ndarray,
         local_sampler: LocalSamplerBase,
-        nf_model: Callable,
+        nf_model: NFModel,
         n_loop_training: int = 3,
         n_loop_production: int = 3,
         n_local_steps: int = 50,
@@ -199,8 +200,6 @@ class Sampler():
                     flat_chain = jnp.repeat(flat_chain, (self.max_samples // flat_chain.shape[0])+1, axis=0)
                     flat_chain = flat_chain[:self.max_samples]
 
-
-
                 self.rng_keys_nf, self.state, loss_values = self.nf_training_loop(
                     self.rng_keys_nf,
                     self.nf_model,
@@ -333,14 +332,8 @@ class Sampler():
             Device Array: Samples generated using the normalizing flow.
         """
 
-        nf_samples = sample_nf(
-            self.nf_model,
-            self.state.params,
-            self.rng_keys_nf,
-            n_samples,
-            self.variables,
-        )
-        return nf_samples
+        samples = self.nf_model.sample(self.rng_keys_nf, n_samples)
+        return samples
 
     def evalulate_flow(self, samples: jnp.ndarray) -> jnp.ndarray:
         """
@@ -352,12 +345,7 @@ class Sampler():
         Returns:
             Device Array: Log probability of the samples.
         """
-        log_prob = eval_nf(
-            self.nf_model,
-            self.state.params,
-            samples,
-            self.variables,
-        )
+        log_prob = self.nf_model.log_prob(samples)
         return log_prob
 
     def reset(self):
