@@ -210,12 +210,34 @@ def _rational_quadratic_spline_inv(y: Array,
 
 class RQSpline(Bijection):
 
+
     _range_min: float
     _range_max: float
     _num_bins: int
     _min_bin_size: float
     _min_knot_slope: float
     conditioner: eqx.Module
+
+    """A rational-quadratic spline bijection.
+    
+    This bijection is a piecewise rational-quadratic spline with `num_bins` bins.
+    The spline is defined by the bin boundaries on the x and y axes, the slopes
+    at the knot points, and the slopes at the boundaries of the spline range.
+    The spline is linear outside the spline range.
+
+    Args:
+        conditioner (eqx.Module): A conditioner that takes the input and returns
+            the parameters of the spline.
+        range_min (float): The minimum value of the spline range.
+        range_max (float): The maximum value of the spline range.
+        num_bins (int): The number of bins in the spline.
+        min_bin_size (float): The minimum size of a bin.
+        min_knot_slope (float): The minimum slope of the spline at the knot points.
+
+    Attributes:
+        range_min (float): The minimum value of the spline range.
+        range_max (float): The maximum value of the spline range.
+    """
 
     @property
     def range_min(self):

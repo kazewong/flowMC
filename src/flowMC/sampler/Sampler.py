@@ -1,12 +1,8 @@
 from logging import lastResort
 from typing import Callable, Tuple
-import jax
 import jax.numpy as jnp
-import numpy as np
 from flowMC.nfmodel.utils import sample_nf, make_training_loop, eval_nf
 from flowMC.sampler.NF_proposal import make_nf_metropolis_sampler
-from flax.training import train_state  # Useful dataclass to keep train state
-import flax
 import optax
 from flowMC.sampler.LocalSampler_Base import LocalSamplerBase
 from tqdm import tqdm

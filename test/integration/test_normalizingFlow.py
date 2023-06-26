@@ -4,9 +4,7 @@ import jax
 import jax.numpy as jnp  # JAX NumPy
 
 from flowMC.nfmodel.utils import *
-from flax.training import train_state  # Useful dataclass to keep train state
 import optax  # Optimizers
-import flax
 
 def test_realNVP():
 
