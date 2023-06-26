@@ -98,7 +98,7 @@ class Sampler():
         self.global_sampler = make_nf_metropolis_sampler(self.nf_model)
 
         tx = optax.adam(self.learning_rate, self.momentum)
-        self.nf_training_loop, train_epoch, train_step = make_training_loop(self.nf_model, tx)
+        self.nf_training_loop, train_epoch, train_step = make_training_loop(tx)
 
         # Initialized result dictionary
         training = {}
@@ -200,7 +200,7 @@ class Sampler():
                     flat_chain = jnp.repeat(flat_chain, (self.max_samples // flat_chain.shape[0])+1, axis=0)
                     flat_chain = flat_chain[:self.max_samples]
 
-                self.rng_keys_nf, self.state, loss_values = self.nf_training_loop(
+                self.rng_keys_nf, self.nf_model, loss_values = self.nf_training_loop(
                     self.rng_keys_nf,
                     self.nf_model,
                     flat_chain,

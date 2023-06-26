@@ -4,11 +4,11 @@ import jax
 import jax.numpy as jnp  # JAX NumPy
 
 from flowMC.nfmodel.utils import *
+from flowMC.nfmodel.common import Gaussian
 import equinox as eqx
 import optax  # Optimizers
 
 from sklearn.datasets import make_moons
-import matplotlib.pyplot as plt
 
 """
 Training a masked RealNVP flow to fit the dual moons dataset.
@@ -28,7 +28,7 @@ data = jnp.array(data[0])
 key1, rng, init_rng = jax.random.split(jax.random.PRNGKey(0), 3)
 
 # model = RealNVP(n_layers, 2, n_hidden, rng, 1., base_cov = jnp.cov(data.T), base_mean = jnp.mean(data, axis=0))
-model = MaskedCouplingRQSpline(2, 10, [128,128], 8 , rng)
+model = MaskedCouplingRQSpline(2, 10, [128,128], 8 , rng, base_dist= Gaussian(jnp.zeros(2), jnp.eye(2),learnable=True))
 
 
 @eqx.filter_value_and_grad

@@ -138,12 +138,31 @@ class ScalarAffine(Bijection):
 
 class Gaussian(Distribution):
 
-    def __init__(self, mean: Array, cov: Array):
-        self.mean = mean
-        self.cov = cov
+    _mean: Array
+    _cov: Array
+    learnable: bool = False
+
+    @property
+    def mean(self) -> Array:
+        if self.learnable:
+            return self._mean
+        else:
+            return jax.lax.stop_gradient(self._mean)
+
+    @property
+    def cov(self) -> Array:
+        if self.learnable:
+            return self._cov
+        else:
+            return jax.lax.stop_gradient(self._cov)
+
+    def __init__(self, mean: Array, cov: Array, learnable: bool = False):
+        self._mean = mean
+        self._cov = cov
+        self.learnable = learnable
 
     def log_prob(self, x: Array) -> Array:
         return jax.scipy.stats.multivariate_normal.logpdf(x, self.mean, self.cov)
 
-    def sample(self, key: jax.random.PRNGKey) -> Array:
-        return jax.random.normal(key, self.mean.shape)*jnp.sqrt(self.cov) + self.mean
+    def sample(self, key: jax.random.PRNGKey, n_samples: int = 1) -> Array:
+        return jax.random.normal(key, (n_samples, self.mean.shape[0]))@jnp.sqrt(self.cov) + self.mean

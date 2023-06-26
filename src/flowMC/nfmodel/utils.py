@@ -9,7 +9,7 @@ from typing import Callable, Tuple
 from jaxtyping import Array, PRNGKeyArray
 
 
-def make_training_loop(model: eqx.Module, optim: optax.GradientTransformation) -> Callable:
+def make_training_loop(optim: optax.GradientTransformation) -> Callable:
     """
     Create a function that trains an NF model.
 
