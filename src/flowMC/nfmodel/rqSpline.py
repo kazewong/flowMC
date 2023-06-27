@@ -343,18 +343,20 @@ class MaskedCouplingRQSpline(NFModel):
     base_dist: Distribution
     layers: list[eqx.Module]
     _n_features: int
+    _data_mean: Array
+    _data_cov: Array
 
     @property
     def n_features(self):
         return self._n_features
 
-    # @property
-    # def data_mean(self):
-    #     return jax.lax.stop_gradient(self._data_mean)
+    @property
+    def data_mean(self):
+        return jax.lax.stop_gradient(self._data_mean)
 
-    # @property
-    # def data_cov(self):
-    #     return jax.lax.stop_gradient(self._data_cov)
+    @property
+    def data_cov(self):
+        return jax.lax.stop_gradient(self._data_cov)
 
     def __init__(self,
                 n_features: int,
@@ -368,6 +370,16 @@ class MaskedCouplingRQSpline(NFModel):
             self.base_dist = kwargs.get("base_dist")
         else:
             self.base_dist = Gaussian(jnp.zeros(n_features), jnp.eye(n_features), learnable=False)
+
+        if kwargs.get("data_mean") is not None:
+            self._data_mean = kwargs.get("data_mean")
+        else:
+            self._data_mean = jnp.zeros(n_features)
+
+        if kwargs.get("data_cov") is not None:
+            self._data_cov = kwargs.get("data_cov")
+        else:
+            self._data_cov = jnp.eye(n_features)
 
         self._n_features = n_features
         conditioner = []
@@ -400,26 +412,28 @@ class MaskedCouplingRQSpline(NFModel):
             log_det += log_det_i
         return x, log_det
 
+
+    @eqx.filter_jit
     def sample(self, rng_key: jax.random.PRNGKey, n_samples: int) -> Array:
         samples = self.base_dist.sample(rng_key, n_samples)
-        samples = self.inverse_vmap(samples)[0]
-        # samples = samples * jnp.sqrt(jnp.diag(self.data_cov)) + self.data_mean
+        samples = self.inverse(samples)[0]
         return samples # Return only the samples 
 
+    @partial(jax.vmap, in_axes=(None, 0))
     def inverse(self, x: Array) -> Tuple[Array, Array]:
         """ From latent space to data space"""
         log_det = 0.
         for layer in reversed(self.layers):
             x, log_det_i = layer.inverse(x)
             log_det += log_det_i
-        # x = x * jnp.sqrt(jnp.diag(self.data_cov)) + self.data_mean
+        x = x * jnp.sqrt(jnp.diag(self.data_cov)) + self.data_mean
         return x, log_det
 
-    inverse_vmap = jax.vmap(inverse, in_axes=(None, 0))
-
+    @eqx.filter_jit
+    @partial(jax.vmap, in_axes=(None, 0))
     def log_prob(self, x: Array) -> Array:
         """ From data space to latent space"""
-        # x = (x-self.data_mean)/jnp.sqrt(jnp.diag(self.data_cov))
+        x = (x-self.data_mean)/jnp.sqrt(jnp.diag(self.data_cov))
         y, log_det = self.__call__(x)
         log_det = log_det + self.base_dist.log_prob(y)
         return log_det

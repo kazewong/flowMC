@@ -99,47 +99,15 @@ def nf_metropolis_update(i: int, state: Tuple):
     )
 
 
-# def make_nf_metropolis_sampler(nf_model: NFModel):
-#     """
-#     Make the normalizing flow sampler for a given normalizing flow model 
-#     for multiple steps and from multiple initial positions.
-
-#     Args:
-#         nf_model: A normalizing flow model.
-        
-#     Returns:
-#         nf_metropolis_sampler: A normalizing flow sampler that has the following signature:
-
-#             Args:
-#                 rng_key: Jax PRNGKey.
-#                 n_steps: Number of steps.
-#                 nf_param: Normalizing flow parameters.
-#                 nf_variables: Normalizing flow variables.
-#                 target_pdf: Target pdf.
-#                 initial_position: Initial position.
-#                 data: Data.
-
-#             Returns:
-#                 rng_key: Current state of random key
-#                 all_positions: All positions of the chain
-#                 all_logp: Log probability of the target function at all positions
-#                 all_logp_nf: Log probability of the normalizing flow model at all positions
-#                 acceptance: Acceptance boolean
-
-#     """
-
-
-
 def nf_metropolis_sampler(
-    nf_model, rng_key, n_steps, target_pdf, initial_position, data
+    nf_model: NFModel, rng_key, n_steps, target_pdf, initial_position, data
 ):
-    eval_nf_logprob = jax.jit(jax.vmap(nf_model.log_prob))
-    sample_nf = jax.jit(nf_model.sample, static_argnums=(1))
+
     rng_key, *subkeys = random.split(rng_key, 3)
 
     total_sample = initial_position.shape[0] * n_steps
 
-    log_pdf_nf_initial = eval_nf_logprob(initial_position)
+    log_pdf_nf_initial = nf_model.log_prob(initial_position)
     log_pdf_initial = target_pdf(initial_position, data)
 
     if total_sample > n_sample_max:
@@ -152,21 +120,21 @@ def nf_metropolis_sampler(
             desc="Sampling Globally",
             miniters=(total_sample // n_sample_max) // 10,
         ):
-            local_samples = sample_nf(subkey, n_sample_max)
+            local_samples = nf_model.sample(subkey, n_sample_max)
             proposal_position = proposal_position.at[
                 i * n_sample_max : (i + 1) * n_sample_max
             ].set(local_samples)
             log_pdf_nf_proposal = log_pdf_nf_proposal.at[
                 i * n_sample_max : (i + 1) * n_sample_max
-            ].set(eval_nf_logprob(local_samples))
+            ].set(nf_model.log_prob(local_samples))
             log_pdf_proposal = log_pdf_proposal.at[
                 i * n_sample_max : (i + 1) * n_sample_max
             ].set(target_pdf(local_samples, data))
             local_key, subkey = random.split(local_key, 2)
 
     else:
-        proposal_position = sample_nf(subkeys[0], total_sample)
-        log_pdf_nf_proposal = eval_nf_logprob(proposal_position)
+        proposal_position = nf_model.sample(subkeys[0], total_sample)
+        log_pdf_nf_proposal = nf_model.log_prob(proposal_position)
         log_pdf_proposal = target_pdf(proposal_position, data)
 
     proposal_position = proposal_position.reshape(

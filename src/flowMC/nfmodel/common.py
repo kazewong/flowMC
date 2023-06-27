@@ -165,4 +165,4 @@ class Gaussian(Distribution):
         return jax.scipy.stats.multivariate_normal.logpdf(x, self.mean, self.cov)
 
     def sample(self, key: jax.random.PRNGKey, n_samples: int = 1) -> Array:
-        return jax.random.normal(key, (n_samples, self.mean.shape[0]))@jnp.sqrt(self.cov) + self.mean
+        return jax.random.multivariate_normal(key, self.mean, self.cov, (n_samples,))

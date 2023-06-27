@@ -7,6 +7,7 @@ import optax
 from flowMC.sampler.LocalSampler_Base import LocalSamplerBase
 from flowMC.nfmodel.base import NFModel
 from tqdm import tqdm
+import equinox as eqx
 
 
 class Sampler():
@@ -85,6 +86,7 @@ class Sampler():
         self.logging = logging
         self.keep_quantile = keep_quantile
         self.train_thinning = train_thinning
+        self.variables = {"mean": None, "var": None}
 
         # Initialized local and global samplers
 
@@ -181,6 +183,8 @@ class Sampler():
                 positions = self.summary['training']['chains'][:,::self.train_thinning]
                 log_prob_output = self.summary['training']['log_prob'][:,::self.train_thinning]
 
+
+
                 if self.keep_quantile > 0:
                     max_log_prob = jnp.max(log_prob_output, axis=1)
                     cut = jnp.quantile(max_log_prob, self.keep_quantile)
@@ -199,6 +203,11 @@ class Sampler():
                     # This is to pad the training data to avoid recompilation.
                     flat_chain = jnp.repeat(flat_chain, (self.max_samples // flat_chain.shape[0])+1, axis=0)
                     flat_chain = flat_chain[:self.max_samples]
+
+                self.variables["mean"] = jnp.mean(flat_chain, axis=0)
+                self.variables["cov"] = jnp.cov(flat_chain.T)
+                self.nf_model = eqx.tree_at(lambda m: m._data_mean, self.nf_model, self.variables["mean"])
+                self.nf_model = eqx.tree_at(lambda m: m._data_cov, self.nf_model, self.variables["cov"])
 
                 self.rng_keys_nf, self.nf_model, loss_values = self.nf_training_loop(
                     self.rng_keys_nf,

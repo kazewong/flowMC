@@ -22,7 +22,7 @@ def make_training_loop(optim: optax.GradientTransformation) -> Callable:
     """
     @eqx.filter_value_and_grad
     def loss_fn(model, x):
-        return -jnp.mean(jax.vmap(model.log_prob)(x))
+        return -jnp.mean(model.log_prob(x))
 
     @eqx.filter_jit
     def train_step(model, x, opt_state):
