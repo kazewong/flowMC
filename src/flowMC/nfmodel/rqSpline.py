@@ -9,6 +9,7 @@ from flowMC.nfmodel.common import MaskedCouplingLayer, ScalarAffine, MLP, Gaussi
 from functools import partial
 
 
+@partial(jax.vmap, in_axes=(0, None, None))
 def _normalize_bin_sizes(unnormalized_bin_sizes: Array,
                          total_size: float,
                          min_bin_size: float) -> Array:
@@ -17,7 +18,7 @@ def _normalize_bin_sizes(unnormalized_bin_sizes: Array,
   bin_sizes = jax.nn.softmax(unnormalized_bin_sizes, axis=-1)
   return bin_sizes * (total_size - num_bins * min_bin_size) + min_bin_size
 
-
+@partial(jax.vmap, in_axes=(0, None))
 def _normalize_knot_slopes(unnormalized_knot_slopes: Array,
                            min_knot_slope: float) -> Array:
   """Make knot slopes be no less than `min_knot_slope`."""
@@ -28,7 +29,7 @@ def _normalize_knot_slopes(unnormalized_knot_slopes: Array,
   offset = jnp.log(jnp.exp(1. - min_knot_slope) - 1.)
   return jax.nn.softplus(unnormalized_knot_slopes + offset) + min_knot_slope
 
-@partial(jax.vmap, in_axes=(0,None,None,None))
+@partial(jax.vmap, in_axes=(0, 0, 0, 0))
 def _rational_quadratic_spline_fwd(x: Array,
                                    x_pos: Array,
                                    y_pos: Array,
@@ -134,7 +135,7 @@ def _safe_quadratic_root(a: Array, b: Array, c: Array) -> Array:
     return numerator / denominator
 
 
-@partial(jax.vmap, in_axes=(0,None,None,None))
+@partial(jax.vmap, in_axes=(0, 0, 0, 0))
 def _rational_quadratic_spline_inv(y: Array,
                                    x_pos: Array,
                                    y_pos: Array,
@@ -286,15 +287,15 @@ class RQSpline(Bijection):
         self._range_max = range_max
         self._min_bin_size = min_bin_size
         self._min_knot_slope = min_knot_slope
-        self._num_bins = (conditioner.n_output-1)//3
+        self._num_bins = int(conditioner.n_output/conditioner.n_input-1)//3
 
         self.conditioner = conditioner
 
     def get_params(self, x: Array) -> Array:
-        params = self.conditioner(x)
-        unnormalized_bin_widths = params[:self._num_bins]
-        unnormalized_bin_heights = params[self._num_bins : 2 * self._num_bins]
-        unnormalized_knot_slopes = params[2 * self._num_bins:]
+        params = self.conditioner(x).reshape(-1, self._num_bins*3+1)
+        unnormalized_bin_widths = params[:, :self._num_bins]
+        unnormalized_bin_heights = params[:, self._num_bins : 2 * self._num_bins]
+        unnormalized_knot_slopes = params[:, 2 * self._num_bins:]
         # Normalize bin sizes and compute bin positions on the x and y axis.
         range_size = self.range_max - self.range_min
         bin_widths = _normalize_bin_sizes(unnormalized_bin_widths, range_size,
@@ -386,7 +387,7 @@ class MaskedCouplingRQSpline(NFModel):
         for i in range(num_layers):
             key, conditioner_key= jax.random.split(key)
             conditioner.append(
-                MLP([n_features]+hidden_size+ [num_bins*3+1], conditioner_key)
+                MLP([n_features]+hidden_size+ [n_features*(num_bins*3+1)], conditioner_key, scale=1e-2, activation=jax.nn.tanh)
             )
 
         mask = (jnp.arange(0, n_features) % 2).astype(bool)
