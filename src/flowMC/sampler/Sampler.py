@@ -59,7 +59,6 @@ class Sampler():
         batch_size: int = 10000,
         use_global: bool = True,
         logging: bool = True,
-        nf_variable=None,
         keep_quantile=0,
         local_autotune=None,
         train_thinning = 1,
@@ -215,6 +214,7 @@ class Sampler():
                     flat_chain,
                     self.n_epochs,
                     self.batch_size,
+                    self.logging
                 )
                 self.summary['training']['loss_vals'] = jnp.append(
                     self.summary['training']['loss_vals'], loss_values.reshape(1, -1), axis=0
