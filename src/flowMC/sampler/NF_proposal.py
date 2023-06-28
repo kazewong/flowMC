@@ -4,7 +4,8 @@ import jax.numpy as jnp
 from jax import random, jit, vmap
 from tqdm import tqdm
 from flowMC.nfmodel.base import NFModel
-
+from jaxtyping import Array, PRNGKeyArray, PyTree
+from typing import Callable
 n_sample_max = 100000
 
 def nf_metropolis_kernel(
@@ -96,9 +97,23 @@ def nf_metropolis_update(i: int, state: Tuple):
     )
 
 
-def nf_metropolis_sampler(
-    nf_model: NFModel, rng_key, n_steps, target_pdf, initial_position, data
+def nf_metropolis_sampler(nf_model: NFModel,
+                        rng_key: PRNGKeyArray,
+                        n_steps: int,
+                        target_pdf: Callable,
+                        initial_position: Array,
+                        data: PyTree,
 ):
+    r""" Normalizing flow Metropolis sampler.
+
+    Args:
+        nf_model: Normalizing flow model.
+        rng_key: Jax PRNGKey.
+        n_steps: Number of steps to run the sampler.
+        target_pdf: Target pdf function.
+        initial_position: Initial position of the sampler.
+        data: Data to be passed to the target pdf function.
+    """
 
     rng_key, *subkeys = random.split(rng_key, 3)
 
@@ -177,5 +192,3 @@ def nf_metropolis_sampler(
     acceptance = acceptance.swapaxes(0, 1)
 
     return rng_key, all_positions, all_logp, all_logp_nf, acceptance
-
-    # return nf_metropolis_sampler
