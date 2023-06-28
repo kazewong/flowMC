@@ -270,19 +270,6 @@ class RQSpline(Bijection):
                min_bin_size: float = 1e-4,
                min_knot_slope: float = 1e-4):
 
-        # if params.shape[-1] % 3 != 1 or params.shape[-1] < 4:
-        #     raise ValueError(f'The last dimension of `params` must have size'
-        #                 f' `3 * num_bins + 1` and `num_bins` must be at least 1.'
-        #                 f' Got size {params.shape[-1]}.')
-        # if range_min >= range_max:
-        #     raise ValueError(f'`range_min` must be less than `range_max`. Got'
-        #                 f' `range_min={range_min}` and `range_max={range_max}`.')
-        # if min_bin_size <= 0.:
-        #     raise ValueError(f'The minimum bin size must be positive; got'
-        #                 f' {min_bin_size}.')
-        # if min_knot_slope <= 0.:
-        #     raise ValueError(f'The minimum knot slope must be positive; got'
-        #                 f' {min_knot_slope}.')
         self._range_min = range_min
         self._range_max = range_max
         self._min_bin_size = min_bin_size
@@ -330,15 +317,17 @@ class MaskedCouplingRQSpline(NFModel):
     r""" Rational quadratic spline normalizing flow model using distrax.
 
     Args:
-        n_features : (int) Number of features in the data.
-        num_layers : (int) Number of layers in the flow.
-        num_bins : (int) Number of bins in the spline.
-        hidden_size : (Sequence[int]) Size of the hidden layers in the conditioner.
-        spline_range : (Sequence[float]) Range of the spline.
+        n_features (int) :  Number of features in the data.
+        num_layers (int) : Number of layers in the conditioner.
+        hidden_size (Sequence[int]) : Hidden size of the conditioner.
+        num_bins (int) : Number of bins in the spline.
+        key (jax.random.PRNGKey) : Random key for initialization.
+        spline_range (Sequence[float]) : Range of the spline. Defaults to (-10.0, 10.0).
     
     Properties:
-        data_mean: (ndarray) Mean of Gaussian base distribution
-        data_cov: (ndarray) Covariance of Gaussian base distribution
+        n_features (int) :  Number of features in the data.
+        data_mean (Array) : Mean of the data.
+        data_cov (Array) : Covariance of the data.
     """
 
     base_dist: Distribution
