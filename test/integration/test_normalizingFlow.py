@@ -16,10 +16,10 @@ def test_realNVP():
     learning_rate = 0.001
     momentum = 0.9
 
-    model = RealNVP(4, 2, 32, rng, 1., base_cov = jnp.cov(data.T), base_mean = jnp.mean(data, axis=0))
+    model = RealNVP(4, 2, 32, rng, 1.)
     optim = optax.adam(learning_rate, momentum)
 
-    train_flow, train_epoch, train_step = make_training_loop(model, optim)
+    train_flow, train_epoch, train_step = make_training_loop(optim)
     rng, best_model, loss_values = train_flow(
         rng, model, data, num_epochs, batch_size, verbose = True
     )
@@ -40,8 +40,7 @@ def test_rqSpline():
     model = MaskedCouplingRQSpline(2, 4, [32,32], 4 , rng, base_mean = jnp.mean(data, axis=0), base_cov = jnp.cov(data.T))
     optim = optax.adam(learning_rate, momentum)
 
-
-    train_flow, train_epoch, train_step = make_training_loop(model, optim)
+    train_flow, train_epoch, train_step = make_training_loop(optim)
     rng, best_model, loss_values = train_flow(
         rng, model, data, num_epochs, batch_size, verbose = True
     )

@@ -1,7 +1,7 @@
 import jax
 import jax.numpy as jnp
 from flowMC.nfmodel.realNVP import RealNVP, AffineCoupling
-# from flowMC.nfmodel.rqSpline import RQSpline
+from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
 
 
 def test_affine_coupling_forward_and_inverse():
@@ -56,35 +56,37 @@ def test_realnvp():
         samples, jnp.zeros(n_features), jnp.eye(n_features)
     ))
 
-# def test_rqspline():
-#     n_features = 3
-#     hidden_layes = [10, 10]
-#     n_layer = 2
-#     n_bins = 8
+def test_rqspline():
+    n_features = 3
+    hidden_layes = [10, 10]
+    n_layer = 2
+    n_bins = 8
 
-#     rng_key, rng_subkey = jax.random.split(jax.random.PRNGKey(0), 2)
-#     model = RQSpline(n_features, n_layer, hidden_layes, n_bins)
-#     model_init = model.init(rng_subkey, jnp.ones((1, n_features)))
-#     params = model_init["params"]
-#     variables = model_init["variables"]
+    rng_key, rng_subkey = jax.random.split(jax.random.PRNGKey(0), 2)
+    model = MaskedCouplingRQSpline(n_features, n_layer, hidden_layes, n_bins)
+    model = MaskedCouplingRQSpline(n_features, n_layer, hidden_layes, n_bins , jax.random.PRNGKey(10))
 
-#     x = jnp.array([[1, 2, 3], [4, 5, 6]])
+    model_init = model.init(rng_subkey, jnp.ones((1, n_features)))
+    params = model_init["params"]
+    variables = model_init["variables"]
 
-#     rng_key = jax.random.PRNGKey(0)
-#     samples = model.apply(
-#             {"params": params, "variables": variables},
-#             rng_key,
-#             2,
-#             method=model.sample,
-#         )
+    x = jnp.array([[1, 2, 3], [4, 5, 6]])
 
-#     assert samples.shape == (2, 3)
+    rng_key = jax.random.PRNGKey(0)
+    samples = model.apply(
+            {"params": params, "variables": variables},
+            rng_key,
+            2,
+            method=model.sample,
+        )
 
-#     log_prob = model.apply({'params': params, 'variables': variables}, samples, method=model.log_prob)
+    assert samples.shape == (2, 3)
 
-#     assert log_prob.shape == (2,)
+    log_prob = model.apply({'params': params, 'variables': variables}, samples, method=model.log_prob)
 
-#     assert jnp.allclose(log_prob, jax.scipy.stats.multivariate_normal.logpdf(
-#         samples, jnp.zeros(n_features), jnp.eye(n_features)
-#     ))
+    assert log_prob.shape == (2,)
+
+    assert jnp.allclose(log_prob, jax.scipy.stats.multivariate_normal.logpdf(
+        samples, jnp.zeros(n_features), jnp.eye(n_features)
+    ))
 

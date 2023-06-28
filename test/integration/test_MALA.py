@@ -45,7 +45,7 @@ MALA_Sampler_sampler = MALA_Sampler.make_sampler()
 state = MALA_Sampler_sampler(rng_key_set[1], n_local_steps, initial_position[:,0], data)
 
 
-from flowMC.nfmodel.rqSpline import RQSpline
+from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
 from flowMC.sampler.Sampler import Sampler
 
 n_dim = 5
@@ -60,7 +60,7 @@ rng_key_set = initialize_rng_keys(n_chains, seed=42)
 
 initial_position = jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
 
-model = RQSpline(n_dim, 4, [32, 32], 8)
+model = MaskedCouplingRQSpline(2, 4, [32,32], 4 , jax.random.PRNGKey(10))
 
 print("Initializing sampler class")
 

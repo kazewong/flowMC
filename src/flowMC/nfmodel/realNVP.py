@@ -59,9 +59,6 @@ class AffineCoupling(eqx.Module):
         outputs = x * jnp.exp(-s) - t
         return outputs, log_det
     
-
-
-
 class RealNVP(NFModel):
     """
     RealNVP mode defined in the paper https://arxiv.org/abs/1605.08803.
