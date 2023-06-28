@@ -17,27 +17,24 @@ class Sampler():
     Args:
         n_dim (int): Dimension of the problem.
         rng_key_set (Tuple): Tuple of random number generator keys.
+        data (Device Array): Extra data to be passed to the likelihood function.
         local_sampler (Callable): Local sampler maker
-        sampler_params (dict): Parameters for the local sampler.
-        likelihood (Callable): Likelihood function.
-        nf_model (Callable): Normalizing flow model.
-        n_loop_training (int, optional): Number of training loops. Defaults to 2.
-        n_loop_production (int, optional): Number of production loops. Defaults to 2.
-        n_local_steps (int, optional): Number of local steps per loop. Defaults to 5.
-        n_global_steps (int, optional): Number of global steps per loop. Defaults to 5.
-        n_chains (int, optional): Number of chains. Defaults to 5.
-        n_epochs (int, optional): Number of epochs per training loop. Defaults to 5.
+        nf_model (NFModel): Normalizing flow model.
+        n_loop_training (int, optional): Number of training loops. Defaults to 3.
+        n_loop_production (int, optional): Number of production loops. Defaults to 3.
+        n_local_steps (int, optional): Number of local steps per loop. Defaults to 50.
+        n_global_steps (int, optional): Number of global steps per loop. Defaults to 50.
+        n_chains (int, optional): Number of chains. Defaults to 20.
+        n_epochs (int, optional): Number of epochs per training loop. Defaults to 30.
         learning_rate (float, optional): Learning rate for the NF model. Defaults to 0.01.
         max_samples (int, optional): Maximum number of samples fed to training the NF model. Defaults to 10000.
         momentum (float, optional): Momentum for the NF model. Defaults to 0.9.
-        batch_size (int, optional): Batch size for the NF model. Defaults to 10.
+        batch_size (int, optional): Batch size for the NF model. Defaults to 10000.
         use_global (bool, optional): Whether to use global sampler. Defaults to True.
         logging (bool, optional): Whether to log the training process. Defaults to True.
-        nf_variable (None, optional): Mean and variance variables for the NF model. Defaults to None.
         keep_quantile (float, optional): Quantile of chains to keep when training the normalizing flow model. Defaults to 0..
         local_autotune (None, optional): Auto-tune function for the local sampler. Defaults to None.
         train_thinning (int, optional): Thinning for the data used to train the normalizing flow. Defaults to 1.
-        model_init (dic, optional): Dictionary with keys "params" and "variables" for the NF model. Defaults to None.
     """
 
     def __init__(
@@ -59,10 +56,9 @@ class Sampler():
         batch_size: int = 10000,
         use_global: bool = True,
         logging: bool = True,
-        keep_quantile=0,
-        local_autotune=None,
-        train_thinning = 1,
-        model_init = None,
+        keep_quantile: float = 0,
+        local_autotune: Callable = None,
+        train_thinning: int = 1,
     ):
         rng_key_init, rng_keys_mcmc, rng_keys_nf, init_rng_keys_nf = rng_key_set
 
