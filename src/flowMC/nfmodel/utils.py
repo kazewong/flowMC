@@ -1,10 +1,8 @@
 import jax
 import jax.numpy as jnp  # JAX NumPy
-import jax.random as random  # JAX random
 from tqdm import trange
 import optax
 import equinox as eqx
-from flowMC.nfmodel.base import NFModel
 from typing import Callable, Tuple
 from jaxtyping import Array, PRNGKeyArray
 
