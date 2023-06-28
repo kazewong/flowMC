@@ -1,7 +1,7 @@
 from logging import lastResort
 from typing import Callable, Tuple
 import jax.numpy as jnp
-from flowMC.nfmodel.utils import sample_nf, make_training_loop, eval_nf
+from flowMC.nfmodel.utils import make_training_loop
 from flowMC.sampler.NF_proposal import nf_metropolis_sampler
 import optax
 from flowMC.sampler.LocalSampler_Base import LocalSamplerBase

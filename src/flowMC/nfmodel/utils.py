@@ -78,35 +78,3 @@ def make_training_loop(optim: optax.GradientTransformation) -> Callable:
         return rng, best_model, loss_values
 
     return train_flow, train_epoch, train_step
-
-
-def sample_nf(model: NFModel, rng_key: jax.random.PRNGKey, n_sample: int) -> Tuple[jax.random.PRNGKeyArray, Array]:
-    """  
-    Sample from a NF model given a set of parameters and accompanying variables. 
-
-    Args:
-        model (NFModel): NF model to sample from.
-        rng_key (jax.random.PRNGKey): Random number generator key.
-        n_sample (int): Number of samples to draw.
-
-    Returns:
-        rng_key (jax.random.PRNGKey): Random number generator key.
-        samples (Array): Samples from the NF model.
-    """
-    rng_key, subkey = random.split(rng_key)
-    samples = model.sample(subkey, n_sample)
-    return rng_key, samples
-
-def eval_nf(model: NFModel, x: jnp.ndarray) -> Array:
-    """
-    Evaluate a NF model given a set of parameters and accompanying variables.
-
-    Args:
-        model (NFModel): NF model to evaluate.
-        x (jnp.ndarray): Input data.
-
-    Returns:
-        log_prob (Array): Log probability of the input data.
-    """
-    log_prob = model.log_prob(x)
-    return log_prob

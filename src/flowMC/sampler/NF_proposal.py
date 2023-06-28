@@ -5,7 +5,6 @@ from jax import random, jit, vmap
 from tqdm import tqdm
 from flowMC.nfmodel.base import NFModel
 
-
 n_sample_max = 100000
 
 def nf_metropolis_kernel(
@@ -57,9 +56,7 @@ def nf_metropolis_update(i: int, state: Tuple):
     Args:
         i: Number of current iteration.
         state: A tuple containing the current state of the sampler.
-
     """
-
     (
         key,
         positions,
