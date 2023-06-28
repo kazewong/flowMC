@@ -60,7 +60,13 @@ class MaskedCouplingLayer(Bijection):
 
     r"""Masked coupling layer.
 
-    Adopted from distrax masked compuling layer. But now it should be compatible with equinox.
+    f(x) = (1-m)*b(x;c(m*x;z)) + m*x
+    where b is the inner bijector, m is the mask, and c is the conditioner.
+
+    Args:
+        bijector (Bijection): inner bijector in the masked coupling layer.
+        mask (Array): Mask. 0 for the input variables that are transformed, 1 for the input variables that are not transformed.
+
     """
 
     _mask: Array
@@ -137,6 +143,18 @@ class ScalarAffine(Bijection):
         return y, log_det
 
 class Gaussian(Distribution):
+
+    r"""Multivariate Gaussian distribution.
+    
+    Args:
+        mean (Array): Mean.
+        cov (Array): Covariance matrix.
+        learnable (bool): Whether the mean and covariance matrix are learnable parameters.
+
+    Attributes:
+        mean (Array): Mean.
+        cov (Array): Covariance matrix.
+    """
 
     _mean: Array
     _cov: Array

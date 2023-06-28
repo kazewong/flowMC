@@ -317,12 +317,12 @@ class MaskedCouplingRQSpline(NFModel):
     r""" Rational quadratic spline normalizing flow model using distrax.
 
     Args:
-        n_features (int) :  Number of features in the data.
-        num_layers (int) : Number of layers in the conditioner.
-        hidden_size (Sequence[int]) : Hidden size of the conditioner.
-        num_bins (int) : Number of bins in the spline.
-        key (jax.random.PRNGKey) : Random key for initialization.
-        spline_range (Sequence[float]) : Range of the spline. Defaults to (-10.0, 10.0).
+        n_features (int):  Number of features in the data.
+        num_layers (int): Number of layers in the conditioner.
+        hidden_size (Sequence[int]): Hidden size of the conditioner.
+        num_bins (int): Number of bins in the spline.
+        key (jax.random.PRNGKey): Random key for initialization.
+        spline_range (Sequence[float]): Range of the spline. Defaults to (-10.0, 10.0).
     
     Properties:
         n_features (int) :  Number of features in the data.
