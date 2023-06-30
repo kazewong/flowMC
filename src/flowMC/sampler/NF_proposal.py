@@ -3,9 +3,10 @@ import jax
 import jax.numpy as jnp
 from jax import random, jit, vmap
 from tqdm import tqdm
-
+from flowMC.nfmodel.base import NFModel
+from jaxtyping import Array, PRNGKeyArray, PyTree
+from typing import Callable
 n_sample_max = 100000
-
 
 def nf_metropolis_kernel(
     rng_key: jax.random.PRNGKey,
@@ -45,7 +46,6 @@ def nf_metropolis_kernel(
     log_prob_nf = jnp.where(do_accept, log_proposal_nf_pdf, log_initial_nf_pdf)
     return position, log_prob, log_prob_nf, do_accept
 
-
 nf_metropolis_kernel = vmap(nf_metropolis_kernel)
 
 
@@ -57,9 +57,7 @@ def nf_metropolis_update(i: int, state: Tuple):
     Args:
         i: Number of current iteration.
         state: A tuple containing the current state of the sampler.
-
     """
-
     (
         key,
         positions,
@@ -99,138 +97,98 @@ def nf_metropolis_update(i: int, state: Tuple):
     )
 
 
-def make_nf_metropolis_sampler(nf_model):
-    """
-    Make the normalizing flow sampler for a given normalizing flow model 
-    for multiple steps and from multiple initial positions.
+def nf_metropolis_sampler(nf_model: NFModel,
+                        rng_key: PRNGKeyArray,
+                        n_steps: int,
+                        target_pdf: Callable,
+                        initial_position: Array,
+                        data: PyTree,
+):
+    r""" Normalizing flow Metropolis sampler.
 
     Args:
-        nf_model: A normalizing flow model.
-        
-    Returns:
-        nf_metropolis_sampler: A normalizing flow sampler that has the following signature:
-
-            Args:
-                rng_key: Jax PRNGKey.
-                n_steps: Number of steps.
-                nf_param: Normalizing flow parameters.
-                nf_variables: Normalizing flow variables.
-                target_pdf: Target pdf.
-                initial_position: Initial position.
-                data: Data.
-
-            Returns:
-                rng_key: Current state of random key
-                all_positions: All positions of the chain
-                all_logp: Log probability of the target function at all positions
-                all_logp_nf: Log probability of the normalizing flow model at all positions
-                acceptance: Acceptance boolean
-
+        nf_model: Normalizing flow model.
+        rng_key: Jax PRNGKey.
+        n_steps: Number of steps to run the sampler.
+        target_pdf: Target pdf function.
+        initial_position: Initial position of the sampler.
+        data: Data to be passed to the target pdf function.
     """
 
-    @jax.jit
-    def eval_nf_logprob(position, nf_params, nf_variables):
-        return nf_model.apply(
-            {"params": nf_params, "variables": nf_variables},
-            position,
-            method=nf_model.log_prob,
-        )
+    rng_key, *subkeys = random.split(rng_key, 3)
 
-    def sample_nf(rng_key, n_samples, nf_params, nf_variables):
-        return nf_model.apply(
-            {"params": nf_params, "variables": nf_variables},
-            rng_key,
-            n_samples,
-            method=nf_model.sample,
-        )
+    total_sample = initial_position.shape[0] * n_steps
 
-    sample_nf = jax.jit(sample_nf, static_argnums=(1))
+    log_pdf_nf_initial = nf_model.log_prob(initial_position)
+    log_pdf_initial = target_pdf(initial_position, data)
 
-    def nf_metropolis_sampler(
-        rng_key, n_steps, nf_param, nf_variables, target_pdf, initial_position, data
-    ):
-        rng_key, *subkeys = random.split(rng_key, 3)
+    if total_sample > n_sample_max:
+        proposal_position = jnp.zeros((total_sample, initial_position.shape[-1]))
+        log_pdf_nf_proposal = jnp.zeros((total_sample,))
+        log_pdf_proposal = jnp.zeros((total_sample,))
+        local_key, subkey = random.split(subkeys[0], 2)
+        for i in tqdm(
+            range(total_sample // n_sample_max),
+            desc="Sampling Globally",
+            miniters=(total_sample // n_sample_max) // 10,
+        ):
+            local_samples = nf_model.sample(subkey, n_sample_max)
+            proposal_position = proposal_position.at[
+                i * n_sample_max : (i + 1) * n_sample_max
+            ].set(local_samples)
+            log_pdf_nf_proposal = log_pdf_nf_proposal.at[
+                i * n_sample_max : (i + 1) * n_sample_max
+            ].set(nf_model.log_prob(local_samples))
+            log_pdf_proposal = log_pdf_proposal.at[
+                i * n_sample_max : (i + 1) * n_sample_max
+            ].set(target_pdf(local_samples, data))
+            local_key, subkey = random.split(local_key, 2)
 
-        total_sample = initial_position.shape[0] * n_steps
+    else:
+        proposal_position = nf_model.sample(subkeys[0], total_sample)
+        log_pdf_nf_proposal = nf_model.log_prob(proposal_position)
+        log_pdf_proposal = target_pdf(proposal_position, data)
 
-        log_pdf_nf_initial = eval_nf_logprob(
-            initial_position, nf_param, nf_variables
-        )
-        log_pdf_initial = target_pdf(initial_position, data)
+    proposal_position = proposal_position.reshape(
+        n_steps, initial_position.shape[0], initial_position.shape[1]
+    )
+    log_pdf_nf_proposal = log_pdf_nf_proposal.reshape(
+        n_steps, initial_position.shape[0]
+    )
+    log_pdf_proposal = log_pdf_proposal.reshape(n_steps, initial_position.shape[0])
 
-        if total_sample > n_sample_max:
-            proposal_position = jnp.zeros((total_sample, initial_position.shape[-1]))
-            log_pdf_nf_proposal = jnp.zeros((total_sample,))
-            log_pdf_proposal = jnp.zeros((total_sample,))
-            local_key, subkey = random.split(subkeys[0], 2)
-            for i in tqdm(
-                range(total_sample // n_sample_max),
-                desc="Sampling Globally",
-                miniters=(total_sample // n_sample_max) // 10,
-            ):
-                local_samples = sample_nf(subkey, n_sample_max, nf_param, nf_variables)
-                proposal_position = proposal_position.at[
-                    i * n_sample_max : (i + 1) * n_sample_max
-                ].set(local_samples)
-                log_pdf_nf_proposal = log_pdf_nf_proposal.at[
-                    i * n_sample_max : (i + 1) * n_sample_max
-                ].set(eval_nf_logprob(local_samples, nf_param, nf_variables))
-                log_pdf_proposal = log_pdf_proposal.at[
-                    i * n_sample_max : (i + 1) * n_sample_max
-                ].set(target_pdf(local_samples, data))
-                local_key, subkey = random.split(local_key, 2)
+    all_positions = (
+        jnp.zeros((n_steps,) + initial_position.shape) + initial_position
+    )
+    all_logp = jnp.zeros((n_steps, initial_position.shape[0])) + log_pdf_initial
+    all_logp_nf = (
+        jnp.zeros((n_steps, initial_position.shape[0])) + log_pdf_nf_initial
+    )
+    acceptance = jnp.zeros((n_steps, initial_position.shape[0]))
 
-        else:
-            proposal_position = sample_nf(
-                subkeys[0], total_sample, nf_param, nf_variables
-            )
-            log_pdf_nf_proposal = eval_nf_logprob(
-                proposal_position, nf_param, nf_variables
-            )
-            log_pdf_proposal = target_pdf(proposal_position, data)
+    initial_state = (
+        subkeys[1],
+        all_positions,
+        proposal_position,
+        all_logp,
+        all_logp_nf,
+        log_pdf_proposal,
+        log_pdf_nf_proposal,
+        acceptance,
+    )
+    (
+        rng_key,
+        all_positions,
+        proposal_position,
+        all_logp,
+        all_logp_nf,
+        log_pdf_proposal,
+        log_pdf_nf_proposal,
+        acceptance,
+    ) = jax.lax.fori_loop(1, n_steps, nf_metropolis_update, initial_state)
+    all_positions = all_positions.swapaxes(0, 1)
+    all_logp = all_logp.swapaxes(0, 1)
+    all_logp_nf = all_logp_nf.swapaxes(0, 1)
+    acceptance = acceptance.swapaxes(0, 1)
 
-        proposal_position = proposal_position.reshape(
-            n_steps, initial_position.shape[0], initial_position.shape[1]
-        )
-        log_pdf_nf_proposal = log_pdf_nf_proposal.reshape(
-            n_steps, initial_position.shape[0]
-        )
-        log_pdf_proposal = log_pdf_proposal.reshape(n_steps, initial_position.shape[0])
-
-        all_positions = (
-            jnp.zeros((n_steps,) + initial_position.shape) + initial_position
-        )
-        all_logp = jnp.zeros((n_steps, initial_position.shape[0])) + log_pdf_initial
-        all_logp_nf = (
-            jnp.zeros((n_steps, initial_position.shape[0])) + log_pdf_nf_initial
-        )
-        acceptance = jnp.zeros((n_steps, initial_position.shape[0]))
-
-        initial_state = (
-            subkeys[1],
-            all_positions,
-            proposal_position,
-            all_logp,
-            all_logp_nf,
-            log_pdf_proposal,
-            log_pdf_nf_proposal,
-            acceptance,
-        )
-        (
-            rng_key,
-            all_positions,
-            proposal_position,
-            all_logp,
-            all_logp_nf,
-            log_pdf_proposal,
-            log_pdf_nf_proposal,
-            acceptance,
-        ) = jax.lax.fori_loop(1, n_steps, nf_metropolis_update, initial_state)
-        all_positions = all_positions.swapaxes(0, 1)
-        all_logp = all_logp.swapaxes(0, 1)
-        all_logp_nf = all_logp_nf.swapaxes(0, 1)
-        acceptance = acceptance.swapaxes(0, 1)
-
-        return rng_key, all_positions, all_logp, all_logp_nf, acceptance
-
-    return nf_metropolis_sampler
+    return rng_key, all_positions, all_logp, all_logp_nf, acceptance

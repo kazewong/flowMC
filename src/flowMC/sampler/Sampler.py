@@ -1,15 +1,13 @@
 from logging import lastResort
 from typing import Callable, Tuple
-import jax
 import jax.numpy as jnp
-import numpy as np
-from flowMC.nfmodel.utils import sample_nf, make_training_loop, eval_nf
-from flowMC.sampler.NF_proposal import make_nf_metropolis_sampler
-from flax.training import train_state  # Useful dataclass to keep train state
-import flax
+from flowMC.nfmodel.utils import make_training_loop
+from flowMC.sampler.NF_proposal import nf_metropolis_sampler
 import optax
 from flowMC.sampler.LocalSampler_Base import LocalSamplerBase
+from flowMC.nfmodel.base import NFModel
 from tqdm import tqdm
+import equinox as eqx
 
 
 class Sampler():
@@ -19,27 +17,24 @@ class Sampler():
     Args:
         n_dim (int): Dimension of the problem.
         rng_key_set (Tuple): Tuple of random number generator keys.
+        data (Device Array): Extra data to be passed to the likelihood function.
         local_sampler (Callable): Local sampler maker
-        sampler_params (dict): Parameters for the local sampler.
-        likelihood (Callable): Likelihood function.
-        nf_model (Callable): Normalizing flow model.
-        n_loop_training (int, optional): Number of training loops. Defaults to 2.
-        n_loop_production (int, optional): Number of production loops. Defaults to 2.
-        n_local_steps (int, optional): Number of local steps per loop. Defaults to 5.
-        n_global_steps (int, optional): Number of global steps per loop. Defaults to 5.
-        n_chains (int, optional): Number of chains. Defaults to 5.
-        n_epochs (int, optional): Number of epochs per training loop. Defaults to 5.
+        nf_model (NFModel): Normalizing flow model.
+        n_loop_training (int, optional): Number of training loops. Defaults to 3.
+        n_loop_production (int, optional): Number of production loops. Defaults to 3.
+        n_local_steps (int, optional): Number of local steps per loop. Defaults to 50.
+        n_global_steps (int, optional): Number of global steps per loop. Defaults to 50.
+        n_chains (int, optional): Number of chains. Defaults to 20.
+        n_epochs (int, optional): Number of epochs per training loop. Defaults to 30.
         learning_rate (float, optional): Learning rate for the NF model. Defaults to 0.01.
         max_samples (int, optional): Maximum number of samples fed to training the NF model. Defaults to 10000.
         momentum (float, optional): Momentum for the NF model. Defaults to 0.9.
-        batch_size (int, optional): Batch size for the NF model. Defaults to 10.
+        batch_size (int, optional): Batch size for the NF model. Defaults to 10000.
         use_global (bool, optional): Whether to use global sampler. Defaults to True.
         logging (bool, optional): Whether to log the training process. Defaults to True.
-        nf_variable (None, optional): Mean and variance variables for the NF model. Defaults to None.
         keep_quantile (float, optional): Quantile of chains to keep when training the normalizing flow model. Defaults to 0..
         local_autotune (None, optional): Auto-tune function for the local sampler. Defaults to None.
         train_thinning (int, optional): Thinning for the data used to train the normalizing flow. Defaults to 1.
-        model_init (dic, optional): Dictionary with keys "params" and "variables" for the NF model. Defaults to None.
     """
 
     def __init__(
@@ -48,7 +43,7 @@ class Sampler():
         rng_key_set: Tuple,
         data: jnp.ndarray,
         local_sampler: LocalSamplerBase,
-        nf_model: Callable,
+        nf_model: NFModel,
         n_loop_training: int = 3,
         n_loop_production: int = 3,
         n_local_steps: int = 50,
@@ -61,11 +56,9 @@ class Sampler():
         batch_size: int = 10000,
         use_global: bool = True,
         logging: bool = True,
-        nf_variable=None,
-        keep_quantile=0,
-        local_autotune=None,
-        train_thinning = 1,
-        model_init = None,
+        keep_quantile: float = 0,
+        local_autotune: Callable = None,
+        train_thinning: int = 1,
     ):
         rng_key_init, rng_keys_mcmc, rng_keys_nf, init_rng_keys_nf = rng_key_set
 
@@ -88,6 +81,7 @@ class Sampler():
         self.logging = logging
         self.keep_quantile = keep_quantile
         self.train_thinning = train_thinning
+        self.variables = {"mean": None, "var": None}
 
         # Initialized local and global samplers
 
@@ -98,21 +92,10 @@ class Sampler():
         self.local_autotune = local_autotune
         self.likelihood_vec = self.local_sampler_class.logpdf_vmap
         self.nf_model = nf_model
-        if model_init is None:
-            model_init = nf_model.init(init_rng_keys_nf, jnp.ones((1, self.n_dim)))
-        params = model_init["params"]
-        self.variables = model_init["variables"]
-        if nf_variable is not None:
-            self.variables = self.variables
-        self.global_sampler = make_nf_metropolis_sampler(self.nf_model)
-        
-        self.nf_training_loop, train_epoch, train_step = make_training_loop(
-            self.nf_model
-        )
+        # self.global_sampler = make_nf_metropolis_sampler(self.nf_model)
+
         tx = optax.adam(self.learning_rate, self.momentum)
-        self.state = train_state.TrainState.create(
-            apply_fn=nf_model.apply, params=params, tx=tx
-        )
+        self.nf_training_loop, train_epoch, train_step = make_training_loop(tx)
 
         # Initialized result dictionary
         training = {}
@@ -195,6 +178,8 @@ class Sampler():
                 positions = self.summary['training']['chains'][:,::self.train_thinning]
                 log_prob_output = self.summary['training']['log_prob'][:,::self.train_thinning]
 
+
+
                 if self.keep_quantile > 0:
                     max_log_prob = jnp.max(log_prob_output, axis=1)
                     cut = jnp.quantile(max_log_prob, self.keep_quantile)
@@ -214,18 +199,18 @@ class Sampler():
                     flat_chain = jnp.repeat(flat_chain, (self.max_samples // flat_chain.shape[0])+1, axis=0)
                     flat_chain = flat_chain[:self.max_samples]
 
-                variables = self.variables.unfreeze()
-                variables["base_mean"] = jnp.mean(flat_chain, axis=0)
-                variables["base_cov"] = jnp.cov(flat_chain.T)
-                self.variables = flax.core.freeze(variables)
+                self.variables["mean"] = jnp.mean(flat_chain, axis=0)
+                self.variables["cov"] = jnp.cov(flat_chain.T)
+                self.nf_model = eqx.tree_at(lambda m: m._data_mean, self.nf_model, self.variables["mean"])
+                self.nf_model = eqx.tree_at(lambda m: m._data_cov, self.nf_model, self.variables["cov"])
 
-                self.rng_keys_nf, self.state, loss_values = self.nf_training_loop(
+                self.rng_keys_nf, self.nf_model, loss_values = self.nf_training_loop(
                     self.rng_keys_nf,
-                    self.state,
-                    self.variables,
+                    self.nf_model,
                     flat_chain,
                     self.n_epochs,
                     self.batch_size,
+                    self.logging
                 )
                 self.summary['training']['loss_vals'] = jnp.append(
                     self.summary['training']['loss_vals'], loss_values.reshape(1, -1), axis=0
@@ -237,11 +222,10 @@ class Sampler():
                 log_prob,
                 log_prob_nf,
                 global_acceptance,
-            ) = self.global_sampler(
+            ) = nf_metropolis_sampler(
+                self.nf_model,
                 self.rng_keys_nf,
                 self.n_global_steps,
-                self.state.params,
-                self.variables,
                 self.likelihood_vec,
                 positions[:, -1],
                 data,
@@ -354,14 +338,8 @@ class Sampler():
             Device Array: Samples generated using the normalizing flow.
         """
 
-        nf_samples = sample_nf(
-            self.nf_model,
-            self.state.params,
-            self.rng_keys_nf,
-            n_samples,
-            self.variables,
-        )
-        return nf_samples
+        samples = self.nf_model.sample(self.rng_keys_nf, n_samples)
+        return samples
 
     def evalulate_flow(self, samples: jnp.ndarray) -> jnp.ndarray:
         """
@@ -373,12 +351,7 @@ class Sampler():
         Returns:
             Device Array: Log probability of the samples.
         """
-        log_prob = eval_nf(
-            self.nf_model,
-            self.state.params,
-            samples,
-            self.variables,
-        )
+        log_prob = self.nf_model.log_prob(samples)
         return log_prob
 
     def reset(self):
