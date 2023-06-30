@@ -16,7 +16,7 @@ def test_realNVP():
     learning_rate = 0.001
     momentum = 0.9
 
-    model = RealNVP(4, 2, 32, rng, 1.)
+    model = RealNVP(2, 4, 32, rng)
     optim = optax.adam(learning_rate, momentum)
 
     train_flow, train_epoch, train_step = make_training_loop(optim)

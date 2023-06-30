@@ -4,8 +4,9 @@ import jax.numpy as jnp
 import numpy as np
 import equinox as eqx
 from flowMC.nfmodel.base import NFModel, Distribution
-from flowMC.nfmodel.common import MLP, MaskedCouplingLayer, MLPAffine
+from flowMC.nfmodel.common import MLP, MaskedCouplingLayer, MLPAffine, Gaussian
 from jaxtyping import Array
+from functools import partial
 
 class AffineCoupling(eqx.Module):
     """
@@ -77,13 +78,13 @@ class RealNVP(NFModel):
 
     base_dist: Distribution
     affine_coupling: List[MaskedCouplingLayer]
+    _n_features: int
     _data_mean: Array
     _data_cov: Array
-    _n_features: int
 
     @property
-    def n_layer(self):
-        return len(self.affine_coupling)
+    def n_features(self):
+        return self._n_features
 
     @property
     def data_mean(self):
@@ -93,13 +94,29 @@ class RealNVP(NFModel):
     def data_cov(self):
         return jax.lax.stop_gradient(self._data_cov)
 
-    @property
-    def n_features(self):
-        return self._n_features
+    def __init__(self,
+                n_features: int,
+                n_layer: int,
+                n_hidden: int,
+                key: jax.random.PRNGKey,
+                **kwargs):
 
+        if kwargs.get("base_dist") is not None:
+            self.base_dist = kwargs.get("base_dist")
+        else:
+            self.base_dist = Gaussian(jnp.zeros(n_features), jnp.eye(n_features), learnable=False)
 
-    def __init__(self, n_layer: int, n_features: int, n_hidden: int, key: jax.random.PRNGKey, dt: float = 1, **kwargs):
-        self.n_features = n_features
+        if kwargs.get("data_mean") is not None:
+            self._data_mean = kwargs.get("data_mean")
+        else:
+            self._data_mean = jnp.zeros(n_features)
+
+        if kwargs.get("data_cov") is not None:
+            self._data_cov = kwargs.get("data_cov")
+        else:
+            self._data_cov = jnp.eye(n_features)
+
+        self._n_features = n_features
         affine_coupling = []
         for i in range(n_layer):
             key, scale_subkey, shift_subkey = jax.random.split(key, 3)
@@ -129,29 +146,30 @@ class RealNVP(NFModel):
 
     def forward(self, x: Array) -> Tuple[Array, Array]:
         log_det = 0
-        for i in range(self.n_layer):
+        for i in range(len(self.affine_coupling)):
             x, log_det_i = self.affine_coupling[i](x)
             log_det += log_det_i
         return x, log_det
 
+    @partial(jax.vmap, in_axes=(None, 0))
     def inverse(self, x: Array) -> Tuple[Array, Array]:
-        x = (x-self.data_mean)/jnp.sqrt(jnp.diag(self.data_cov))
-        log_det = 0
-        for i in range(self.n_layer):
-            x, log_det_i = self.affine_coupling[self.n_layer - 1 - i].inverse(x)
+        """ From latent space to data space"""
+        log_det = 0.
+        for layer in reversed(self.affine_coupling):
+            x, log_det_i = layer.inverse(x)
             log_det += log_det_i
         return x, log_det
 
-    inverse_vmap = jax.vmap(inverse, in_axes=(None, 0))
 
+    @eqx.filter_jit
     def sample(self, rng_key: jax.random.PRNGKey, n_samples: int) -> Array:
-        gaussian = jax.random.multivariate_normal(
-            rng_key, jnp.zeros(self.n_features), jnp.eye(self.n_features), shape=(n_samples,)
-        )
-        samples = self.inverse_vmap(gaussian)[0]
+        samples = self.base_dist.sample(rng_key, n_samples)
+        samples = self.inverse(samples)[0]
         samples = samples * jnp.sqrt(jnp.diag(self.data_cov)) + self.data_mean
-        return samples # Return only the samples 
+        return samples
 
+    @eqx.filter_jit
+    @partial(jax.vmap, in_axes=(None, 0))
     def log_prob(self, x: Array) -> Array:
         x = (x-self.data_mean)/jnp.sqrt(jnp.diag(self.data_cov))
         y, log_det = self.__call__(x)

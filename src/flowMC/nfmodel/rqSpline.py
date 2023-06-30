@@ -350,7 +350,7 @@ class MaskedCouplingRQSpline(NFModel):
 
     def __init__(self,
                 n_features: int,
-                num_layers: int,
+                n_layers: int,
                 hidden_size: Sequence[int],
                 num_bins: int,
                 key: jax.random.PRNGKey,
@@ -373,7 +373,7 @@ class MaskedCouplingRQSpline(NFModel):
 
         self._n_features = n_features
         conditioner = []
-        for i in range(num_layers):
+        for i in range(n_layers):
             key, conditioner_key= jax.random.split(key)
             conditioner.append(
                 MLP([n_features]+hidden_size+ [n_features*(num_bins*3+1)], conditioner_key, scale=1e-2, activation=jax.nn.tanh)
@@ -382,7 +382,7 @@ class MaskedCouplingRQSpline(NFModel):
         mask = (jnp.arange(0, n_features) % 2).astype(bool)
         mask_all = (jnp.zeros(n_features)).astype(bool)
         layers = []
-        for i in range(num_layers):
+        for i in range(n_layers):
             layers.append(
                 MaskedCouplingLayer(ScalarAffine(0.,0.), mask_all)
             )
@@ -402,13 +402,6 @@ class MaskedCouplingRQSpline(NFModel):
             log_det += log_det_i
         return x, log_det
 
-
-    @eqx.filter_jit
-    def sample(self, rng_key: jax.random.PRNGKey, n_samples: int) -> Array:
-        samples = self.base_dist.sample(rng_key, n_samples)
-        samples = self.inverse(samples)[0]
-        return samples # Return only the samples 
-
     @partial(jax.vmap, in_axes=(None, 0))
     def inverse(self, x: Array) -> Tuple[Array, Array]:
         """ From latent space to data space"""
@@ -416,8 +409,14 @@ class MaskedCouplingRQSpline(NFModel):
         for layer in reversed(self.layers):
             x, log_det_i = layer.inverse(x)
             log_det += log_det_i
-        x = x * jnp.sqrt(jnp.diag(self.data_cov)) + self.data_mean
         return x, log_det
+
+    @eqx.filter_jit
+    def sample(self, rng_key: jax.random.PRNGKey, n_samples: int) -> Array:
+        samples = self.base_dist.sample(rng_key, n_samples)
+        samples = self.inverse(samples)[0]
+        samples = samples * jnp.sqrt(jnp.diag(self.data_cov)) + self.data_mean
+        return samples 
 
     @eqx.filter_jit
     @partial(jax.vmap, in_axes=(None, 0))
