@@ -5,7 +5,7 @@ import jax.numpy as jnp  # JAX NumPy
 from jax.scipy.special import logsumexp
 import numpy as np
 
-from flowMC.nfmodel.rqSpline import RQSpline
+from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
 from flowMC.nfmodel.utils import *
 from flowMC.sampler.MALA import MALA
 from flowMC.sampler.Sampler import Sampler
@@ -35,12 +35,13 @@ batch_size = 10000
 
 data = jnp.zeros(n_dim)
 
-rng_key_set = initialize_rng_keys(n_chains, seed=42)
+
+rng_key_set = initialize_rng_keys(n_chains, 42)
+model = MaskedCouplingRQSpline(n_dim, 4, [32,32], 8 , jax.random.PRNGKey(10))
 
 initial_position = jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
 
 MALA_Sampler = MALA(dual_moon_pe, True, {"step_size": 0.1})
-model = RQSpline(n_dim, 4, [32, 32], 8)
 
 print("Initializing sampler class")
 
