@@ -136,7 +136,6 @@ class MALA(LocalSamplerBase):
         self.sampler = mala_sampler
         return mala_sampler 
 
-
     def mala_sampler_autotune(self, rng_key, initial_position, log_prob, data, params, max_iter = 30):
         """
         Tune the step size of the MALA kernel using the acceptance rate.
