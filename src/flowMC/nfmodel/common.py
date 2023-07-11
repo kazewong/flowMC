@@ -185,3 +185,24 @@ class Gaussian(Distribution):
 
     def sample(self, key: jax.random.PRNGKey, n_samples: int = 1) -> Array:
         return jax.random.multivariate_normal(key, self.mean, self.cov, (n_samples,))
+    
+class Composable(Distribution):
+
+    distributions: list[Distribution]
+    partitions: dict[str, tuple[int, int]]
+
+    def __init__(self, distributions: list[Distribution], partitions: dict):
+        self.distributions = distributions
+        self.partitions = partitions
+
+    def log_prob(self, x: Array) -> Array:
+        log_prob = 0
+        for dist, (_, ranges) in zip(self.distributions, self.partitions.items()):
+            log_prob += dist.log_prob(x[ranges[0]:ranges[1]])
+        return log_prob
+    
+    def sample(self, rng_key: jax.random.PRNGKey, n_samples: int) -> Array:
+        samples = {}
+        for dist, (key,_) in zip(self.distributions, self.partitions.items()):
+            rng_key, sub_key = jax.random.split(rng_key)
+            samples[key] = dist.sample(sub_key, n_samples=n_samples)

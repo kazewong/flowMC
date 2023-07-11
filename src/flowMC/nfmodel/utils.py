@@ -24,6 +24,18 @@ def make_training_loop(optim: optax.GradientTransformation) -> Callable:
 
     @eqx.filter_jit
     def train_step(model, x, opt_state):
+        """Train for a single step.
+
+        Args:
+            model (eqx.Model): NF model to train.
+            x (Array): Training data.
+            opt_state (optax.OptState): Optimizer state.
+
+        Returns:
+            loss (Array): Loss value.
+            model (eqx.Model): Updated model.
+            opt_state (optax.OptState): Updated optimizer state.
+        """
         loss, grads = loss_fn(model, x)
         updates, opt_state = optim.update(grads, opt_state)
         model = eqx.apply_updates(model, updates)
@@ -46,7 +58,22 @@ def make_training_loop(optim: optax.GradientTransformation) -> Callable:
             
         return value, model, state
 
-    def train_flow(rng, model, data, num_epochs, batch_size, verbose: bool = False):
+    def train_flow(rng: PRNGKeyArray, model: eqx.Module, data: Array, num_epochs: int, batch_size: int, verbose: bool = True) -> Tuple[PRNGKeyArray, eqx.Module, Array]:
+        """Train a normalizing flow model.
+
+        Args:
+            rng (PRNGKeyArray): JAX PRNGKey.
+            model (eqx.Module): NF model to train.
+            data (Array): Training data.
+            num_epochs (int): Number of epochs to train for.
+            batch_size (int): Batch size.
+            verbose (bool): Whether to print progress.
+
+        Returns:
+            rng (PRNGKeyArray): Updated JAX PRNGKey.
+            model (eqx.Model): Updated NF model.
+            loss_values (Array): Loss values.
+        """
         state = optim.init(eqx.filter(model,eqx.is_array))
         loss_values = jnp.zeros(num_epochs)
         if verbose:

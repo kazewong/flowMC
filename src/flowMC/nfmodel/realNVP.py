@@ -44,15 +44,37 @@ class AffineCoupling(eqx.Module):
     def __call__(self, x: Array):
         return self.forward(x)
 
-    def forward(self, x: Array):
+    def forward(self, x: Array) -> Tuple[Array, Array]:
+        """ From latent space to data space
+
+        Args:
+            x: (Array) Latent space.
+
+        Returns:
+            outputs: (Array) Data space.
+            log_det: (Array) Log determinant of the Jacobian.
+        """
         s = self.mask * self.scale_MLP(x * (1 - self.mask))
         s = jnp.tanh(s) * self.dt
         t = self.mask * self.translate_MLP(x * (1 - self.mask)) * self.dt
+
+        # Compute log determinant of the Jacobian
         log_det = s.sum()
+
+        # Apply the transformation
         outputs = (x + t) * jnp.exp(s)
         return outputs, log_det
 
-    def inverse(self, x: Array):
+    def inverse(self, x: Array) -> Tuple[Array, Array]:
+        """ From data space to latent space
+
+        Args:
+            x: (Array) Data space.
+
+        Returns:
+            outputs: (Array) Latent space.
+            log_det: (Array) Log determinant of the Jacobian. 
+        """
         s = self.mask * self.scale_MLP(x * (1 - self.mask))
         s = jnp.tanh(s) * self.dt
         t = self.mask * self.translate_MLP(x * (1 - self.mask)) * self.dt
@@ -163,6 +185,7 @@ class RealNVP(NFModel):
 
     @eqx.filter_jit
     def sample(self, rng_key: jax.random.PRNGKey, n_samples: int) -> Array:
+        
         samples = self.base_dist.sample(rng_key, n_samples)
         samples = self.inverse(samples)[0]
         samples = samples * jnp.sqrt(jnp.diag(self.data_cov)) + self.data_mean
