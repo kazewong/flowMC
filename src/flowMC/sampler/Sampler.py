@@ -1,6 +1,7 @@
 from logging import lastResort
 from typing import Callable, Tuple
 import jax.numpy as jnp
+from jaxtyping import Array
 from flowMC.nfmodel.utils import make_training_loop
 from flowMC.sampler.NF_proposal import nf_metropolis_sampler
 import optax
@@ -115,7 +116,7 @@ class Sampler():
         self.summary['training'] = training
         self.summary['production'] = production
 
-    def sample(self, initial_position, data):
+    def sample(self, initial_position: Array, data: dict):
         """
         Sample from the posterior using the local sampler.
 
