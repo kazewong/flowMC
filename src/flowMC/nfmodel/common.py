@@ -178,7 +178,6 @@ class Gaussian(Distribution):
         self._mean = mean
         self._cov = cov
         self.learnable = learnable
-        self.n_dim = mean.shape[-1]
 
     def log_prob(self, x: Array) -> Array:
         return jax.scipy.stats.multivariate_normal.logpdf(x, self.mean, self.cov)
