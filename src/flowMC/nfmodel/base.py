@@ -47,8 +47,6 @@ class Bijection(eqx.Module):
 
 class Distribution(eqx.Module):
 
-    n_dim: int
-
     @abstractmethod
     def __init__(self):
         return NotImplemented
