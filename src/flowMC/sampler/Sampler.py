@@ -45,21 +45,7 @@ class Sampler():
         data: jnp.ndarray,
         local_sampler: LocalSamplerBase,
         nf_model: NFModel,
-        n_loop_training: int = 3,
-        n_loop_production: int = 3,
-        n_local_steps: int = 50,
-        n_global_steps: int = 50,
-        n_chains: int = 20,
-        n_epochs: int = 30,
-        learning_rate: float = 0.01,
-        max_samples: int = 10000,
-        momentum: float = 0.9,
-        batch_size: int = 10000,
-        use_global: bool = True,
-        logging: bool = True,
-        keep_quantile: float = 0,
-        local_autotune: Callable = None,
-        train_thinning: int = 1,
+        **kwargs,
     ):
         rng_key_init, rng_keys_mcmc, rng_keys_nf, init_rng_keys_nf = rng_key_set
 
@@ -68,29 +54,31 @@ class Sampler():
         self.rng_keys_nf = rng_keys_nf
         self.rng_keys_mcmc = rng_keys_mcmc
         self.n_dim = n_dim
-        self.n_loop_training = n_loop_training
-        self.n_loop_production = n_loop_production
-        self.n_local_steps = n_local_steps
-        self.n_global_steps = n_global_steps
-        self.n_chains = n_chains
-        self.n_epochs = n_epochs
-        self.learning_rate = learning_rate
-        self.max_samples = max_samples
-        self.momentum = momentum
-        self.batch_size = batch_size
-        self.use_global = use_global
-        self.logging = logging
-        self.keep_quantile = keep_quantile
-        self.train_thinning = train_thinning
+
+        self.n_loop_training = kwargs.get("n_loop_training", 3)
+        self.n_loop_production = kwargs.get("n_loop_production", 3)
+        self.n_local_steps = kwargs.get("n_local_steps", 50)
+        self.n_global_steps = kwargs.get("n_global_steps", 50)
+        self.n_chains = kwargs.get("n_chains", 20)
+        self.n_epochs = kwargs.get("n_epochs", 30)
+        self.learning_rate = kwargs.get("learning_rate", 0.01)
+        self.max_samples = kwargs.get("max_samples", 10000)
+        self.momentum = kwargs.get("momentum", 0.9)
+        self.batch_size = kwargs.get("batch_size", 10000)
+        self.use_global = kwargs.get("use_global", True)
+        self.logging = kwargs.get("logging", True)
+        self.keep_quantile = kwargs.get("keep_quantile", 0)
+        self.local_autotune = kwargs.get("local_autotune", None)
+        self.train_thinning = kwargs.get("train_thinning", 1)
+
         self.variables = {"mean": None, "var": None}
 
         # Initialized local and global samplers
 
         self.local_sampler_class = local_sampler
-        self.local_sampler_class.precompilation(n_chains=n_chains, n_dims=n_dim, n_step=n_local_steps, data=data)
+        self.local_sampler_class.precompilation(n_chains=self.n_chains, n_dims=n_dim, n_step=self.n_local_steps, data=data)
         self.local_sampler = self.local_sampler_class.sampler
 
-        self.local_autotune = local_autotune
         self.likelihood_vec = self.local_sampler_class.logpdf_vmap
         self.nf_model = nf_model
         # self.global_sampler = make_nf_metropolis_sampler(self.nf_model)
