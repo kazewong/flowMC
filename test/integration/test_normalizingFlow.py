@@ -37,7 +37,7 @@ def test_rqSpline():
     learning_rate = 0.001
     momentum = 0.9
 
-    model = MaskedCouplingRQSpline(2, 4, [32,32], 4 , rng, base_mean = jnp.mean(data, axis=0), base_cov = jnp.cov(data.T))
+    model = MaskedCouplingRQSpline(2, 4, [32,32], 4 , rng, data_mean = jnp.mean(data, axis=0), data_cov = jnp.cov(data.T))
     optim = optax.adam(learning_rate, momentum)
 
     train_flow, train_epoch, train_step = make_training_loop(optim)
