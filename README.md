@@ -35,7 +35,7 @@ If you want to use GPU with Jax, you need to install Jax with GPU support accord
 At the time of writing this documentation page, this is the command to install Jax with GPU support:
 
 ```
-pip install --upgrade "jax[cuda]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+pip install --upgrade "jax[cuda12_pip]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 ```
 
 If you want to install the latest version of flowMC, you can clone this repo and install it locally:
@@ -50,10 +50,10 @@ pip install -e .
 
 Here is a list of packages we use in the main library
 
-    * Python 3.8+
+    * Python 3.9+
     * Jax
     * Jaxlib
-    * Flax
+    * equinox
 
 To visualize the inference results in the examples, we requrie the following packages in addtion to the above:
 
