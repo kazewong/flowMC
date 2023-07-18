@@ -28,12 +28,12 @@ data = jnp.array(data[0])
 key1, rng, init_rng = jax.random.split(jax.random.PRNGKey(0), 3)
 
 # model = RealNVP(n_layers, 2, n_hidden, rng, 1., base_cov = jnp.cov(data.T), base_mean = jnp.mean(data, axis=0))
-model = MaskedCouplingRQSpline(2, 10, [128,128], 8 , rng, base_dist= Gaussian(jnp.zeros(2), jnp.eye(2),learnable=True))
+model = MaskedCouplingRQSpline(2, 10, [128,128], 8 , rng, data_cov = jnp.cov(data.T), data_mean = jnp.mean(data, axis=0))
 
 
 @eqx.filter_value_and_grad
 def loss_fn(model, x):
-    return -jnp.mean(jax.vmap(model.log_prob)(x))
+    return -jnp.mean(jax.vmap(model.log_prob)(x[None])[0])
 
 @eqx.filter_jit
 def make_step(model, x, opt_state):
