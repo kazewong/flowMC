@@ -33,7 +33,7 @@ model = MaskedCouplingRQSpline(2, 10, [128,128], 8 , rng, data_cov = jnp.cov(dat
 
 @eqx.filter_value_and_grad
 def loss_fn(model, x):
-    return -jnp.mean(jax.vmap(model.log_prob)(x[None])[0])
+    return -jnp.mean(model.log_prob(x))
 
 @eqx.filter_jit
 def make_step(model, x, opt_state):
