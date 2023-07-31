@@ -1,17 +1,16 @@
-from flowMC.nfmodel.realNVP import RealNVP
 from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
 import jax
 import jax.numpy as jnp  # JAX NumPy
 
 from flowMC.nfmodel.utils import *
-from flowMC.nfmodel.common import Gaussian
 import equinox as eqx
 import optax  # Optimizers
+from flowMC.nfmodel.utils import make_training_loop
 
 from sklearn.datasets import make_moons
 
 """
-Training a masked RealNVP flow to fit the dual moons dataset.
+Training a Masked Coupling RQSpline flow to fit the dual moons dataset.
 """
 
 num_epochs = 3000
@@ -27,28 +26,12 @@ data = jnp.array(data[0])
 
 key1, rng, init_rng = jax.random.split(jax.random.PRNGKey(0), 3)
 
-# model = RealNVP(n_layers, 2, n_hidden, rng, 1., base_cov = jnp.cov(data.T), base_mean = jnp.mean(data, axis=0))
-model = MaskedCouplingRQSpline(2, 10, [128,128], 8 , rng, data_cov = jnp.cov(data.T), data_mean = jnp.mean(data, axis=0))
-
-
-@eqx.filter_value_and_grad
-def loss_fn(model, x):
-    return -jnp.mean(model.log_prob(x))
-
-@eqx.filter_jit
-def make_step(model, x, opt_state):
-    loss, grads = loss_fn(model, x)
-    updates, opt_state = optim.update(grads, opt_state)
-    model = eqx.apply_updates(model, updates)
-    return loss, model, opt_state
+model = MaskedCouplingRQSpline(2, 10, [128,128], 8 , init_rng, data_cov = jnp.cov(data.T), data_mean = jnp.mean(data, axis=0))
 
 optim = optax.adam(learning_rate)
-opt_state = optim.init(eqx.filter(model,eqx.is_array))
-for step in range(num_epochs):
-    loss, model, opt_state = make_step(model, data, opt_state)
-    loss = loss.item()
-    print(f"step={step}, loss={loss}")
+train_flow, _, _ = make_training_loop(optim)
 
+key, model, loss = train_flow(rng, model, data, num_epochs, batch_size, verbose=True)
 
 nf_samples = model.sample(jax.random.PRNGKey(124098),5000)
  
