@@ -343,6 +343,24 @@ class Sampler():
         log_prob = self.nf_model.log_prob(samples)
         return log_prob
 
+    def save_flow(self, path: str):
+        """
+        Save the normalizing flow to a file.
+
+        Args:
+            path (str): Path to save the normalizing flow.
+        """
+        self.nf_model.save_model(path)
+    
+    def load_flow(self, path: str):
+        """
+        Save the normalizing flow to a file.
+
+        Args:
+            path (str): Path to save the normalizing flow.
+        """
+        self.nf_model = self.nf_model.load_model(path)
+
     def reset(self):
         """
         Reset the sampler state.
