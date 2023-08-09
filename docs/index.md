@@ -4,12 +4,10 @@ flowMC
 **Normalizing-flow enhanced sampling package for probabilistic inference**
 
 
-.. image:: logo_0810.png
+![](logo_0810.png)
 
-.. image:: https://badgen.net/badge/Read/the doc/blue
-   :target: https://flowMC.readthedocs.io/en/latest/
-.. image:: https://badgen.net/badge/License/MIT/blue
-   :target: https//github.com/kazewong/flowMC/blob/Packaging/LICENSE
+[![](https://badgen.net/badge/Read/the doc/blue)](https://flowMC.readthedocs.io/en/latest/)
+[![](https://badgen.net/badge/License/MIT/blue)](https//github.com/kazewong/flowMC/blob/Packaging/LICENSE)
 
 
 

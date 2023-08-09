@@ -74,7 +74,7 @@ plugins:
 nav:
     - Home: index.md
     - Gotchas: gotchas.md
-    - Jax: jax.md
+    - Contribution: contribution.md
     - Tutorial: tutorials/
     - Examples: examples/
-    - API: reference/
+    - API: api/
