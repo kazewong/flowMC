@@ -1,7 +1,8 @@
 sphinx-book-theme==0.3.3
 myst-nb==0.17.1
-jax
-jaxlib
-flax
-distrax
+jax>=0.4.12
+jaxlib>=0.4.12
+equinox>=0.10.6
+optax>=0.1.5
+evosax>=0.1.4
 tqdm
