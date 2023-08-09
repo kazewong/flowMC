@@ -1,4 +1,3 @@
-.. _quickstart-section-top:
 
 Quick Start
 ============
@@ -8,9 +7,9 @@ Installation
 
 The recommended way to install flowMC is using pip
 
-.. code-block::
-
+```
     pip install flowMC
+```
 
 This will install the latest stable release and its dependencies.
 flowMC is based on `JAX <https://github.com/google/jax>`_ and `Flax <https://github.com/google/flax>`_.
@@ -19,28 +18,28 @@ JAX does not install GPU support by default.
 If you want to use GPU with JAX, you need to install JAX with GPU support according to `their document <pip install --upgrade "jax[cuda]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html>`_.
 At the time of writing this documentation page, this is the command to install JAX with GPU support:
 
-.. code-block::
 
+```
     pip install --upgrade "jax[cuda]==0.4.1" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+```
 
 [Warning]: Note that newer versions of JAX clashes with Flax and distrax, which
 are the dependencies of flowMC. Therefore, we pin the version of JAX to 0.4.1.
 
 If you want to install the latest version of flowMC, you can clone this repo and install it locally:
 
-.. code-block::
-
+```
     git clone https://github.com/kazewong/flowMC.git
     cd flowMC
     pip install -e .
-
+```
 Basic Usage
 -----------
 
 To sample a N dimensional Gaussian, you would do something like:
 
-.. code-block:: python
 
+``` 
     import jax
     import jax.numpy as jnp
     from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
@@ -77,7 +76,7 @@ To sample a N dimensional Gaussian, you would do something like:
 
     nf_sampler.sample(initial_position, data)
     chains,log_prob,local_accs, global_accs = nf_sampler.get_sampler_state().values()
-
+```
 
 For more examples, have a look at the :ref:`tutorials` on `GitHub <https://github.com/kazewong/flowMC/tree/main/example>`_.
 In particular, currently the best engineered test case is `dualmoon.py <https://github.com/kazewong/flowMC/blob/main/example/dualmoon.py>`_.
