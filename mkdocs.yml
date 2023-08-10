@@ -73,8 +73,10 @@ plugins:
 
 nav:
     - Home: index.md
-    - Gotchas: gotchas.md
+    - Quickstart: quickstart.md
+    - Configuration: configuration.md
     - Contribution: contribution.md
     - Tutorial: tutorials/
     - Examples: examples/
+    - FAQ: FAQ.md
     - API: api/summary.md
