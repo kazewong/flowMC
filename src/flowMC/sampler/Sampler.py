@@ -70,6 +70,7 @@ class Sampler():
         self.keep_quantile = kwargs.get("keep_quantile", 0)
         self.local_autotune = kwargs.get("local_autotune", None)
         self.train_thinning = kwargs.get("train_thinning", 1)
+        self.verbose = kwargs.get("verbose", False)
 
         self.variables = {"mean": None, "var": None}
 
@@ -148,7 +149,7 @@ class Sampler():
             summary_mode = 'production'
 
         self.rng_keys_mcmc, positions, log_prob, local_acceptance = self.local_sampler(
-            self.rng_keys_mcmc, self.n_local_steps, initial_position, data
+            self.rng_keys_mcmc, self.n_local_steps, initial_position, data, verbose=self.verbose
         )
 
         self.summary[summary_mode]['chains'] = jnp.append(
@@ -199,7 +200,7 @@ class Sampler():
                     flat_chain,
                     self.n_epochs,
                     self.batch_size,
-                    self.logging
+                    self.verbose
                 )
                 self.summary['training']['loss_vals'] = jnp.append(
                     self.summary['training']['loss_vals'], loss_values.reshape(1, -1), axis=0

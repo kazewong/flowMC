@@ -16,7 +16,7 @@ class HMC(LocalSamplerBase):
         params: dictionary of parameters for the sampler
     """
     
-    def __init__(self, logpdf: Callable, jit: bool, params: dict, verbose: bool = False) -> Callable:
+    def __init__(self, logpdf: Callable, jit: bool, params: dict) -> Callable:
         super().__init__(logpdf, jit, params)
 
         self.potential = lambda x, data: -logpdf(x, data)
@@ -40,7 +40,6 @@ class HMC(LocalSamplerBase):
         self.grad_kinetic = jax.grad(self.kinetic)
         self.logpdf = self.potential
         self.logpdf_vmap = jax.vmap(self.logpdf, in_axes=(0, None))
-        self.verbose = verbose
         self.kernel = None
         self.kernel_vmap = None
         self.update = None
@@ -139,7 +138,7 @@ class HMC(LocalSamplerBase):
         if self.update is None:
             raise ValueError("Update function not defined. Please run make_update first.")
 
-        def hmc_sampler(rng_key, n_steps, initial_position, data):
+        def hmc_sampler(rng_key, n_steps, initial_position, data, verbose: bool = False):
             
             keys = jax.vmap(jax.random.split)(rng_key)
             rng_key = keys[:, 0]
@@ -173,7 +172,7 @@ class HMC(LocalSamplerBase):
             )
             state = (rng_key, all_positions, all_logp, acceptance, data, self.params)
 
-            if self.verbose:
+            if verbose:
                 iterator_loop = tqdm(range(1, n_steps), desc="Sampling Locally", miniters=int(n_steps / 10))
             else:
                 iterator_loop = range(1, n_steps)
