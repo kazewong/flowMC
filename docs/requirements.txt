@@ -1,3 +1,4 @@
+flowMC
 jax>=0.4.12
 jaxlib>=0.4.12
 equinox>=0.10.6
