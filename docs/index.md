@@ -18,38 +18,13 @@ The code is open source under MIT license, and it is under active development.
 - Native support for GPU acceleration.
 - Suit for problems with multi-modality and complex geometry.
 
-
 Five steps to use flowMC's guide
 ================================
 
-#. You will find basic information such as installation and a quick guide in the :ref:`quickstart-section-top`.
-#. We give more information about tuning parameters of our sampler in the :ref:`configuration_guide-section-top`.
-#. In :ref:`tutorials`, we have a set of more pedagogical notebooks that will give you a better understanding of the package infrastructure.
-#. We list some community examples in :ref:`example-section-top`, so users can see whether there is a similar use case they can adopt their code quickly.
-#. Finally, we have a list of frequently asked questions in :ref:`FAQ-section-top`.
+1. You will find basic information such as installation and a quick guide in the [quickstart](quickstart.md).
+2. We give more information about tuning parameters of our sampler in the [configuration_guide](configuration.md).
+3. In tutorials, we have a set of more pedagogical notebooks that will give you a better understanding of the package infrastructure.
+4. We list some community examples in example, so users can see whether there is a similar use case they can adopt their code quickly.
+5. Finally, we have a list of frequently asked questions in [FAQ](FAQ.md).
 
-User guide
-----------
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Contents
-   
-   quickstart
-   configuration
-   examples
-   FAQ
-   contribution
-   api/modules
-   
-.. toctree::
-   :maxdepth: 1
-   :caption: Tutorials
-   :name: tutorials
-
-   tutorials/dualmoon
-   tutorials/analyzingChains
-   tutorials/localKernels
-   tutorials/normalizingFlow
-   tutorials/mog_pretrain
    

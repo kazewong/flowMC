@@ -75,8 +75,8 @@ nav:
     - Home: index.md
     - Quickstart: quickstart.md
     - Configuration: configuration.md
-    - Contribution: contribution.md
     - Tutorial: tutorials/
     - Examples: examples/
     - FAQ: FAQ.md
+    - Contribution: contribution.md
     - API: api/summary.md
