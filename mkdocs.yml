@@ -15,14 +15,14 @@ theme:
         # We deliberately don't automatically use `media` to check a user's preferences. We default to light mode as
         # (a) it looks more professional, and (b) is more obvious about the fact that it offers a (dark mode) toggle.
         - scheme: default
-          primary: blue
+          primary: cyan
           accent: deep purple
           toggle:
              icon: material/brightness-5
              name: Dark mode
         - scheme: slate
-          primary: black
-          accent: amber
+          primary: custom
+          accent: purple
           toggle:
              icon: material/brightness-2
              name: Light mode
@@ -70,6 +70,9 @@ plugins:
                     show_source: false  # don't include source code
                     members_order: source  # order methods according to their order of definition in the source code, not alphabetical order
                     heading_level: 4
+
+extra_css:
+  - stylesheets/extra.css
 
 nav:
     - Home: index.md
