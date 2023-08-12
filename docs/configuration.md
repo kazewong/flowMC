@@ -16,6 +16,7 @@ This page contains information about the most important hyperparameters which af
 |                                   | [`learning_rate`](#learning_rate)         |                                     |
 |                                   | [`max_samples`](#max_samples)             |                                     |
 |                                   | [`batch_size`](#batch_size)               |                                     |
+|                                   | [`verbose'] (#verbose)                    |                                     |
 
    
 
@@ -98,6 +99,9 @@ The rule of thumb here is: within memory and computational bandwith, choose the 
 
 ## [keep_quantile](#keep_quantile)
 Dictionary with keys ``params`` and ``variables`` allowing to use the model trained during a previous run of the NFSampler. These variables can be retrieved from the ``NFSampler.state`` after a run. An exemple is provided in :ref:`tutorials`.
+
+## [verbose](#verbose)
+Whether to print out extra info during the inference. Default is ``False``.
 
 
 
