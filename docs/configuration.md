@@ -1,5 +1,3 @@
-.. _configuration_guide-section-top:
-
 Configuration Guide
 ===================
 
