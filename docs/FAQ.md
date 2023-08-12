@@ -1,5 +1,3 @@
-.. _FAQ-section-top:
-
 FAQ
 ===
 

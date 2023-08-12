@@ -1,5 +1,3 @@
-.. _contribution_guide-section-top:
-
 Contribution Guide
 ===================
 

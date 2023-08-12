@@ -1,8 +1,15 @@
-sphinx-book-theme==0.3.3
-myst-nb==0.17.1
+sphinx-book-theme>=0.3.3
+myst-nb>=0.17.1
 jax>=0.4.12
 jaxlib>=0.4.12
 equinox>=0.10.6
 optax>=0.1.5
 evosax>=0.1.4
 tqdm
+mkdocs==1.4.3               # Main documentation generator.
+mkdocs-material==9.1.18     # Theme
+pymdown-extensions==10.1    # Markdown extensions e.g. to handle LaTeX.
+mkdocstrings[python]==0.22.0        # Autogenerate documentation from docstrings.
+mkdocs-jupyter==0.24.2       # Turn Jupyter Lab notebooks into webpages.
+mkdocs-gen-files==0.5.0
+mkdocs-literate-nav==0.6.0

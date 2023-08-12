@@ -1,4 +1,3 @@
-from flowMC.nfmodel.rqSpline import RQSpline
 from flowMC.sampler.MALA import MALA
 import jax
 import jax.numpy as jnp  # JAX NumPy
@@ -12,7 +11,7 @@ from flowMC.sampler.Sampler import Sampler
 from flowMC.utils.PRNG_keys import initialize_rng_keys
 
 
-def dual_moon_pe(x, data):
+def target_dualmoon(x, data):
     """
     Term 2 and 3 separate the distribution and smear it along the first and second dimension
     """
@@ -41,7 +40,7 @@ model = MaskedCouplingRQSpline(n_dim, 4, [32,32], 8 , jax.random.PRNGKey(10))
 
 initial_position = jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
 
-MALA_Sampler = MALA(dual_moon_pe, True, {"step_size": 0.1})
+MALA_Sampler = MALA(target_dualmoon, True, {"step_size": 0.1})
 
 print("Initializing sampler class")
 
