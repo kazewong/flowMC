@@ -1,4 +1,3 @@
-from flowMC.nfmodel.rqSpline import RQSpline
 from flowMC.sampler.MALA import MALA
 import jax
 import jax.numpy as jnp  # JAX NumPy
