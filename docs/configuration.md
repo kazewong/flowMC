@@ -16,7 +16,7 @@ This page contains information about the most important hyperparameters which af
 |                                   | [`learning_rate`](#learning_rate)         |                                     |
 |                                   | [`max_samples`](#max_samples)             |                                     |
 |                                   | [`batch_size`](#batch_size)               |                                     |
-|                                   | [`verbose'] (#verbose)                    |                                     |
+|                                   | [`verbose'](#verbose)                    |                                     |
 
    
 
