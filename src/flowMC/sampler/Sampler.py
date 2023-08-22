@@ -1,4 +1,3 @@
-from logging import lastResort
 from typing import Callable, Tuple
 import jax.numpy as jnp
 from jaxtyping import Array
