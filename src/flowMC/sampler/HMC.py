@@ -3,25 +3,26 @@ import jax
 import jax.numpy as jnp
 from jax.scipy.stats import multivariate_normal
 from tqdm import tqdm
-from flowMC.sampler.LocalSampler_Base import LocalSamplerBase
+from src.flowMC.sampler.Proposal_Base import ProposalBase
 
-class HMC(LocalSamplerBase):
+
+class HMC(ProposalBase):
     """
     Hamiltonian Monte Carlo sampler class builiding the hmc_sampler method
     from target logpdf.
 
     Args:
-        logpdf: target logpdf function 
+        logpdf: target logpdf function
         jit: whether to jit the sampler
         params: dictionary of parameters for the sampler
     """
-    
+
     def __init__(self, logpdf: Callable, jit: bool, params: dict) -> Callable:
         super().__init__(logpdf, jit, params)
 
         self.potential = lambda x, data: -logpdf(x, data)
         self.grad_potential = jax.grad(self.potential)
-        
+
         self.params = params
         if "condition_matrix" in params:
             self.inverse_metric = params["condition_matrix"]
@@ -36,7 +37,7 @@ class HMC(LocalSamplerBase):
         else:
             raise NotImplementedError
 
-        self.kinetic = lambda p, params: 0.5*(p**2 * params['inverse_metric']).sum()
+        self.kinetic = lambda p, params: 0.5 * (p**2 * params["inverse_metric"]).sum()
         self.grad_kinetic = jax.grad(self.kinetic)
         self.logpdf = self.potential
         self.logpdf_vmap = jax.vmap(self.logpdf, in_axes=(0, None))
@@ -46,39 +47,59 @@ class HMC(LocalSamplerBase):
         self.update_vmap = None
         self.sampler = None
 
-    def get_initial_hamiltonian(self, rng_key: jax.random.PRNGKey, position: jnp.array,
-                                data: jnp.array,
-                                params: dict):
+    def get_initial_hamiltonian(
+        self,
+        rng_key: jax.random.PRNGKey,
+        position: jnp.array,
+        data: jnp.array,
+        params: dict,
+    ):
         """
         Compute the value of the Hamiltonian from positions with initial momentum draw
         at random from the standard normal distribution.
         """
-        
-        momentum = jax.random.normal(rng_key, shape=position.shape) * params['inverse_metric'] **-0.5
+
+        momentum = (
+            jax.random.normal(rng_key, shape=position.shape)
+            * params["inverse_metric"] ** -0.5
+        )
         return self.potential(position, data) + self.kinetic(momentum, params)
 
-    def make_kernel(self, return_aux = False) -> Callable:
+    def make_kernel(self, return_aux=False) -> Callable:
         """
         Making HMC kernel for a single step
         """
 
         def leapfrog_kernel(carry, extras):
             position, momentum, params, data = carry
-            position = position + params['step_size'] * self.grad_kinetic(momentum, params)
-            momentum = momentum - params['step_size'] * self.grad_potential(position, data)
+            position = position + params["step_size"] * self.grad_kinetic(
+                momentum, params
+            )
+            momentum = momentum - params["step_size"] * self.grad_potential(
+                position, data
+            )
             return (position, momentum, params, data), extras
 
-
         def leapfrog_step(position, momentum, data, params: dict):
-            momentum = momentum - 0.5 * params['step_size'] * self.grad_potential(position, data)
-            (position, momentum, params, data), _ = jax.lax.scan(leapfrog_kernel, (position, momentum, params, data), jnp.arange(self.n_leapfrog-1))
-            position = position + params['step_size'] * self.grad_kinetic(momentum, params)
-            momentum = momentum - 0.5*params['step_size'] * self.grad_potential(position, data)
+            momentum = momentum - 0.5 * params["step_size"] * self.grad_potential(
+                position, data
+            )
+            (position, momentum, params, data), _ = jax.lax.scan(
+                leapfrog_kernel,
+                (position, momentum, params, data),
+                jnp.arange(self.n_leapfrog - 1),
+            )
+            position = position + params["step_size"] * self.grad_kinetic(
+                momentum, params
+            )
+            momentum = momentum - 0.5 * params["step_size"] * self.grad_potential(
+                position, data
+            )
             return position, momentum
 
         def hmc_kernel(rng_key, position, PE, data, params: dict):
             """
-            Note that since the potential function is the negative log likelihood, 
+            Note that since the potential function is the negative log likelihood,
             hamiltonian is going down, but the likelihood value should go up.
 
             Args:
@@ -88,9 +109,14 @@ class HMC(LocalSamplerBase):
             """
             key1, key2 = jax.random.split(rng_key)
 
-            momentum = jax.random.normal(key1, shape=position.shape) * params['inverse_metric']**-0.5
+            momentum = (
+                jax.random.normal(key1, shape=position.shape)
+                * params["inverse_metric"] ** -0.5
+            )
             H = PE + self.kinetic(momentum, params)
-            proposed_position, proposed_momentum = leapfrog_step(position, momentum, data, params)
+            proposed_position, proposed_momentum = leapfrog_step(
+                position, momentum, data, params
+            )
             proposed_PE = self.potential(proposed_position, data)
             proposed_ham = proposed_PE + self.kinetic(proposed_momentum, params)
             log_acc = H - proposed_ham
@@ -102,12 +128,11 @@ class HMC(LocalSamplerBase):
             log_prob = jnp.where(do_accept, proposed_PE, PE)
 
             return position, log_prob, do_accept
-        
+
         if return_aux == False:
             return hmc_kernel
         else:
             return hmc_kernel, leapfrog_kernel, leapfrog_step
-            
 
     def make_update(self) -> Callable:
         """
@@ -136,21 +161,19 @@ class HMC(LocalSamplerBase):
         """
 
         if self.update is None:
-            raise ValueError("Update function not defined. Please run make_update first.")
+            raise ValueError(
+                "Update function not defined. Please run make_update first."
+            )
 
-        def hmc_sampler(rng_key, n_steps, initial_position, data, verbose: bool = False):
-            
+        def hmc_sampler(
+            rng_key, n_steps, initial_position, data, verbose: bool = False
+        ):
             keys = jax.vmap(jax.random.split)(rng_key)
             rng_key = keys[:, 0]
             rng_init = keys[:, 1]
             logp = self.logpdf_vmap(initial_position, data)
             n_chains = rng_key.shape[0]
-            acceptance = jnp.zeros(
-                (
-                    n_chains,
-                    n_steps
-                )
-            )
+            acceptance = jnp.zeros((n_chains, n_steps))
             all_positions = (
                 jnp.zeros(
                     (
@@ -173,7 +196,11 @@ class HMC(LocalSamplerBase):
             state = (rng_key, all_positions, all_logp, acceptance, data, self.params)
 
             if verbose:
-                iterator_loop = tqdm(range(1, n_steps), desc="Sampling Locally", miniters=int(n_steps / 10))
+                iterator_loop = tqdm(
+                    range(1, n_steps),
+                    desc="Sampling Locally",
+                    miniters=int(n_steps / 10),
+                )
             else:
                 iterator_loop = range(1, n_steps)
 
@@ -191,4 +218,5 @@ class HMC(LocalSamplerBase):
             position = position + self.step_size * self.grad_kinetic(momentum, params)
             momentum = momentum - self.step_size * self.grad_potential(position, data)
             return position, momentum
+
         return leapfrog_kernel

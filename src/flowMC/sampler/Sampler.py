@@ -5,13 +5,13 @@ from jaxtyping import Array
 from flowMC.nfmodel.utils import make_training_loop
 from flowMC.sampler.NF_proposal import nf_metropolis_sampler
 import optax
-from flowMC.sampler.LocalSampler_Base import LocalSamplerBase
+from src.flowMC.sampler.Proposal_Base import ProposalBase
 from flowMC.nfmodel.base import NFModel
 from tqdm import tqdm
 import equinox as eqx
 
 
-class Sampler():
+class Sampler:
     """
     Sampler class that host configuration parameters, NF model, and local sampler
 
@@ -43,7 +43,7 @@ class Sampler():
         n_dim: int,
         rng_key_set: Tuple,
         data: jnp.ndarray,
-        local_sampler: LocalSamplerBase,
+        local_sampler: ProposalBase,
         nf_model: NFModel,
         **kwargs,
     ):
@@ -77,7 +77,9 @@ class Sampler():
         # Initialized local and global samplers
 
         self.local_sampler_class = local_sampler
-        self.local_sampler_class.precompilation(n_chains=self.n_chains, n_dims=n_dim, n_step=self.n_local_steps, data=data)
+        self.local_sampler_class.precompilation(
+            n_chains=self.n_chains, n_dims=n_dim, n_step=self.n_local_steps, data=data
+        )
         self.local_sampler = self.local_sampler_class.sampler
 
         self.likelihood_vec = self.local_sampler_class.logpdf_vmap
@@ -102,8 +104,8 @@ class Sampler():
         production["global_accs"] = jnp.empty((self.n_chains, 0))
 
         self.summary = {}
-        self.summary['training'] = training
-        self.summary['production'] = production
+        self.summary["training"] = training
+        self.summary["production"] = production
 
     def sample(self, initial_position: Array, data: dict):
         """
@@ -130,7 +132,9 @@ class Sampler():
 
         last_step = self.production_run(last_step, data)
 
-    def sampling_loop(self, initial_position: jnp.array, data: jnp.array, training=False) -> jnp.array:
+    def sampling_loop(
+        self, initial_position: jnp.array, data: jnp.array, training=False
+    ) -> jnp.array:
         """
         One sampling loop that iterate through the local sampler and potentially the global sampler.
         If training is set to True, the loop will also train the normalizing flow model.
@@ -144,31 +148,37 @@ class Sampler():
         """
 
         if training == True:
-            summary_mode = 'training'
+            summary_mode = "training"
         else:
-            summary_mode = 'production'
+            summary_mode = "production"
 
         self.rng_keys_mcmc, positions, log_prob, local_acceptance = self.local_sampler(
-            self.rng_keys_mcmc, self.n_local_steps, initial_position, data, verbose=self.verbose
+            self.rng_keys_mcmc,
+            self.n_local_steps,
+            initial_position,
+            data,
+            verbose=self.verbose,
         )
 
-        self.summary[summary_mode]['chains'] = jnp.append(
-            self.summary[summary_mode]['chains'], positions, axis=1
+        self.summary[summary_mode]["chains"] = jnp.append(
+            self.summary[summary_mode]["chains"], positions, axis=1
         )
-        self.summary[summary_mode]['log_prob'] = jnp.append(
-            self.summary[summary_mode]['log_prob'], log_prob, axis=1
+        self.summary[summary_mode]["log_prob"] = jnp.append(
+            self.summary[summary_mode]["log_prob"], log_prob, axis=1
         )
 
-        self.summary[summary_mode]['local_accs'] = jnp.append(
-            self.summary[summary_mode]['local_accs'], local_acceptance[:,1:], axis=1
+        self.summary[summary_mode]["local_accs"] = jnp.append(
+            self.summary[summary_mode]["local_accs"], local_acceptance[:, 1:], axis=1
         )
 
         if self.use_global == True:
             if training == True:
-                positions = self.summary['training']['chains'][:,::self.train_thinning]
-                log_prob_output = self.summary['training']['log_prob'][:,::self.train_thinning]
-
-
+                positions = self.summary["training"]["chains"][
+                    :, :: self.train_thinning
+                ]
+                log_prob_output = self.summary["training"]["log_prob"][
+                    :, :: self.train_thinning
+                ]
 
                 if self.keep_quantile > 0:
                     max_log_prob = jnp.max(log_prob_output, axis=1)
@@ -179,20 +189,28 @@ class Sampler():
                 chain_size = cut_chains.shape[0] * cut_chains.shape[1]
                 if chain_size > self.max_samples:
                     flat_chain = cut_chains[
-                        :, -int(self.max_samples / self.n_chains):
+                        :, -int(self.max_samples / self.n_chains) :
                     ].reshape(-1, self.n_dim)
                 else:
                     flat_chain = cut_chains.reshape(-1, self.n_dim)
 
                 if flat_chain.shape[0] < self.max_samples:
                     # This is to pad the training data to avoid recompilation.
-                    flat_chain = jnp.repeat(flat_chain, (self.max_samples // flat_chain.shape[0])+1, axis=0)
-                    flat_chain = flat_chain[:self.max_samples]
+                    flat_chain = jnp.repeat(
+                        flat_chain,
+                        (self.max_samples // flat_chain.shape[0]) + 1,
+                        axis=0,
+                    )
+                    flat_chain = flat_chain[: self.max_samples]
 
                 self.variables["mean"] = jnp.mean(flat_chain, axis=0)
                 self.variables["cov"] = jnp.cov(flat_chain.T)
-                self.nf_model = eqx.tree_at(lambda m: m._data_mean, self.nf_model, self.variables["mean"])
-                self.nf_model = eqx.tree_at(lambda m: m._data_cov, self.nf_model, self.variables["cov"])
+                self.nf_model = eqx.tree_at(
+                    lambda m: m._data_mean, self.nf_model, self.variables["mean"]
+                )
+                self.nf_model = eqx.tree_at(
+                    lambda m: m._data_cov, self.nf_model, self.variables["cov"]
+                )
 
                 self.rng_keys_nf, self.nf_model, loss_values = self.nf_training_loop(
                     self.rng_keys_nf,
@@ -200,10 +218,12 @@ class Sampler():
                     flat_chain,
                     self.n_epochs,
                     self.batch_size,
-                    self.verbose
+                    self.verbose,
                 )
-                self.summary['training']['loss_vals'] = jnp.append(
-                    self.summary['training']['loss_vals'], loss_values.reshape(1, -1), axis=0
+                self.summary["training"]["loss_vals"] = jnp.append(
+                    self.summary["training"]["loss_vals"],
+                    loss_values.reshape(1, -1),
+                    axis=0,
                 )
 
             (
@@ -221,22 +241,26 @@ class Sampler():
                 data,
             )
 
-            self.summary[summary_mode]['chains'] = jnp.append(
-                self.summary[summary_mode]['chains'], nf_chain, axis=1
+            self.summary[summary_mode]["chains"] = jnp.append(
+                self.summary[summary_mode]["chains"], nf_chain, axis=1
             )
-            self.summary[summary_mode]['log_prob'] = jnp.append(
-                self.summary[summary_mode]['log_prob'], log_prob, axis=1
-            )
-
-            self.summary[summary_mode]['global_accs'] = jnp.append(
-                self.summary[summary_mode]['global_accs'], global_acceptance[:,1:], axis=1
+            self.summary[summary_mode]["log_prob"] = jnp.append(
+                self.summary[summary_mode]["log_prob"], log_prob, axis=1
             )
 
-        last_step = self.summary[summary_mode]['chains'][:, -1]
+            self.summary[summary_mode]["global_accs"] = jnp.append(
+                self.summary[summary_mode]["global_accs"],
+                global_acceptance[:, 1:],
+                axis=1,
+            )
+
+        last_step = self.summary[summary_mode]["chains"][:, -1]
 
         return last_step
 
-    def local_sampler_tuning(self, initial_position: jnp.array, data: jnp.array, max_iter: int = 100):
+    def local_sampler_tuning(
+        self, initial_position: jnp.array, data: jnp.array, max_iter: int = 100
+    ):
         """
         Tuning the local sampler. This runs a number of iterations of the local sampler,
         and then uses the acceptance rate to adjust the local sampler parameters.
@@ -252,13 +276,22 @@ class Sampler():
             print("Autotune found, start tuning sampler_params")
             kernel_vmap = self.local_sampler.kernel_vmap
             self.local_sampler.params = self.local_autotune(
-                kernel_vmap, self.rng_keys_mcmc, initial_position, self.likelihood_vec(initial_position), data, self.local_sampler.params, max_iter)
+                kernel_vmap,
+                self.rng_keys_mcmc,
+                initial_position,
+                self.likelihood_vec(initial_position),
+                data,
+                self.local_sampler.params,
+                max_iter,
+            )
             self.local_sampler = self.local_sampler.make_sampler()
 
         else:
             print("No autotune found, use input sampler_params")
 
-    def global_sampler_tuning(self, initial_position: jnp.ndarray, data: jnp.array) -> jnp.array:
+    def global_sampler_tuning(
+        self, initial_position: jnp.ndarray, data: jnp.array
+    ) -> jnp.array:
         """
         Tuning the global sampler. This runs both the local sampler and the global sampler,
         and train the normalizing flow on the run.
@@ -273,13 +306,15 @@ class Sampler():
         print("Training normalizing flow")
         last_step = initial_position
         for _ in tqdm(
-                range(self.n_loop_training),
-                desc="Tuning global sampler",
-                ):
+            range(self.n_loop_training),
+            desc="Tuning global sampler",
+        ):
             last_step = self.sampling_loop(last_step, data, training=True)
         return last_step
 
-    def production_run(self, initial_position: jnp.ndarray, data: jnp.array) -> jnp.array:
+    def production_run(
+        self, initial_position: jnp.ndarray, data: jnp.array
+    ) -> jnp.array:
         """
         Sampling procedure that produce the final set of samples.
         The main difference between this and the global tuning step is
@@ -288,18 +323,18 @@ class Sampler():
 
         Args:
             initial_position (Device Array): Initial position for the sampler, shape (n_chains, n_dim)
-        
+
         """
         print("Starting Production run")
         last_step = initial_position
         for _ in tqdm(
-                range(self.n_loop_production),
-                desc="Production run",
-                ):
+            range(self.n_loop_production),
+            desc="Production run",
+        ):
             last_step = self.sampling_loop(last_step, data)
         return last_step
 
-    def get_sampler_state(self, training: bool=False) -> dict:
+    def get_sampler_state(self, training: bool = False) -> dict:
         """
         Get the sampler state. There are two sets of sampler outputs one can get,
         the training set and the production set.
@@ -310,12 +345,12 @@ class Sampler():
 
         Args:
             training (bool): Whether to get the training set sampler state. Defaults to False.
-        
+
         """
         if training == True:
-            return self.summary['training']
+            return self.summary["training"]
         else:
-            return self.summary['production']
+            return self.summary["production"]
 
     def sample_flow(self, n_samples: int) -> jnp.ndarray:
         """
@@ -352,7 +387,7 @@ class Sampler():
             path (str): Path to save the normalizing flow.
         """
         self.nf_model.save_model(path)
-    
+
     def load_flow(self, path: str):
         """
         Save the normalizing flow to a file.
@@ -381,5 +416,5 @@ class Sampler():
         production["global_accs"] = jnp.empty((self.n_chains, 0))
 
         self.summary = {}
-        self.summary['training'] = training
-        self.summary['production'] = production
+        self.summary["training"] = training
+        self.summary["production"] = production
