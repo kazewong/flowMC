@@ -2,8 +2,9 @@ from abc import abstractmethod
 from typing import Callable
 import jax
 import jax.numpy as jnp
+from jaxtyping import PyTree, Array, Float, Int, PRNGKeyArray
 
-
+@jax.tree_util.register_pytree_node_class
 class ProposalBase:
     def __init__(self, logpdf: Callable, jit: bool, params: dict) -> Callable:
         """
@@ -19,17 +20,14 @@ class ProposalBase:
         else:
             print("jit is not requested, compiling only vmap functions...")
 
-        self.kernel = self.kernel()
         self.kernel_vmap = jax.vmap(
             self.kernel, in_axes=(0, 0, 0, None, None), out_axes=(0, 0, 0)
         )
-        self.update = self.update()
         self.update_vmap = jax.vmap(
             self.update,
             in_axes=(None, (0, 0, 0, 0, None, None)),
             out_axes=(0, 0, 0, 0, None, None),
         )
-        self.sampler = self.sample()
 
         if self.jit == True:
             self.logpdf_vmap = jax.jit(self.logpdf_vmap)
@@ -65,9 +63,18 @@ class ProposalBase:
         )
 
     @abstractmethod
-    def kernel(self, return_aux=False) -> Callable:
+    def kernel(
+        self,
+        rng_key: PRNGKeyArray,
+        position: Float[Array, "nstep ndim"],
+        log_prob: Float[Array, "nstep 1"],
+        data: PyTree,
+        params: dict,
+    ) -> tuple[
+        Float[Array, "nstep ndim"], Float[Array, "nstep 1"], Int[Array, "n_step 1"]
+    ]:
         """
-        Make the kernel of the sampler for one update
+        Kernel for one step in the proposal cycle.
         """
 
     @abstractmethod
@@ -81,3 +88,15 @@ class ProposalBase:
         """
         Make the sampler for multiple chains given initial positions
         """
+
+    def tree_flatten(self):
+
+        children = ()
+
+        aux_data = {"logpdf": self.logpdf, "jit": self.jit, "params": self.params}
+        return (children, aux_data)
+
+    @classmethod
+    def tree_unflatten(cls, aux_data, children):
+
+        return cls(*children, **aux_data)

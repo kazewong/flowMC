@@ -130,7 +130,6 @@ class TestMALA:
         n_dim = 2
         n_chains = 1
         MALA_obj = MALA(log_posterior, True, {"step_size": 1})
-        MALA_kernel = MALA_obj.kernel()
 
         rng_key_set = initialize_rng_keys(n_chains, seed=42)
 
@@ -139,10 +138,10 @@ class TestMALA:
         )
         initial_logp = log_posterior(initial_position, None)
 
-        result1 = MALA_kernel(
+        result1 = MALA_obj.kernel(
             rng_key_set[0], initial_position[0], initial_logp, MALA_obj.params
         )
-        result2 = MALA_kernel(
+        result2 = MALA_obj.kernel(
             rng_key_set[0], initial_position[0], initial_logp, MALA_obj.params
         )
 

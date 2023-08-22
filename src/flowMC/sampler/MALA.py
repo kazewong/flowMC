@@ -5,6 +5,7 @@ from jax.scipy.stats import multivariate_normal
 from tqdm import tqdm
 from src.flowMC.sampler.Proposal_Base import ProposalBase
 from functools import partialmethod
+from jaxtyping import PyTree, Array, Float, Int, PRNGKeyArray
 
 
 class MALA(ProposalBase):
@@ -24,133 +25,130 @@ class MALA(ProposalBase):
         self.params = params
         self.logpdf = logpdf
         self.logpdf_vmap = jax.vmap(logpdf, in_axes=(0, None))
-        self.kernel = None
         self.kernel_vmap = None
-        self.update = None
         self.update_vmap = None
-        self.sampler = None
         self.use_autotune = use_autotune
 
-    def kernel(self, return_aux=False) -> Callable:
+    def body(self, carry, this_key):
+        print("Compiling MALA body")
+        this_position, dt, data = carry
+        dt2 = dt * dt
+        this_log_prob, this_d_log = jax.value_and_grad(self.logpdf)(this_position, data)
+        proposal = this_position + jnp.dot(dt2, this_d_log) / 2
+        proposal += jnp.dot(dt, jax.random.normal(this_key, shape=this_position.shape))
+        return (proposal, dt, data), (proposal, this_log_prob, this_d_log)
+
+    def kernel(
+        self,
+        rng_key: PRNGKeyArray,
+        position: Float[Array, "nstep ndim"],
+        log_prob: Float[Array, "nstep 1"],
+        data: PyTree,
+    ) -> tuple[
+        Float[Array, "nstep ndim"], Float[Array, "nstep 1"], Int[Array, "n_step 1"]
+    ]:
         """
-        Make a MALA kernel for a given logpdf.
+        Metropolis-adjusted Langevin algorithm kernel.
+        This function make a proposal and accept/reject it.
 
         Args:
-            logpdf : (Callable) The logpdf of the target distribution.
+            rng_key (n_chains, 2): random key
+            position (n_chains, n_dim): current position
+            log_prob (n_chains, ): log-probability of the current position
+            data: data to be passed to the logpdf
+            params: dictionary of parameters for the sampler
 
         Returns:
-            mala_kernel (Callable) A MALA kernel.
+            position (n_chains, n_dim): the new poisiton of the chain
+            log_prob (n_chains, ): the log-probability of the new position
+            do_accept (n_chains, ): whether to accept the new position
         """
 
-        def body(carry, this_key):
-            this_position, dt, data = carry
-            dt2 = dt * dt
-            this_log_prob, this_d_log = jax.value_and_grad(self.logpdf)(
-                this_position, data
-            )
-            proposal = this_position + jnp.dot(dt2, this_d_log) / 2
-            proposal += jnp.dot(
-                dt, jax.random.normal(this_key, shape=this_position.shape)
-            )
-            return (proposal, dt, data), (proposal, this_log_prob, this_d_log)
+        key1, key2 = jax.random.split(rng_key)
 
-        def mala_kernel(rng_key, position, log_prob, data, params={"step_size": 0.1}):
-            """
-            Metropolis-adjusted Langevin algorithm kernel.
-            This function make a proposal and accept/reject it.
+        dt = self.params["step_size"]
+        dt2 = dt * dt
 
-            Args:
-                rng_key (n_chains, 2): random key
-                position (n_chains, n_dim): current position
-                log_prob (n_chains, ): log-probability of the current position
-                data: data to be passed to the logpdf
-                params: dictionary of parameters for the sampler
+        _, (proposal, logprob, d_logprob) = jax.lax.scan(
+            self.body, (position, dt, data), jnp.array([key1, key1])
+        )
 
-            Returns:
-                position (n_chains, n_dim): the new poisiton of the chain
-                log_prob (n_chains, ): the log-probability of the new position
-                do_accept (n_chains, ): whether to accept the new position
+        ratio = logprob[1] - logprob[0]
+        ratio -= multivariate_normal.logpdf(
+            proposal[0], position + jnp.dot(dt2, d_logprob[0]) / 2, dt2
+        )
+        ratio += multivariate_normal.logpdf(
+            position, proposal[0] + jnp.dot(dt2, d_logprob[1]) / 2, dt2
+        )
 
-            """
-            key1, key2 = jax.random.split(rng_key)
+        log_uniform = jnp.log(jax.random.uniform(key2))
+        do_accept = log_uniform < ratio
 
-            dt = params["step_size"]
-            dt2 = dt * dt
+        position = jnp.where(do_accept, proposal[0], position)
+        log_prob = jnp.where(do_accept, logprob[1], logprob[0])
 
-            _, (proposal, logprob, d_logprob) = jax.lax.scan(
-                body, (position, dt, data), jnp.array([key1, key1])
-            )
+        return position, log_prob, do_accept
 
-            ratio = logprob[1] - logprob[0]
-            ratio -= multivariate_normal.logpdf(
-                proposal[0], position + jnp.dot(dt2, d_logprob[0]) / 2, dt2
-            )
-            ratio += multivariate_normal.logpdf(
-                position, proposal[0] + jnp.dot(dt2, d_logprob[1]) / 2, dt2
-            )
-
-            log_uniform = jnp.log(jax.random.uniform(key2))
-            do_accept = log_uniform < ratio
-
-            position = jnp.where(do_accept, proposal[0], position)
-            log_prob = jnp.where(do_accept, logprob[1], logprob[0])
-            return position, log_prob, do_accept
-
-        return mala_kernel
-
-    def update(self) -> Callable:
+    def update(
+        self, i, state
+    ) -> tuple[
+        PRNGKeyArray,
+        Float[Array, "nstep ndim"],
+        Float[Array, "nstep 1"],
+        Int[Array, "n_step 1"],
+        PyTree,
+    ]:
         """
-        Make a MALA update function for multiple steps
-        """
-        if self.kernel is None:
-            raise ValueError("Kernel not defined. Please run make_kernel first.")
+        Update function for the MALA sampler
 
-        def mala_update(i, state):
-            key, positions, log_p, acceptance, data, params = state
-            _, key = jax.random.split(key)
-            new_position, new_log_p, do_accept = self.kernel(
-                key, positions[i - 1], log_p[i - 1], data, params
+        Args:
+            i (int): current step
+            state (tuple): state array storing the kernel information
+
+        Returns:
+            state (tuple): updated state array
+        """
+        key, positions, log_p, acceptance, data = state
+        _, key = jax.random.split(key)
+        new_position, new_log_p, do_accept = self.kernel(
+            key, positions[i - 1], log_p[i - 1], data
+        )
+        positions = positions.at[i].set(new_position)
+        log_p = log_p.at[i].set(new_log_p)
+        acceptance = acceptance.at[i].set(do_accept)
+        return (key, positions, log_p, acceptance, data)
+
+    def sample(self,
+        rng_key: PRNGKeyArray,
+        n_steps: int,
+        initial_position: Float[Array, "n_chains ndim"],
+        data: PyTree,
+        verbose: bool = False,
+    ) -> tuple[
+        Float[Array, "n_chains n_steps ndim"],
+        Float[Array, "n_chains n_steps 1"],
+        Int[Array, "n_chains n_steps 1"],
+    ]:
+        logp = self.logpdf_vmap(initial_position, data)
+        n_chains = rng_key.shape[0]
+        acceptance = jnp.zeros((n_chains, n_steps))
+        all_positions = (
+            jnp.zeros((n_chains, n_steps) + initial_position.shape[-1:])
+        ) + initial_position[:, None]
+        all_logp = jnp.zeros((n_chains, n_steps)) + logp[:, None]
+        state = (rng_key, all_positions, all_logp, acceptance, data)
+        if verbose:
+            iterator_loop = tqdm(
+                range(1, n_steps),
+                desc="Sampling Locally",
+                miniters=int(n_steps / 10),
             )
-            positions = positions.at[i].set(new_position)
-            log_p = log_p.at[i].set(new_log_p)
-            acceptance = acceptance.at[i].set(do_accept)
-            return (key, positions, log_p, acceptance, data, params)
+        else:
+            iterator_loop = range(1, n_steps)
+        for i in iterator_loop:
+            state = self.update_vmap(i, state)
+        return state[:-2]
 
-        return mala_update
-
-    def sample(self) -> Callable:
-        """
-        Make a MALA sampler for multiple chains given initial positions
-        """
-
-        if self.update is None:
-            raise ValueError(
-                "Update function not defined. Please run make_update first."
-            )
-
-        def mala_sampler(rng_key, n_steps, initial_position, data, verbose=False):
-            logp = self.logpdf_vmap(initial_position, data)
-            n_chains = rng_key.shape[0]
-            acceptance = jnp.zeros((n_chains, n_steps))
-            all_positions = (
-                jnp.zeros((n_chains, n_steps) + initial_position.shape[-1:])
-            ) + initial_position[:, None]
-            all_logp = jnp.zeros((n_chains, n_steps)) + logp[:, None]
-            state = (rng_key, all_positions, all_logp, acceptance, data, self.params)
-            if verbose:
-                iterator_loop = tqdm(
-                    range(1, n_steps),
-                    desc="Sampling Locally",
-                    miniters=int(n_steps / 10),
-                )
-            else:
-                iterator_loop = range(1, n_steps)
-            for i in iterator_loop:
-                state = self.update_vmap(i, state)
-            return state[:-2]
-
-        self.sampler = mala_sampler
-        return mala_sampler
 
     def mala_sampler_autotune(
         self, rng_key, initial_position, log_prob, data, params, max_iter=30
