@@ -13,21 +13,18 @@ class ProposalBase:
         self.logpdf = logpdf
         self.jit = jit
         self.params = params
+        self.kernel_vmap = jax.vmap(self.kernel, in_axes=(0, 0, 0, None))
+        self.update_vmap = jax.vmap(
+            self.update,
+            in_axes=(None, (0, 0, 0, 0, None)),
+            out_axes=(0, 0, 0, 0, None),
+        )
 
     def precompilation(self, n_chains, n_dims, n_step, data):
         if self.jit == True:
             print("jit is requested, precompiling kernels and update...")
         else:
             print("jit is not requested, compiling only vmap functions...")
-
-        self.kernel_vmap = jax.vmap(
-            self.kernel, in_axes=(0, 0, 0, None, None), out_axes=(0, 0, 0)
-        )
-        self.update_vmap = jax.vmap(
-            self.update,
-            in_axes=(None, (0, 0, 0, 0, None, None)),
-            out_axes=(0, 0, 0, 0, None, None),
-        )
 
         if self.jit == True:
             self.logpdf_vmap = jax.jit(self.logpdf_vmap)
@@ -36,7 +33,7 @@ class ProposalBase:
             self.update = jax.jit(self.update)
             self.update_vmap = jax.jit(self.update_vmap)
             self.kernel(
-                jax.random.PRNGKey(0), jnp.ones(n_dims), jnp.ones(1), data, self.params
+                jax.random.PRNGKey(0), jnp.ones(n_dims), jnp.ones(1), data
             )
             # self.update(1, (jax.random.PRNGKey(0), jnp.ones(n_dims), jnp.ones(1), jnp.zeros((n_step, 1)), data, self.params))
 
@@ -48,7 +45,6 @@ class ProposalBase:
             jnp.ones((n_chains, n_dims)),
             jnp.ones((n_chains, 1)),
             data,
-            self.params,
         )
         self.update_vmap(
             1,
@@ -58,7 +54,6 @@ class ProposalBase:
                 jnp.ones((n_chains, n_step, 1)),
                 jnp.zeros((n_chains, n_step, 1)),
                 data,
-                self.params,
             ),
         )
 

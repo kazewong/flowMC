@@ -153,7 +153,6 @@ class TestMALA:
         # Test acceptance rate goes to one when the step size is small
 
         MALA_obj = MALA(log_posterior, True, {"step_size": 0.00001})
-        MALA_kernel = MALA_obj.kernel()
 
         n_chains = 100
         n_dim = 2
@@ -164,9 +163,7 @@ class TestMALA:
         )
         initial_logp = jax.vmap(log_posterior)(initial_position, None)
 
-        result = jax.vmap(
-            MALA_kernel, in_axes=(0, 0, 0, None, None), out_axes=(0, 0, 0)
-        )(rng_key_set[1], initial_position, initial_logp, None, MALA_obj.params)
+        result = MALA_obj.kernel_vmap(rng_key_set[1], initial_position, initial_logp, None)
 
         assert result[2].all()
 
@@ -182,9 +179,8 @@ class TestMALA:
         )
         MALA_obj.precompilation(n_chains, n_dim, 30000, None)
 
-        MALA_sampler = MALA_obj.sample()
 
-        result = MALA_sampler(rng_key_set[1], 30000, initial_position, None)
+        result = MALA_obj.sample(rng_key_set[1], 30000, initial_position, None)
 
         assert jnp.isclose(jnp.mean(result[1]), 0, atol=1e-2)
         assert jnp.isclose(jnp.var(result[1]), 1, atol=1e-2)

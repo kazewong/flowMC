@@ -25,8 +25,6 @@ class MALA(ProposalBase):
         self.params = params
         self.logpdf = logpdf
         self.logpdf_vmap = jax.vmap(logpdf, in_axes=(0, None))
-        self.kernel_vmap = None
-        self.update_vmap = None
         self.use_autotune = use_autotune
 
     def body(self, carry, this_key):
@@ -147,7 +145,7 @@ class MALA(ProposalBase):
             iterator_loop = range(1, n_steps)
         for i in iterator_loop:
             state = self.update_vmap(i, state)
-        return state[:-2]
+        return state[:-1]
 
 
     def mala_sampler_autotune(
@@ -169,7 +167,7 @@ class MALA(ProposalBase):
 
         counter = 0
         position, log_prob, do_accept = self.kernel_vmap(
-            rng_key, initial_position, log_prob, data, params
+            rng_key, initial_position, log_prob, data
         )
         acceptance_rate = jnp.mean(do_accept)
         while (acceptance_rate <= 0.3) or (acceptance_rate >= 0.5):
@@ -184,7 +182,7 @@ class MALA(ProposalBase):
                 params["step_size"] *= 1.25
             counter += 1
             position, log_prob, do_accept = self.kernel_vmap(
-                rng_key, initial_position, log_prob, data, params
+                rng_key, initial_position, log_prob, data
             )
             acceptance_rate = jnp.mean(do_accept)
         tqdm.__init__ = partialmethod(tqdm.__init__, disable=False)
