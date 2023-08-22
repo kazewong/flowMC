@@ -19,17 +19,17 @@ class ProposalBase:
         else:
             print("jit is not requested, compiling only vmap functions...")
 
-        self.kernel = self.make_kernel()
+        self.kernel = self.kernel()
         self.kernel_vmap = jax.vmap(
             self.kernel, in_axes=(0, 0, 0, None, None), out_axes=(0, 0, 0)
         )
-        self.update = self.make_update()
+        self.update = self.update()
         self.update_vmap = jax.vmap(
             self.update,
             in_axes=(None, (0, 0, 0, 0, None, None)),
             out_axes=(0, 0, 0, 0, None, None),
         )
-        self.sampler = self.make_sampler()
+        self.sampler = self.sample()
 
         if self.jit == True:
             self.logpdf_vmap = jax.jit(self.logpdf_vmap)
@@ -65,19 +65,19 @@ class ProposalBase:
         )
 
     @abstractmethod
-    def make_kernel(self, return_aux=False) -> Callable:
+    def kernel(self, return_aux=False) -> Callable:
         """
         Make the kernel of the sampler for one update
         """
 
     @abstractmethod
-    def make_update(self) -> Callable:
+    def update(self) -> Callable:
         """
         Make the update function for multiple steps
         """
 
     @abstractmethod
-    def make_sampler(self) -> Callable:
+    def sample(self) -> Callable:
         """
         Make the sampler for multiple chains given initial positions
         """

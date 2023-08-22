@@ -65,7 +65,7 @@ class HMC(ProposalBase):
         )
         return self.potential(position, data) + self.kinetic(momentum, params)
 
-    def make_kernel(self, return_aux=False) -> Callable:
+    def kernel(self, return_aux=False) -> Callable:
         """
         Making HMC kernel for a single step
         """
@@ -134,7 +134,7 @@ class HMC(ProposalBase):
         else:
             return hmc_kernel, leapfrog_kernel, leapfrog_step
 
-    def make_update(self) -> Callable:
+    def update(self) -> Callable:
         """
         Making HMC update function for multiple steps
         """
@@ -155,7 +155,7 @@ class HMC(ProposalBase):
 
         return hmc_update
 
-    def make_sampler(self) -> Callable:
+    def sample(self) -> Callable:
         """
         Making HMC sampler function for multiple chains from initial positions
         """

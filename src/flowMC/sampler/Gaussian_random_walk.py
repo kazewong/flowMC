@@ -32,7 +32,7 @@ class GaussianRandomWalk(ProposalBase):
         self.update_vmap = None
         self.sampler = None
 
-    def make_kernel(self, return_aux=False) -> Callable:
+    def kernel(self, return_aux=False) -> Callable:
         """
         Making a single update of the random walk
         """
@@ -54,7 +54,7 @@ class GaussianRandomWalk(ProposalBase):
 
         return rw_kernel
 
-    def make_update(self) -> Callable:
+    def update(self) -> Callable:
         """
         Making a the random walk update function for multiple steps
         """
@@ -75,7 +75,7 @@ class GaussianRandomWalk(ProposalBase):
 
         return rw_update
 
-    def make_sampler(self) -> Callable:
+    def sample(self) -> Callable:
         """
         Making the random walk sampler for multiple chains given initial positions
         """

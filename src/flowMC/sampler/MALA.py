@@ -31,7 +31,7 @@ class MALA(ProposalBase):
         self.sampler = None
         self.use_autotune = use_autotune
 
-    def make_kernel(self, return_aux=False) -> Callable:
+    def kernel(self, return_aux=False) -> Callable:
         """
         Make a MALA kernel for a given logpdf.
 
@@ -98,7 +98,7 @@ class MALA(ProposalBase):
 
         return mala_kernel
 
-    def make_update(self) -> Callable:
+    def update(self) -> Callable:
         """
         Make a MALA update function for multiple steps
         """
@@ -118,7 +118,7 @@ class MALA(ProposalBase):
 
         return mala_update
 
-    def make_sampler(self) -> Callable:
+    def sample(self) -> Callable:
         """
         Make a MALA sampler for multiple chains given initial positions
         """
