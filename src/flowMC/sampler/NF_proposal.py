@@ -1,12 +1,60 @@
 from typing import Tuple
 import jax
 import jax.numpy as jnp
-from jax import random, jit, vmap
+from jax import random, vmap
 from tqdm import tqdm
 from flowMC.nfmodel.base import NFModel
 from jaxtyping import Array, PRNGKeyArray, PyTree
 from typing import Callable
-n_sample_max = 100000
+from flowMC.sampler.Proposal_Base import ProposalBase
+from jaxtyping import Array, Float, Int, PRNGKeyArray
+
+
+class NFProposal(ProposalBase):
+    def __init__(
+        self, logpdf: Callable, jit: bool, model: NFModel, n_sample_max: int = 100000
+    ):
+        super().__init__(logpdf, jit, {})
+        self.model = model
+        self.n_sample_max = n_sample_max
+
+    def kernel(
+        self,
+        rng_key: PRNGKeyArray,
+        position: Float[Array, "nstep ndim"],
+        log_prob: Float[Array, "nstep 1"],
+        data: PyTree,
+        params: dict,
+    ) -> tuple[
+        Float[Array, "nstep ndim"], Float[Array, "nstep 1"], Int[Array, "n_step 1"]
+    ]:
+        return super().kernel(rng_key, position, log_prob, data, params)
+
+    def update(
+        self, i, state
+    ) -> tuple[
+        PRNGKeyArray,
+        Float[Array, "nstep ndim"],
+        Float[Array, "nstep 1"],
+        Int[Array, "n_step 1"],
+        PyTree,
+    ]:
+        return super().update(i, state)
+
+    def sample(
+        self,
+        rng_key: PRNGKeyArray,
+        n_steps: int,
+        initial_position: Float[Array, "n_chains ndim"],
+        data: PyTree,
+        verbose: bool = False,
+    ) -> tuple[
+        Float[Array, "n_chains n_steps ndim"],
+        Float[Array, "n_chains n_steps 1"],
+        Int[Array, "n_chains n_steps 1"],
+    ]:
+        return super().sample(rng_key, n_steps, initial_position, data, verbose)
+
 
 def nf_metropolis_kernel(
     rng_key: jax.random.PRNGKey,
@@ -38,13 +86,16 @@ def nf_metropolis_kernel(
     """
 
     rng_key, subkeys = random.split(rng_key, 2)
-    ratio = (log_proposal_pdf - log_initial_pdf) - (log_proposal_nf_pdf - log_initial_nf_pdf)
+    ratio = (log_proposal_pdf - log_initial_pdf) - (
+        log_proposal_nf_pdf - log_initial_nf_pdf
+    )
     u = jnp.log(jax.random.uniform(subkeys, ratio.shape))
     do_accept = u < ratio
     position = jnp.where(do_accept, proposal_position, initial_position)
     log_prob = jnp.where(do_accept, log_proposal_pdf, log_initial_pdf)
     log_prob_nf = jnp.where(do_accept, log_proposal_nf_pdf, log_initial_nf_pdf)
     return position, log_prob, log_prob_nf, do_accept
+
 
 nf_metropolis_kernel = vmap(nf_metropolis_kernel)
 
@@ -97,14 +148,15 @@ def nf_metropolis_update(i: int, state: Tuple):
     )
 
 
-def nf_metropolis_sampler(nf_model: NFModel,
-                        rng_key: PRNGKeyArray,
-                        n_steps: int,
-                        target_pdf: Callable,
-                        initial_position: Array,
-                        data: PyTree,
+def nf_metropolis_sampler(
+    nf_model: NFModel,
+    rng_key: PRNGKeyArray,
+    n_steps: int,
+    target_pdf: Callable,
+    initial_position: Array,
+    data: PyTree,
 ):
-    r""" Normalizing flow Metropolis sampler.
+    r"""Normalizing flow Metropolis sampler.
 
     Args:
         nf_model: Normalizing flow model.
@@ -122,25 +174,25 @@ def nf_metropolis_sampler(nf_model: NFModel,
     log_pdf_nf_initial = nf_model.log_prob(initial_position)
     log_pdf_initial = target_pdf(initial_position, data)
 
-    if total_sample > n_sample_max:
+    if total_sample > self.n_sample_max:
         proposal_position = jnp.zeros((total_sample, initial_position.shape[-1]))
         log_pdf_nf_proposal = jnp.zeros((total_sample,))
         log_pdf_proposal = jnp.zeros((total_sample,))
         local_key, subkey = random.split(subkeys[0], 2)
         for i in tqdm(
-            range(total_sample // n_sample_max),
+            range(total_sample // self.n_sample_max),
             desc="Sampling Globally",
-            miniters=(total_sample // n_sample_max) // 10,
+            miniters=(total_sample // self.n_sample_max) // 10,
         ):
-            local_samples = nf_model.sample(subkey, n_sample_max)
+            local_samples = nf_model.sample(subkey, self.n_sample_max)
             proposal_position = proposal_position.at[
-                i * n_sample_max : (i + 1) * n_sample_max
+                i * self.n_sample_max : (i + 1) * self.n_sample_max
             ].set(local_samples)
             log_pdf_nf_proposal = log_pdf_nf_proposal.at[
-                i * n_sample_max : (i + 1) * n_sample_max
+                i * self.n_sample_max : (i + 1) * self.n_sample_max
             ].set(nf_model.log_prob(local_samples))
             log_pdf_proposal = log_pdf_proposal.at[
-                i * n_sample_max : (i + 1) * n_sample_max
+                i * self.n_sample_max : (i + 1) * self.n_sample_max
             ].set(target_pdf(local_samples, data))
             local_key, subkey = random.split(local_key, 2)
 
@@ -157,13 +209,9 @@ def nf_metropolis_sampler(nf_model: NFModel,
     )
     log_pdf_proposal = log_pdf_proposal.reshape(n_steps, initial_position.shape[0])
 
-    all_positions = (
-        jnp.zeros((n_steps,) + initial_position.shape) + initial_position
-    )
+    all_positions = jnp.zeros((n_steps,) + initial_position.shape) + initial_position
     all_logp = jnp.zeros((n_steps, initial_position.shape[0])) + log_pdf_initial
-    all_logp_nf = (
-        jnp.zeros((n_steps, initial_position.shape[0])) + log_pdf_nf_initial
-    )
+    all_logp_nf = jnp.zeros((n_steps, initial_position.shape[0])) + log_pdf_nf_initial
     acceptance = jnp.zeros((n_steps, initial_position.shape[0]))
 
     initial_state = (

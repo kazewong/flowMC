@@ -20,7 +20,7 @@ class MALA(ProposalBase):
 
     def __init__(
         self, logpdf: Callable, jit: bool, params: dict, use_autotune=False
-    ) -> Callable:
+    ):
         super().__init__(logpdf, jit, params)
         self.params = params
         self.logpdf = logpdf

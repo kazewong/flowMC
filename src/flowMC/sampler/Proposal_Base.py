@@ -73,13 +73,31 @@ class ProposalBase:
         """
 
     @abstractmethod
-    def update(self) -> Callable:
+    def update(
+        self, i, state
+    ) -> tuple[
+        PRNGKeyArray,
+        Float[Array, "nstep ndim"],
+        Float[Array, "nstep 1"],
+        Int[Array, "n_step 1"],
+        PyTree,
+    ]:
         """
         Make the update function for multiple steps
         """
 
     @abstractmethod
-    def sample(self) -> Callable:
+    def sample(self,
+        rng_key: PRNGKeyArray,
+        n_steps: int,
+        initial_position: Float[Array, "n_chains ndim"],
+        data: PyTree,
+        verbose: bool = False,
+    ) -> tuple[
+        Float[Array, "n_chains n_steps ndim"],
+        Float[Array, "n_chains n_steps 1"],
+        Int[Array, "n_chains n_steps 1"],
+    ]:
         """
         Make the sampler for multiple chains given initial positions
         """
