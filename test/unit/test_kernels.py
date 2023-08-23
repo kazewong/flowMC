@@ -1,9 +1,13 @@
 from flowMC.sampler.HMC import HMC
 from flowMC.sampler.MALA import MALA
 from flowMC.sampler.Gaussian_random_walk import GaussianRandomWalk
+from flowMC.sampler.NF_proposal import NFProposal
 from flowMC.utils.PRNG_keys import initialize_rng_keys
 import jax
 import jax.numpy as jnp
+from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
+from flowMC.nfmodel.utils import *
+import optax  # Optimizers
 
 
 def log_posterior(x, data=None):
@@ -163,7 +167,9 @@ class TestMALA:
         )
         initial_logp = jax.vmap(log_posterior)(initial_position, None)
 
-        result = MALA_obj.kernel_vmap(rng_key_set[1], initial_position, initial_logp, None)
+        result = MALA_obj.kernel_vmap(
+            rng_key_set[1], initial_position, initial_logp, None
+        )
 
         assert result[2].all()
 
@@ -178,7 +184,6 @@ class TestMALA:
             jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
         )
         MALA_obj.precompilation(n_chains, n_dim, 30000, None)
-
 
         result = MALA_obj.sample(rng_key_set[1], 30000, initial_position, None)
 
@@ -249,3 +254,44 @@ class TestGRW:
 
         assert jnp.isclose(jnp.mean(result[1]), 0, atol=1e-2)
         assert jnp.isclose(jnp.var(result[1]), 1, atol=1e-2)
+
+
+class TestNF:
+
+    def __init__(self):
+
+        key1, rng, init_rng = jax.random.split(jax.random.PRNGKey(0), 3)
+        data = jax.random.normal(key1, (100, 2))
+
+        num_epochs = 5
+        batch_size = 100
+        learning_rate = 0.001
+        momentum = 0.9
+
+        model = MaskedCouplingRQSpline(
+            2,
+            2,
+            [16, 16],
+            4,
+            rng,
+            data_mean=jnp.mean(data, axis=0),
+            data_cov=jnp.cov(data.T),
+        )
+        optim = optax.adam(learning_rate, momentum)
+
+        train_flow, train_epoch, train_step = make_training_loop(optim)
+        rng, self.model, loss_values = train_flow(
+            rng, model, data, num_epochs, batch_size, verbose=True
+        )
+
+    def test_NF_kernel(self):
+        key1, rng, init_rng = jax.random.split(jax.random.PRNGKey(1), 3)
+
+        n_dim = 2
+        n_chains = 1
+        NF_obj = NFProposal(log_posterior, True, self.model)
+
+        initial_position = (
+            jax.random.normal(init_rng, shape=(n_chains, n_dim)) * 1
+        )
+        samples = NF_obj.sample(rng, 100, initial_position, None)

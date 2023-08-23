@@ -4,6 +4,7 @@ import jax
 import jax.numpy as jnp
 from jaxtyping import PyTree, Array, Float, Int, PRNGKeyArray
 
+
 @jax.tree_util.register_pytree_node_class
 class ProposalBase:
     def __init__(self, logpdf: Callable, jit: bool, params: dict) -> Callable:
@@ -13,29 +14,25 @@ class ProposalBase:
         self.logpdf = logpdf
         self.jit = jit
         self.params = params
+        self.logpdf_vmap = jax.vmap(logpdf, in_axes=(0, None))
         self.kernel_vmap = jax.vmap(self.kernel, in_axes=(0, 0, 0, None))
         self.update_vmap = jax.vmap(
             self.update,
             in_axes=(None, (0, 0, 0, 0, None)),
             out_axes=(0, 0, 0, 0, None),
         )
-
-    def precompilation(self, n_chains, n_dims, n_step, data):
-        if self.jit == True:
-            print("jit is requested, precompiling kernels and update...")
-        else:
-            print("jit is not requested, compiling only vmap functions...")
-
         if self.jit == True:
             self.logpdf_vmap = jax.jit(self.logpdf_vmap)
             self.kernel = jax.jit(self.kernel)
             self.kernel_vmap = jax.jit(self.kernel_vmap)
             self.update = jax.jit(self.update)
             self.update_vmap = jax.jit(self.update_vmap)
-            self.kernel(
-                jax.random.PRNGKey(0), jnp.ones(n_dims), jnp.ones(1), data
-            )
-            # self.update(1, (jax.random.PRNGKey(0), jnp.ones(n_dims), jnp.ones(1), jnp.zeros((n_step, 1)), data, self.params))
+
+    def precompilation(self, n_chains, n_dims, n_step, data):
+        if self.jit == True:
+            print("jit is requested, precompiling kernels and update...")
+        else:
+            print("jit is not requested, compiling only vmap functions...")
 
         key = jax.random.split(jax.random.PRNGKey(0), n_chains)
 
@@ -87,7 +84,8 @@ class ProposalBase:
         """
 
     @abstractmethod
-    def sample(self,
+    def sample(
+        self,
         rng_key: PRNGKeyArray,
         n_steps: int,
         initial_position: Float[Array, "n_chains ndim"],
@@ -103,7 +101,6 @@ class ProposalBase:
         """
 
     def tree_flatten(self):
-
         children = ()
 
         aux_data = {"logpdf": self.logpdf, "jit": self.jit, "params": self.params}
@@ -111,5 +108,4 @@ class ProposalBase:
 
     @classmethod
     def tree_unflatten(cls, aux_data, children):
-
         return cls(*children, **aux_data)

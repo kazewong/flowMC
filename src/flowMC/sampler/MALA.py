@@ -24,7 +24,6 @@ class MALA(ProposalBase):
         super().__init__(logpdf, jit, params)
         self.params = params
         self.logpdf = logpdf
-        self.logpdf_vmap = jax.vmap(logpdf, in_axes=(0, None))
         self.use_autotune = use_autotune
 
     def body(self, carry, this_key):
@@ -39,11 +38,11 @@ class MALA(ProposalBase):
     def kernel(
         self,
         rng_key: PRNGKeyArray,
-        position: Float[Array, "nstep ndim"],
-        log_prob: Float[Array, "nstep 1"],
+        position: Float[Array, "ndim"],
+        log_prob: Float[Array, "1"],
         data: PyTree,
     ) -> tuple[
-        Float[Array, "nstep ndim"], Float[Array, "nstep 1"], Int[Array, "n_step 1"]
+        Float[Array, "ndim"], Float[Array, "1"], Int[Array, "1"]
     ]:
         """
         Metropolis-adjusted Langevin algorithm kernel.
