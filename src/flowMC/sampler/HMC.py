@@ -3,7 +3,7 @@ import jax
 import jax.numpy as jnp
 from jax.scipy.stats import multivariate_normal
 from tqdm import tqdm
-from src.flowMC.sampler.Proposal_Base import ProposalBase
+from flowMC.sampler.Proposal_Base import ProposalBase
 
 
 class HMC(ProposalBase):

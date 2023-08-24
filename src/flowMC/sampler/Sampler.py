@@ -4,7 +4,7 @@ from jaxtyping import Array
 from flowMC.nfmodel.utils import make_training_loop
 from flowMC.sampler.NF_proposal import NFProposal
 import optax
-from src.flowMC.sampler.Proposal_Base import ProposalBase
+from flowMC.sampler.Proposal_Base import ProposalBase
 from flowMC.nfmodel.base import NFModel
 from tqdm import tqdm
 import equinox as eqx

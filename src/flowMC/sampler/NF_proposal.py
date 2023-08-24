@@ -9,11 +9,12 @@ from typing import Callable
 from flowMC.sampler.Proposal_Base import ProposalBase
 from jaxtyping import Array, Float, Int, PRNGKeyArray
 import equinox as eqx
+from math import ceil
 
 @jax.tree_util.register_pytree_node_class
 class NFProposal(ProposalBase):
     def __init__(
-        self, logpdf: Callable, jit: bool, model: NFModel, n_sample_max: int = 100000
+        self, logpdf: Callable, jit: bool, model: NFModel, n_sample_max: int = 10000
     ):
         super().__init__(logpdf, jit, {})
         self.model = model
@@ -22,8 +23,13 @@ class NFProposal(ProposalBase):
             self.update, in_axes=(None, (0))
         )
         if self.jit == True:
-            self.model_logprob = eqx.filter_jit(self.model.log_prob)
             self.update_vmap = jax.jit(self.update_vmap)
+
+    def model_logprob(self, x):
+        if self.jit == True:
+            return eqx.filter_jit(self.model.log_prob)(x)
+        else:
+            return self.model.log_prob(x)
 
     def sample_loop(self, carry, position):
         """
@@ -33,13 +39,11 @@ class NFProposal(ProposalBase):
         key, subkey = random.split(key, 2)
         local_samples = self.model.sample(subkey, self.n_sample_max)
         log_prob_proposal = self.logpdf_vmap(local_samples, data)
-        log_prob_nf_proposal = self.model_logprob(local_samples)
-        log_prob_nf_initial = self.model_logprob(position)
+        log_prob_nf_proposal = eqx.filter_jit(self.model.log_prob)(local_samples)
         return (key, data), (
             local_samples,
             log_prob_proposal,
             log_prob_nf_proposal,
-            log_prob_nf_initial,
         )
 
     def kernel(
@@ -125,24 +129,27 @@ class NFProposal(ProposalBase):
         rng_key, *subkeys = random.split(rng_key, 3)
         total_size = initial_position.shape[0] * n_steps
         log_prob_initial = self.logpdf_vmap(initial_position, data)[:, None]
+        log_prob_nf_initial = self.model_logprob(initial_position)[:, None]
         if total_size > self.n_sample_max:
-            n_batch = total_size // self.n_sample_max + 1
-            n_sample = self.n_sample_max // n_batch
-            local_position = initial_position.reshape(
-                n_batch, n_sample, initial_position.shape[-1]
+            n_batch = ceil(total_size / self.n_sample_max)
+            n_sample = total_size // n_batch
+            local_position = jnp.zeros(
+                (n_batch, n_sample, initial_position.shape[-1])
             )
             _, (
                 proposal_position,
                 log_prob_proposal,
                 log_prob_nf_proposal,
-                log_prob_nf_initial,
             ) = jax.lax.scan(self.sample_loop, (subkeys[0], data), local_position)
+
+            proposal_position = proposal_position.reshape(-1, n_dim)[:total_size]
+            log_prob_proposal = log_prob_proposal.reshape(-1)[:total_size]
+            log_prob_nf_proposal = log_prob_nf_proposal.reshape(-1)[:total_size]
 
         else:
             proposal_position = self.model.sample(subkeys[0], total_size)
             log_prob_proposal = self.logpdf_vmap(proposal_position, data)
             log_prob_nf_proposal = self.model_logprob(proposal_position)
-            log_prob_nf_initial = self.model_logprob(initial_position)
 
         proposal_position = proposal_position.reshape(n_chains, n_steps, n_dim)
         log_prob_proposal = log_prob_proposal.reshape(n_chains, n_steps)
@@ -154,7 +161,7 @@ class NFProposal(ProposalBase):
             proposal_position,
             jnp.zeros((n_chains, n_steps, )) + log_prob_initial,
             log_prob_proposal,
-            jnp.zeros((n_chains, n_steps, )) + log_prob_nf_initial[:, None],
+            jnp.zeros((n_chains, n_steps, )) + log_prob_nf_initial,
             log_prob_nf_proposal,
             jnp.zeros((n_chains, n_steps, )),
         )
