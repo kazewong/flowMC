@@ -2,7 +2,7 @@ from typing import Callable, Tuple
 import jax.numpy as jnp
 from jaxtyping import Array
 from flowMC.nfmodel.utils import make_training_loop
-from flowMC.sampler.NF_proposal import nf_metropolis_sampler
+from flowMC.sampler.NF_proposal import NFProposal
 import optax
 from src.flowMC.sampler.Proposal_Base import ProposalBase
 from flowMC.nfmodel.base import NFModel
@@ -36,6 +36,10 @@ class Sampler:
         local_autotune (None, optional): Auto-tune function for the local sampler. Defaults to None.
         train_thinning (int, optional): Thinning for the data used to train the normalizing flow. Defaults to 1.
     """
+
+    @property
+    def nf_model(self):
+        return self.global_sampler.model
 
     def __init__(
         self,
@@ -75,15 +79,14 @@ class Sampler:
 
         # Initialized local and global samplers
 
-        self.local_sampler_class = local_sampler
-        self.local_sampler_class.precompilation(
+        self.local_sampler = local_sampler
+        self.local_sampler.precompilation(
             n_chains=self.n_chains, n_dims=n_dim, n_step=self.n_local_steps, data=data
         )
-        self.local_sampler = self.local_sampler_class.sampler
 
-        self.likelihood_vec = self.local_sampler_class.logpdf_vmap
-        self.nf_model = nf_model
-        # self.global_sampler = make_nf_metropolis_sampler(self.nf_model)
+        self.global_sampler = NFProposal(self.local_sampler.logpdf, jit=self.local_sampler.jit, model=nf_model)
+
+        self.likelihood_vec = self.local_sampler.logpdf_vmap
 
         tx = optax.adam(self.learning_rate, self.momentum)
         self.nf_training_loop, train_epoch, train_step = make_training_loop(tx)
@@ -151,7 +154,7 @@ class Sampler:
         else:
             summary_mode = "production"
 
-        self.rng_keys_mcmc, positions, log_prob, local_acceptance = self.local_sampler(
+        self.rng_keys_mcmc, positions, log_prob, local_acceptance = self.local_sampler.sample(
             self.rng_keys_mcmc,
             self.n_local_steps,
             initial_position,
@@ -204,14 +207,14 @@ class Sampler:
 
                 self.variables["mean"] = jnp.mean(flat_chain, axis=0)
                 self.variables["cov"] = jnp.cov(flat_chain.T)
-                self.nf_model = eqx.tree_at(
+                self.global_sampler.model = eqx.tree_at(
                     lambda m: m._data_mean, self.nf_model, self.variables["mean"]
                 )
-                self.nf_model = eqx.tree_at(
+                self.global_sampler.model = eqx.tree_at(
                     lambda m: m._data_cov, self.nf_model, self.variables["cov"]
                 )
 
-                self.rng_keys_nf, self.nf_model, loss_values = self.nf_training_loop(
+                self.rng_keys_nf, self.global_sampler.model, loss_values = self.nf_training_loop(
                     self.rng_keys_nf,
                     self.nf_model,
                     flat_chain,
@@ -231,13 +234,12 @@ class Sampler:
                 log_prob,
                 log_prob_nf,
                 global_acceptance,
-            ) = nf_metropolis_sampler(
-                self.nf_model,
+            ) = self.global_sampler.sample(
                 self.rng_keys_nf,
                 self.n_global_steps,
-                self.likelihood_vec,
                 positions[:, -1],
                 data,
+                verbose = self.verbose
             )
 
             self.summary[summary_mode]["chains"] = jnp.append(
@@ -283,8 +285,6 @@ class Sampler:
                 self.local_sampler.params,
                 max_iter,
             )
-            self.local_sampler = self.local_sampler.make_sampler()
-
         else:
             print("No autotune found, use input sampler_params")
 

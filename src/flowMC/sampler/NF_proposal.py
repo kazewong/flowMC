@@ -10,7 +10,7 @@ from flowMC.sampler.Proposal_Base import ProposalBase
 from jaxtyping import Array, Float, Int, PRNGKeyArray
 import equinox as eqx
 
-
+@jax.tree_util.register_pytree_node_class
 class NFProposal(ProposalBase):
     def __init__(
         self, logpdf: Callable, jit: bool, model: NFModel, n_sample_max: int = 100000
@@ -33,8 +33,8 @@ class NFProposal(ProposalBase):
         key, subkey = random.split(key, 2)
         local_samples = self.model.sample(subkey, self.n_sample_max)
         log_prob_proposal = self.logpdf_vmap(local_samples, data)
-        log_prob_nf_proposal = self.model_vmap(local_samples)
-        log_prob_nf_initial = self.model_vmap(position)
+        log_prob_nf_proposal = self.model_logprob(local_samples)
+        log_prob_nf_initial = self.model_logprob(position)
         return (key, data), (
             local_samples,
             log_prob_proposal,
@@ -147,17 +147,16 @@ class NFProposal(ProposalBase):
         proposal_position = proposal_position.reshape(n_chains, n_steps, n_dim)
         log_prob_proposal = log_prob_proposal.reshape(n_chains, n_steps)
         log_prob_nf_proposal = log_prob_nf_proposal.reshape(n_chains, n_steps)
-        log_prob_nf_initial = log_prob_nf_initial
 
         state = (
             jax.random.split(subkeys[1], n_chains),
             jnp.zeros((n_chains, n_steps, n_dim)) + initial_position[:, None],
             proposal_position,
-            jnp.zeros((n_chains, n_steps, 1)) + log_prob_initial,
+            jnp.zeros((n_chains, n_steps, )) + log_prob_initial,
             log_prob_proposal,
-            jnp.zeros((n_chains, n_steps, 1)) + log_prob_nf_initial,
+            jnp.zeros((n_chains, n_steps, )) + log_prob_nf_initial[:, None],
             log_prob_nf_proposal,
-            jnp.zeros((n_chains, n_steps, 1)),
+            jnp.zeros((n_chains, n_steps, )),
         )
         if verbose:
             iterator_loop = tqdm(
@@ -171,6 +170,11 @@ class NFProposal(ProposalBase):
             state = self.update_vmap(i, state)
         return rng_key, state[1], state[3], state[5], state[7]
 
+    def tree_flatten(self):
+        children, aux_data = super().tree_flatten()
+        aux_data["model"] =  self.model
+        aux_data["n_sample_max"] = self.n_sample_max
+        return (children, aux_data)
 
 def nf_metropolis_kernel(
     rng_key: jax.random.PRNGKey,
