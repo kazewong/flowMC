@@ -4,12 +4,13 @@ import jax
 import jax.numpy as jnp
 from jax.scipy.special import logsumexp
 
+
 def dual_moon_pe(x, data):
     """
     Term 2 and 3 separate the distribution and smear it along the first and second dimension
     """
     print("compile count")
-    term1 = 0.5 * ((jnp.linalg.norm(x-data) - 2) / 0.1) ** 2
+    term1 = 0.5 * ((jnp.linalg.norm(x - data) - 2) / 0.1) ** 2
     term2 = -0.5 * ((x[:1] + jnp.array([-3.0, 3.0])) / 0.8) ** 2
     term3 = -0.5 * ((x[1:2] + jnp.array([-3.0, 3.0])) / 0.6) ** 2
     return -(term1 - logsumexp(term2) - logsumexp(term3))
@@ -27,21 +28,34 @@ rng_key_set = initialize_rng_keys(n_chains, seed=42)
 
 initial_position = jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
 
-HMC = HMC(dual_moon_pe, True, {"step_size": step_size,"n_leapfrog": n_leapfrog, "inverse_metric": jnp.ones(n_dim)})
+HMC_sampler = HMC(
+    dual_moon_pe,
+    True,
+    {
+        "step_size": step_size,
+        "n_leapfrog": n_leapfrog,
+        "inverse_metric": jnp.ones(n_dim),
+    },
+)
 
-initial_PE = HMC.logpdf_vmap(initial_position, data)
+initial_PE = HMC_sampler.logpdf_vmap(initial_position, data)
 
-HMC.precompilation(n_chains, n_dim, n_local_steps, data)
+HMC_sampler.precompilation(n_chains, n_dim, n_local_steps, data)
 
-initial_position = jnp.repeat(initial_position[:,None], n_local_steps, 1)
-initial_PE = jnp.repeat(initial_PE[:,None], n_local_steps, 1)
+initial_position = jnp.repeat(initial_position[:, None], n_local_steps, 1)
+initial_PE = jnp.repeat(initial_PE[:, None], n_local_steps, 1)
 
-state = (rng_key_set[1], initial_position, initial_PE, jnp.zeros((n_chains, n_local_steps,1)), data, HMC.params)
+state = (
+    rng_key_set[1],
+    initial_position,
+    initial_PE,
+    jnp.zeros((n_chains, n_local_steps, 1)),
+    data,
+)
 
-HMC.update_vmap(1, state)
-HMC_sampler = HMC.make_sampler()
+HMC_sampler.update_vmap(1, state)
 
-state = HMC_sampler(rng_key_set[1], n_local_steps, initial_position[:, 0], data)
+state = HMC_sampler.sample(rng_key_set[1], n_local_steps, initial_position[:, 0], data)
 
 
 from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
@@ -59,7 +73,7 @@ rng_key_set = initialize_rng_keys(n_chains, seed=42)
 
 initial_position = jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
 
-model = MaskedCouplingRQSpline(2, 4, [32,32], 4 , jax.random.PRNGKey(10))
+model = MaskedCouplingRQSpline(2, 4, [32, 32], 4, jax.random.PRNGKey(10))
 
 print("Initializing sampler class")
 
@@ -67,7 +81,7 @@ nf_sampler = Sampler(
     n_dim,
     rng_key_set,
     jnp.arange(5),
-    HMC,
+    HMC_sampler,
     model,
     n_loop_training=n_loop_training,
     n_loop_production=n_loop_production,

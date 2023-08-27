@@ -1,18 +1,33 @@
 import jax
-import jax.numpy as jnp  # JAX NumPy
 import numpy as np
+import jax.numpy as jnp
 from scipy.stats import norm
+from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
+from flowMC.sampler.Gaussian_random_walk import GaussianRandomWalk
 
-from flowMC.nfmodel.realNVP import RealNVP
-from flowMC.sampler.Gaussian_random_walk import rw_metropolis_sampler
 from flowMC.sampler.Sampler import Sampler
 from flowMC.utils.PRNG_keys import initialize_rng_keys
 from flowMC.utils.PythonFunctionWrap import wrap_python_log_prob_fn
 
+"""
+The purpose of this example is to demonstate this is doable with the code, but here are some honest warnings:
+1. It is probably not going to be as fast as you think/hope it to be, because of the communication between host and device.
+2. You cannot jit and grad through the likelihood function, so only random walks gaussian proposal is supported.
+3. Making this work with other parallelization scheme such as MPI may be tricky because of Jax.
+4. Your code won't run on GPU.
+
+So when you say your code is too much to rewrite in Jax but you still want to use flowMC, ask yourself these questions:
+1. How long would it take to rewrite your code in Jax? Weeks? Months? Years? If it is just a couple months, maybe one should really consider doing it.
+2. Can I recast the problem in a way that I can have a jax likelihood? For example can you do some surrogate modeling to replace the likelihood?
+
+If the answer to any of these two questions is yes, then you should probably do it. If the answer to both of these questions is no, then maybe consider some other alternative such as PocoMC.
+"""
+
+
 @wrap_python_log_prob_fn
 def neal_funnel(x):
-    y_pdf = norm.logpdf(x[0], loc=0, scale=3)
-    x_pdf = norm.logpdf(x[1:], loc=0, scale=np.exp(x[0] / 2))
+    y_pdf = norm.logpdf(x["params"][0], loc=0, scale=3)
+    x_pdf = norm.logpdf(x["params"][1:], loc=0, scale=np.exp(x["params"][0] / 2))
     return y_pdf + np.sum(x_pdf)
 
 
@@ -28,30 +43,23 @@ momentum = 0.9
 num_epochs = 100
 batch_size = 1000
 
-print("Preparing RNG keys")
-rng_key_set = initialize_rng_keys(n_chains, seed=42)
+data = jnp.zeros(n_dim)
 
-print("Initializing MCMC model and normalizing flow model.")
+rng_key_set = initialize_rng_keys(n_chains, 42)
+model = MaskedCouplingRQSpline(n_dim, 4, [32, 32], 8, jax.random.PRNGKey(10))
 
-initial_position = jax.random.normal(
-    rng_key_set[0], shape=(n_chains, n_dim)
-)  # (n_dim, n_chains)
+initial_position = jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
 
+RW_Sampler = GaussianRandomWalk(neal_funnel, False, {"step_size": 0.1})
 
-# model = RQSpline(n_dim, 10, [128, 128], 8)
-# run_mcmc = jax.vmap(rw_metropolis_sampler, in_axes=(0, None, None, 0), out_axes=0)
-
-# print("Initializing sampler class")
-# local_sampler_caller = lambda x: make_mala_sampler(x, jit=True)
 
 print("Initializing sampler class")
 
 nf_sampler = Sampler(
     n_dim,
     rng_key_set,
-    local_sampler_caller,
-    {'dt':1e-1},
-    neal_funnel,
+    jnp.zeros(5),
+    RW_Sampler,
     model,
     n_loop_training=n_loop_training,
     n_loop_production=n_loop_production,
@@ -64,16 +72,24 @@ nf_sampler = Sampler(
     batch_size=batch_size,
     use_global=True,
 )
-print("Sampling")
 
-nf_sampler.sample(initial_position)
-chains, log_prob, local_accs, global_accs, loss_vals = nf_sampler.get_sampler_state()
-nf_samples = nf_sampler.sample_flow()
+nf_sampler.sample(initial_position, data)
+summary = nf_sampler.get_sampler_state(training=True)
+chains, log_prob, local_accs, global_accs, loss_vals = summary.values()
+nf_samples = nf_sampler.sample_flow(10000)
+
+print(
+    "chains shape: ",
+    chains.shape,
+    "local_accs shape: ",
+    local_accs.shape,
+    "global_accs shape: ",
+    global_accs.shape,
+)
 
 chains = np.array(chains)
 nf_samples = np.array(nf_samples[1])
 loss_vals = np.array(loss_vals)
-
 import corner
 import matplotlib.pyplot as plt
 
