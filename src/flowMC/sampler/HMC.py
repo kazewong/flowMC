@@ -60,22 +60,22 @@ class HMC(ProposalBase):
         return self.potential(position, data) + self.kinetic(momentum, params)
 
     def leapfrog_kernel(self, carry, extras):
-        position, momentum, params, data = carry
-        position = position + params["step_size"] * self.grad_kinetic(momentum, params)
-        momentum = momentum - params["step_size"] * self.grad_potential(position, data)
-        return (position, momentum, params, data), extras
+        position, momentum, data = carry
+        position = position + self.params["step_size"] * self.grad_kinetic(momentum, self.params)
+        momentum = momentum - self.params["step_size"] * self.grad_potential(position, data)
+        return (position, momentum, data), extras
 
-    def leapfrog_step(self, position, momentum, data, params: dict):
-        momentum = momentum - 0.5 * params["step_size"] * self.grad_potential(
+    def leapfrog_step(self, position, momentum, data):
+        momentum = momentum - 0.5 * self.params["step_size"] * self.grad_potential(
             position, data
         )
-        (position, momentum, params, data), _ = jax.lax.scan(
+        (position, momentum, data), _ = jax.lax.scan(
             self.leapfrog_kernel,
-            (position, momentum, params, data),
+            (position, momentum, data),
             jnp.arange(self.n_leapfrog - 1),
         )
-        position = position + params["step_size"] * self.grad_kinetic(momentum, params)
-        momentum = momentum - 0.5 * params["step_size"] * self.grad_potential(
+        position = position + self.params["step_size"] * self.grad_kinetic(momentum, self.params)
+        momentum = momentum - 0.5 * self.params["step_size"] * self.grad_potential(
             position, data
         )
         return position, momentum
@@ -104,7 +104,7 @@ class HMC(ProposalBase):
         )
         H = log_prob + self.kinetic(momentum, self.params)
         proposed_position, proposed_momentum = self.leapfrog_step(
-            position, momentum, data, self.params
+            position, momentum, data
         )
         proposed_PE = self.potential(proposed_position, data)
         proposed_ham = proposed_PE + self.kinetic(proposed_momentum, self.params)
@@ -174,7 +174,7 @@ class HMC(ProposalBase):
             )
             + logp[:, None]
         )
-        state = (rng_key, all_positions, all_logp, acceptance, data, self.params)
+        state = (rng_key, all_positions, all_logp, acceptance, data)
 
         if verbose:
             iterator_loop = tqdm(

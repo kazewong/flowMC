@@ -246,7 +246,8 @@ class TestGRW:
 
 
 class TestNF:
-    def __init__(self):
+    def test_NF_kernel(self):
+
         key1, rng, init_rng = jax.random.split(jax.random.PRNGKey(0), 3)
         data = jax.random.normal(key1, (100, 2))
 
@@ -270,8 +271,6 @@ class TestNF:
         rng, self.model, loss_values = train_flow(
             rng, model, data, num_epochs, batch_size, verbose=True
         )
-
-    def test_NF_kernel(self):
         key1, rng, init_rng = jax.random.split(jax.random.PRNGKey(1), 3)
 
         n_dim = 2
