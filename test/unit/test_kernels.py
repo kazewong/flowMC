@@ -196,8 +196,6 @@ class TestGRW:
         n_dim = 2
         n_chains = 1
         GRW_obj = GaussianRandomWalk(log_posterior, True, {"step_size": 1})
-        GRW_kernel = GRW_obj.kernel()
-
         rng_key_set = initialize_rng_keys(n_chains, seed=42)
 
         initial_position = (
@@ -205,12 +203,8 @@ class TestGRW:
         )
         initial_logp = log_posterior(initial_position)
 
-        result1 = GRW_kernel(
-            rng_key_set[0], initial_position[0], initial_logp, GRW_obj.params
-        )
-        result2 = GRW_kernel(
-            rng_key_set[0], initial_position[0], initial_logp, GRW_obj.params
-        )
+        result1 = GRW_obj.kernel(rng_key_set[0], initial_position[0], initial_logp)
+        result2 = GRW_obj.kernel(rng_key_set[0], initial_position[0], initial_logp)
 
         assert jnp.allclose(result1[0], result2[0])
         assert result1[1] == result2[1]
@@ -221,7 +215,6 @@ class TestGRW:
 
         n_dim = 2
         GRW_obj = GaussianRandomWalk(log_posterior, True, {"step_size": 0.00001})
-        GRW_kernel = GRW_obj.kernel()
 
         n_chains = 100
         rng_key_set = initialize_rng_keys(n_chains, seed=42)
@@ -231,9 +224,9 @@ class TestGRW:
         )
         initial_logp = jax.vmap(log_posterior)(initial_position)
 
-        result = jax.vmap(
-            GRW_kernel, in_axes=(0, 0, 0, None, None), out_axes=(0, 0, 0)
-        )(rng_key_set[1], initial_position, initial_logp, None, GRW_obj.params)
+        result = GRW_obj.kernel_vmap(
+            rng_key_set[1], initial_position, initial_logp, None
+        )
 
         assert result[2].all()
 
@@ -248,18 +241,15 @@ class TestGRW:
             jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
         )
         GRW_obj.precompilation(n_chains, n_dim, 30000, None)
-        GRW_sampler = GRW_obj.sample()
 
-        result = GRW_sampler(rng_key_set[1], 30000, initial_position, None)
+        result = GRW_obj.sample(rng_key_set[1], 30000, initial_position, None)
 
         assert jnp.isclose(jnp.mean(result[1]), 0, atol=1e-2)
         assert jnp.isclose(jnp.var(result[1]), 1, atol=1e-2)
 
 
 class TestNF:
-
     def __init__(self):
-
         key1, rng, init_rng = jax.random.split(jax.random.PRNGKey(0), 3)
         data = jax.random.normal(key1, (100, 2))
 
@@ -291,7 +281,5 @@ class TestNF:
         n_chains = 1
         NF_obj = NFProposal(log_posterior, True, self.model)
 
-        initial_position = (
-            jax.random.normal(init_rng, shape=(n_chains, n_dim)) * 1
-        )
+        initial_position = jax.random.normal(init_rng, shape=(n_chains, n_dim)) * 1
         samples = NF_obj.sample(rng, 100, initial_position, None)
