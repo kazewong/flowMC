@@ -11,6 +11,7 @@ from jaxtyping import Array, Float, Int, PRNGKeyArray
 import equinox as eqx
 from math import ceil
 
+
 @jax.tree_util.register_pytree_node_class
 class NFProposal(ProposalBase):
     def __init__(
@@ -19,9 +20,7 @@ class NFProposal(ProposalBase):
         super().__init__(logpdf, jit, {})
         self.model = model
         self.n_sample_max = n_sample_max
-        self.update_vmap = jax.vmap(
-            self.update, in_axes=(None, (0))
-        )
+        self.update_vmap = jax.vmap(self.update, in_axes=(None, (0)))
         if self.jit == True:
             self.update_vmap = jax.jit(self.update_vmap)
 
@@ -133,9 +132,7 @@ class NFProposal(ProposalBase):
         if total_size > self.n_sample_max:
             n_batch = ceil(total_size / self.n_sample_max)
             n_sample = total_size // n_batch
-            local_position = jnp.zeros(
-                (n_batch, n_sample, initial_position.shape[-1])
-            )
+            local_position = jnp.zeros((n_batch, n_sample, initial_position.shape[-1]))
             _, (
                 proposal_position,
                 log_prob_proposal,
@@ -159,11 +156,28 @@ class NFProposal(ProposalBase):
             jax.random.split(subkeys[1], n_chains),
             jnp.zeros((n_chains, n_steps, n_dim)) + initial_position[:, None],
             proposal_position,
-            jnp.zeros((n_chains, n_steps, )) + log_prob_initial,
+            jnp.zeros(
+                (
+                    n_chains,
+                    n_steps,
+                )
+            )
+            + log_prob_initial,
             log_prob_proposal,
-            jnp.zeros((n_chains, n_steps, )) + log_prob_nf_initial,
+            jnp.zeros(
+                (
+                    n_chains,
+                    n_steps,
+                )
+            )
+            + log_prob_nf_initial,
             log_prob_nf_proposal,
-            jnp.zeros((n_chains, n_steps, )),
+            jnp.zeros(
+                (
+                    n_chains,
+                    n_steps,
+                )
+            ),
         )
         if verbose:
             iterator_loop = tqdm(
@@ -179,6 +193,6 @@ class NFProposal(ProposalBase):
 
     def tree_flatten(self):
         children, aux_data = super().tree_flatten()
-        aux_data["model"] =  self.model
+        aux_data["model"] = self.model
         aux_data["n_sample_max"] = self.n_sample_max
         return (children, aux_data)

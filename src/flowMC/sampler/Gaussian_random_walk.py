@@ -1,9 +1,9 @@
 from typing import Callable
 import jax
 import jax.numpy as jnp
-from jax.scipy.stats import multivariate_normal
 from tqdm import tqdm
 from flowMC.sampler.Proposal_Base import ProposalBase
+from jaxtyping import PyTree, Array, Float, Int, PRNGKeyArray
 
 
 class GaussianRandomWalk(ProposalBase):
@@ -32,9 +32,7 @@ class GaussianRandomWalk(ProposalBase):
         position: Float[Array, "ndim"],
         log_prob: Float[Array, "1"],
         data: PyTree,
-    ) -> tuple[
-        Float[Array, "ndim"], Float[Array, "1"], Int[Array, "1"]
-    ]:
+    ) -> tuple[Float[Array, "ndim"], Float[Array, "1"], Int[Array, "1"]]:
         """
         Random walk gaussian kernel.
         This is a kernel that only evolve a single chain.
@@ -65,56 +63,54 @@ class GaussianRandomWalk(ProposalBase):
         log_prob = jnp.where(do_accept, proposal_log_prob, log_prob)
         return position, log_prob, do_accept
 
-    def update(self) -> Callable:
-        """
-        Making a the random walk update function for multiple steps
-        """
+    def update(
+        self, i, state
+    ) -> tuple[
+        PRNGKeyArray,
+        Float[Array, "nstep ndim"],
+        Float[Array, "nstep 1"],
+        Int[Array, "n_step 1"],
+        PyTree,
+    ]:
+        key, positions, log_p, acceptance, data = state
+        _, key = jax.random.split(key)
+        new_position, new_log_p, do_accept = self.kernel(
+            key, positions[i - 1], log_p[i - 1], data
+        )
+        positions = positions.at[i].set(new_position)
+        log_p = log_p.at[i].set(new_log_p)
+        acceptance = acceptance.at[i].set(do_accept)
+        return (key, positions, log_p, acceptance, data)
 
-        if self.kernel is None:
-            raise ValueError("Kernel not defined. Please run make_kernel first.")
-
-        def rw_update(i, state):
-            key, positions, log_p, acceptance, data, params = state
-            _, key = jax.random.split(key)
-            new_position, new_log_p, do_accept = self.kernel(
-                key, positions[i - 1], log_p[i - 1], data, params
+    def sample(
+        self,
+        rng_key: PRNGKeyArray,
+        n_steps: int,
+        initial_position: Float[Array, "n_chains ndim"],
+        data: PyTree,
+        verbose: bool = False,
+    ) -> tuple[
+        Float[Array, "n_chains n_steps ndim"],
+        Float[Array, "n_chains n_steps 1"],
+        Int[Array, "n_chains n_steps 1"],
+    ]:
+        logp = self.logpdf_vmap(initial_position, data)
+        n_chains = rng_key.shape[0]
+        acceptance = jnp.zeros((n_chains, n_steps))
+        all_positions = (
+            jnp.zeros((n_chains, n_steps) + initial_position.shape[-1:])
+        ) + initial_position[:, None]
+        all_logp = jnp.zeros((n_chains, n_steps)) + logp[:, None]
+        state = (rng_key, all_positions, all_logp, acceptance, data)
+        if verbose:
+            iterator_loop = tqdm(
+                range(1, n_steps),
+                desc="Sampling Locally",
+                miniters=int(n_steps / 10),
             )
-            positions = positions.at[i].set(new_position)
-            log_p = log_p.at[i].set(new_log_p)
-            acceptance = acceptance.at[i].set(do_accept)
-            return (key, positions, log_p, acceptance, data, params)
+        else:
+            iterator_loop = range(1, n_steps)
 
-        return rw_update
-
-    def sample(self) -> Callable:
-        """
-        Making the random walk sampler for multiple chains given initial positions
-        """
-        if self.update is None:
-            raise ValueError(
-                "Update function not defined. Please run make_update first."
-            )
-
-        def rw_sampler(rng_key, n_steps, initial_position, data, verbose: bool = False):
-            logp = self.logpdf_vmap(initial_position, data)
-            n_chains = rng_key.shape[0]
-            acceptance = jnp.zeros((n_chains, n_steps))
-            all_positions = (
-                jnp.zeros((n_chains, n_steps) + initial_position.shape[-1:])
-            ) + initial_position[:, None]
-            all_logp = jnp.zeros((n_chains, n_steps)) + logp[:, None]
-            state = (rng_key, all_positions, all_logp, acceptance, data, self.params)
-            if verbose:
-                iterator_loop = tqdm(
-                    range(1, n_steps),
-                    desc="Sampling Locally",
-                    miniters=int(n_steps / 10),
-                )
-            else:
-                iterator_loop = range(1, n_steps)
-
-            for i in iterator_loop:
-                state = self.update_vmap(i, state)
-            return state[:-2]
-
-        return rw_sampler
+        for i in iterator_loop:
+            state = self.update_vmap(i, state)
+        return state[:-2]
