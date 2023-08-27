@@ -9,6 +9,21 @@ from flowMC.sampler.Sampler import Sampler
 from flowMC.utils.PRNG_keys import initialize_rng_keys
 from flowMC.utils.PythonFunctionWrap import wrap_python_log_prob_fn
 
+"""
+The purpose of this example is to demonstate this is doable with the code, but here are some honest warnings:
+1. It is probably not going to be as fast as you think/hope it to be, because of the communication between host and device.
+2. You cannot jit and grad through the likelihood function, so only random walks gaussian proposal is supported.
+3. Making this work with other parallelization scheme such as MPI may be tricky because of Jax.
+4. Your code won't run on GPU.
+
+So when you say your code is too much to rewrite in Jax but you still want to use flowMC, ask yourself these questions:
+1. How long would it take to rewrite your code in Jax? Weeks? Months? Years? If it is just a couple months, maybe one should really consider doing it.
+2. Can I recast the problem in a way that I can have a jax likelihood? For example can you do some surrogate modeling to replace the likelihood?
+
+If the answer to any of these two questions is yes, then you should probably do it. If the answer to both of these questions is no, then maybe consider some other alternative such as PocoMC.
+"""
+
+
 @wrap_python_log_prob_fn
 def neal_funnel(x):
     y_pdf = norm.logpdf(x["params"][0], loc=0, scale=3)
