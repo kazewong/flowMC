@@ -25,34 +25,45 @@ class GaussianRandomWalk(ProposalBase):
         super().__init__(logpdf, jit, params)
         self.params = params
         self.logpdf = logpdf
-        self.logpdf_vmap = jax.vmap(logpdf, in_axes=(0, None))
-        self.kernel = None
-        self.kernel_vmap = None
-        self.update = None
-        self.update_vmap = None
-        self.sampler = None
 
-    def kernel(self, return_aux=False) -> Callable:
+    def kernel(
+        self,
+        rng_key: PRNGKeyArray,
+        position: Float[Array, "ndim"],
+        log_prob: Float[Array, "1"],
+        data: PyTree,
+    ) -> tuple[
+        Float[Array, "ndim"], Float[Array, "1"], Int[Array, "1"]
+    ]:
         """
-        Making a single update of the random walk
+        Random walk gaussian kernel.
+        This is a kernel that only evolve a single chain.
+
+        Args:
+            rng_key (PRNGKeyArray): Jax PRNGKey
+            position (Float[Array, "ndim"]): current position of the chain
+            log_prob (Float[Array, "1"]): current log-probability of the chain
+            data (PyTree): data to be passed to the logpdf function
+
+        Returns:
+            position (Float[Array, "ndim"]): new position of the chain
+            log_prob (Float[Array, "1"]): new log-probability of the chain
+            do_accept (Int[Array, "1"]): whether the new position is accepted
         """
 
-        def rw_kernel(rng_key, position, log_prob, data, params={"step_size": 0.1}):
-            key1, key2 = jax.random.split(rng_key)
-            move_proposal = (
-                jax.random.normal(key1, shape=position.shape) * params["step_size"]
-            )
-            proposal = position + move_proposal
-            proposal_log_prob = self.logpdf(proposal, data)
+        key1, key2 = jax.random.split(rng_key)
+        move_proposal = (
+            jax.random.normal(key1, shape=position.shape) * self.params["step_size"]
+        )
+        proposal = position + move_proposal
+        proposal_log_prob = self.logpdf(proposal, data)
 
-            log_uniform = jnp.log(jax.random.uniform(key2))
-            do_accept = log_uniform < proposal_log_prob - log_prob
+        log_uniform = jnp.log(jax.random.uniform(key2))
+        do_accept = log_uniform < proposal_log_prob - log_prob
 
-            position = jnp.where(do_accept, proposal, position)
-            log_prob = jnp.where(do_accept, proposal_log_prob, log_prob)
-            return position, log_prob, do_accept
-
-        return rw_kernel
+        position = jnp.where(do_accept, proposal, position)
+        log_prob = jnp.where(do_accept, proposal_log_prob, log_prob)
+        return position, log_prob, do_accept
 
     def update(self) -> Callable:
         """

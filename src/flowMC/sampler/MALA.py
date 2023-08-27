@@ -46,19 +46,18 @@ class MALA(ProposalBase):
     ]:
         """
         Metropolis-adjusted Langevin algorithm kernel.
-        This function make a proposal and accept/reject it.
+        This is a kernel that only evolve a single chain.
 
         Args:
-            rng_key (n_chains, 2): random key
-            position (n_chains, n_dim): current position
-            log_prob (n_chains, ): log-probability of the current position
-            data: data to be passed to the logpdf
-            params: dictionary of parameters for the sampler
+            rng_key (PRNGKeyArray): Jax PRNGKey
+            position (Float[Array, "ndim"]): current position of the chain
+            log_prob (Float[Array, "1"]): current log-probability of the chain
+            data (PyTree): data to be passed to the logpdf function
 
         Returns:
-            position (n_chains, n_dim): the new poisiton of the chain
-            log_prob (n_chains, ): the log-probability of the new position
-            do_accept (n_chains, ): whether to accept the new position
+            position (Float[Array, "ndim"]): new position of the chain
+            log_prob (Float[Array, "1"]): new log-probability of the chain
+            do_accept (Int[Array, "1"]): whether the new position is accepted
         """
 
         key1, key2 = jax.random.split(rng_key)
