@@ -28,7 +28,7 @@ rng_key_set = initialize_rng_keys(n_chains, seed=42)
 
 initial_position = jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
 
-HMC = HMC(
+HMC_sampler = HMC(
     dual_moon_pe,
     True,
     {
@@ -38,9 +38,9 @@ HMC = HMC(
     },
 )
 
-initial_PE = HMC.logpdf_vmap(initial_position, data)
+initial_PE = HMC_sampler.logpdf_vmap(initial_position, data)
 
-HMC.precompilation(n_chains, n_dim, n_local_steps, data)
+HMC_sampler.precompilation(n_chains, n_dim, n_local_steps, data)
 
 initial_position = jnp.repeat(initial_position[:, None], n_local_steps, 1)
 initial_PE = jnp.repeat(initial_PE[:, None], n_local_steps, 1)
@@ -51,13 +51,11 @@ state = (
     initial_PE,
     jnp.zeros((n_chains, n_local_steps, 1)),
     data,
-    HMC.params,
 )
 
-HMC.update_vmap(1, state)
-HMC_sampler = HMC.sample()
+HMC_sampler.update_vmap(1, state)
 
-state = HMC_sampler(rng_key_set[1], n_local_steps, initial_position[:, 0], data)
+state = HMC_sampler.sample(rng_key_set[1], n_local_steps, initial_position[:, 0], data)
 
 
 from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
@@ -83,7 +81,7 @@ nf_sampler = Sampler(
     n_dim,
     rng_key_set,
     jnp.arange(5),
-    HMC,
+    HMC_sampler,
     model,
     n_loop_training=n_loop_training,
     n_loop_production=n_loop_production,

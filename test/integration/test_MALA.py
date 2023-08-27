@@ -47,15 +47,13 @@ state = (
     initial_logp,
     jnp.zeros((n_chains, n_local_steps, 1)),
     data,
-    MALA_Sampler.params,
 )
 
 
 MALA_Sampler.update_vmap(1, state)
 
-MALA_Sampler_sampler = MALA_Sampler.sample()
 
-state = MALA_Sampler_sampler(
+state = MALA_Sampler.sample(
     rng_key_set[1], n_local_steps, initial_position[:, 0], data
 )
 

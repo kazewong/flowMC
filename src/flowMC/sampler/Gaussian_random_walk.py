@@ -113,4 +113,4 @@ class GaussianRandomWalk(ProposalBase):
 
         for i in iterator_loop:
             state = self.update_vmap(i, state)
-        return state[:-2]
+        return state[:-1]

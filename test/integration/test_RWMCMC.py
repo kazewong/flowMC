@@ -28,9 +28,9 @@ rng_key_set = initialize_rng_keys(n_chains, seed=42)
 
 initial_position = jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
 
-RWMCMC = GaussianRandomWalk(dual_moon_pe, True, {"step_size": step_size})
+RWMCMC_sampler = GaussianRandomWalk(dual_moon_pe, True, {"step_size": step_size})
 
-RWMCMC.precompilation(n_chains, n_dim, n_local_steps, data)
+RWMCMC_sampler.precompilation(n_chains, n_dim, n_local_steps, data)
 
 initial_position = jnp.repeat(initial_position[:, None], n_local_steps, 1)
 initial_logp = jnp.repeat(
@@ -45,14 +45,12 @@ state = (
     initial_logp,
     jnp.zeros((n_chains, n_local_steps, 1)),
     data,
-    RWMCMC.params,
 )
 
-RWMCMC.update_vmap(1, state)
+RWMCMC_sampler.update_vmap(1, state)
 
-RWMCMC_sampler = RWMCMC.sample()
 
-state = RWMCMC_sampler(rng_key_set[1], n_local_steps, initial_position[:, 0], data)
+state = RWMCMC_sampler.sample(rng_key_set[1], n_local_steps, initial_position[:, 0], data)
 
 
 from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
@@ -78,7 +76,7 @@ nf_sampler = Sampler(
     n_dim,
     rng_key_set,
     data,
-    RWMCMC,
+    RWMCMC_sampler,
     model,
     n_loop_training=n_loop_training,
     n_loop_production=n_loop_production,
