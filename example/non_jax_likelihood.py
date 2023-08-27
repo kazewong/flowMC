@@ -3,7 +3,7 @@ import numpy as np
 import jax.numpy as jnp
 from scipy.stats import norm
 from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
-from flowMC.sampler.MALA import MALA
+from flowMC.sampler.Gaussian_random_walk import GaussianRandomWalk
 
 from flowMC.sampler.Sampler import Sampler
 from flowMC.utils.PRNG_keys import initialize_rng_keys
@@ -11,8 +11,8 @@ from flowMC.utils.PythonFunctionWrap import wrap_python_log_prob_fn
 
 @wrap_python_log_prob_fn
 def neal_funnel(x):
-    y_pdf = norm.logpdf(x[0], loc=0, scale=3)
-    x_pdf = norm.logpdf(x[1:], loc=0, scale=np.exp(x[0] / 2))
+    y_pdf = norm.logpdf(x["params"][0], loc=0, scale=3)
+    x_pdf = norm.logpdf(x["params"][1:], loc=0, scale=np.exp(x["params"][0] / 2))
     return y_pdf + np.sum(x_pdf)
 
 
@@ -35,7 +35,7 @@ model = MaskedCouplingRQSpline(n_dim, 4, [32, 32], 8, jax.random.PRNGKey(10))
 
 initial_position = jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
 
-MALA_Sampler = MALA(neal_funnel, True, {"step_size": 0.1})
+RW_Sampler = GaussianRandomWalk(neal_funnel, False, {"step_size": 0.1})
 
 
 print("Initializing sampler class")
@@ -44,7 +44,7 @@ nf_sampler = Sampler(
     n_dim,
     rng_key_set,
     jnp.zeros(5),
-    MALA_Sampler,
+    RW_Sampler,
     model,
     n_loop_training=n_loop_training,
     n_loop_production=n_loop_production,

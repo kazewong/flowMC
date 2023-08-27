@@ -16,21 +16,22 @@ from jax._src.util import safe_zip
 from jax.custom_batching import custom_vmap
 from jax.experimental import host_callback
 from jax.tree_util import tree_flatten, tree_unflatten
-
+from jaxtyping import PyTree
 
 def wrap_python_log_prob_fn(python_log_prob_fn: Callable[..., Array]):
     @custom_vmap
     @wraps(python_log_prob_fn)
-    def log_prob_fn(params: Array) -> Array:
+    def log_prob_fn(params: Array, data: PyTree) -> Array:
         dtype = _tree_dtype(params)
+        inputs = {"params": params, "data": data}
         return host_callback.call(
             python_log_prob_fn,
-            params,
+            inputs,
             result_shape=jax.ShapeDtypeStruct((), dtype),
         )
 
     @log_prob_fn.def_vmap
-    def _(axis_size: int, in_batched: List[bool], params: Array) -> Tuple[Array, bool]:
+    def _(axis_size: int, in_batched: List[bool], params: Array, data: PyTree) -> Tuple[Array, bool]:
         del axis_size, in_batched
 
         if _arraylike(params):
@@ -43,7 +44,7 @@ def wrap_python_log_prob_fn(python_log_prob_fn: Callable[..., Array]):
         result_shape = jax.ShapeDtypeStruct((flat_params.shape[0],), flat_params.dtype)
 
         result = host_callback.call(
-            lambda y: np.stack([eval_one(x) for x in y]),
+            lambda y: np.stack([eval_one({"params":x,"data":data}) for x in y]),
             flat_params,
             result_shape=result_shape,
         )
