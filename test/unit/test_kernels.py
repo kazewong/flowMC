@@ -31,15 +31,13 @@ class TestHMC:
         )
         initial_PE = jax.vmap(HMC_obj.potential)(initial_position, None)
 
-        HMC_kernel, leapfrog_kernel, leapfrog_step = HMC_obj.kernel(return_aux=True)
-
         # Test whether the HMC kernel is deterministic
 
-        result1 = HMC_kernel(
-            rng_key_set[0], initial_position[0], initial_PE[0], None, HMC_obj.params
+        result1 = HMC_obj.kernel(
+            rng_key_set[0], initial_position[0], initial_PE[0], None
         )
-        result2 = HMC_kernel(
-            rng_key_set[0], initial_position[0], initial_PE[0], None, HMC_obj.params
+        result2 = HMC_obj.kernel(
+            rng_key_set[0], initial_position[0], initial_PE[0], None
         )
 
         assert jnp.allclose(result1[0], result2[0])
@@ -64,18 +62,17 @@ class TestHMC:
             initial_position, None
         )
 
-        HMC_kernel, leapfrog_kernel, leapfrog_step = HMC_obj.kernel(return_aux=True)
         key1, key2 = jax.random.split(rng_key_set[0])
 
         initial_momentum = (
             jax.random.normal(key1, shape=initial_position.shape)
             * jnp.ones(n_dim) ** -0.5
         )
-        new_position, new_momentum = leapfrog_step(
-            initial_position, initial_momentum, None, HMC_obj.params
+        new_position, new_momentum = HMC_obj.leapfrog_step(
+            initial_position, initial_momentum, None
         )
-        rev_position, rev_momentum = leapfrog_step(
-            new_position, -new_momentum, None, HMC_obj.params
+        rev_position, rev_momentum = HMC_obj.leapfrog_step(
+            new_position, -new_momentum, None
         )
 
         assert jnp.allclose(rev_position, initial_position)
@@ -90,7 +87,6 @@ class TestHMC:
             True,
             {"step_size": 0.00001, "n_leapfrog": 5, "inverse_metric": jnp.ones(n_dim)},
         )
-        HMC_kernel = HMC_obj.kernel()
 
         n_chains = 100
         rng_key_set = initialize_rng_keys(n_chains, seed=42)
@@ -100,9 +96,7 @@ class TestHMC:
         )
         initial_PE = jax.vmap(HMC_obj.potential)(initial_position, None)
 
-        result = jax.vmap(
-            HMC_kernel, in_axes=(0, 0, 0, None, None), out_axes=(0, 0, 0)
-        )(rng_key_set[1], initial_position, initial_PE, None, HMC_obj.params)
+        result = HMC_obj.kernel_vmap(rng_key_set[1], initial_position, initial_PE, None)
 
         assert result[2].all()
 
@@ -121,9 +115,8 @@ class TestHMC:
             jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
         )
         HMC_obj.precompilation(n_chains, n_dim, 10000, None)
-        HMC_sampler = HMC_obj.sample()
 
-        result = HMC_sampler(rng_key_set[1], 10000, initial_position, None)
+        result = HMC_obj.sample(rng_key_set[1], 10000, initial_position, None)
 
         assert jnp.isclose(jnp.mean(result[1]), 0, atol=1e-2)
         assert jnp.isclose(jnp.var(result[1]), 1, atol=1e-2)
@@ -143,10 +136,10 @@ class TestMALA:
         initial_logp = log_posterior(initial_position, None)
 
         result1 = MALA_obj.kernel(
-            rng_key_set[0], initial_position[0], initial_logp, MALA_obj.params
+            rng_key_set[0], initial_position[0], initial_logp, None
         )
         result2 = MALA_obj.kernel(
-            rng_key_set[0], initial_position[0], initial_logp, MALA_obj.params
+            rng_key_set[0], initial_position[0], initial_logp, None
         )
 
         assert jnp.allclose(result1[0], result2[0])
@@ -203,8 +196,12 @@ class TestGRW:
         )
         initial_logp = log_posterior(initial_position)
 
-        result1 = GRW_obj.kernel(rng_key_set[0], initial_position[0], initial_logp)
-        result2 = GRW_obj.kernel(rng_key_set[0], initial_position[0], initial_logp)
+        result1 = GRW_obj.kernel(
+            rng_key_set[0], initial_position[0], initial_logp, None
+        )
+        result2 = GRW_obj.kernel(
+            rng_key_set[0], initial_position[0], initial_logp, None
+        )
 
         assert jnp.allclose(result1[0], result2[0])
         assert result1[1] == result2[1]
