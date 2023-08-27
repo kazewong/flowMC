@@ -1,10 +1,10 @@
 import jax
-import jax.numpy as jnp  # JAX NumPy
 import numpy as np
+import jax.numpy as jnp
 from scipy.stats import norm
+from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
+from flowMC.sampler.MALA import MALA
 
-from flowMC.nfmodel.realNVP import RealNVP
-from flowMC.sampler.Gaussian_random_walk import rw_metropolis_sampler
 from flowMC.sampler.Sampler import Sampler
 from flowMC.utils.PRNG_keys import initialize_rng_keys
 from flowMC.utils.PythonFunctionWrap import wrap_python_log_prob_fn
@@ -28,30 +28,23 @@ momentum = 0.9
 num_epochs = 100
 batch_size = 1000
 
-print("Preparing RNG keys")
-rng_key_set = initialize_rng_keys(n_chains, seed=42)
+data = jnp.zeros(n_dim)
 
-print("Initializing MCMC model and normalizing flow model.")
+rng_key_set = initialize_rng_keys(n_chains, 42)
+model = MaskedCouplingRQSpline(n_dim, 4, [32, 32], 8, jax.random.PRNGKey(10))
 
-initial_position = jax.random.normal(
-    rng_key_set[0], shape=(n_chains, n_dim)
-)  # (n_dim, n_chains)
+initial_position = jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
 
+MALA_Sampler = MALA(neal_funnel, True, {"step_size": 0.1})
 
-# model = RQSpline(n_dim, 10, [128, 128], 8)
-# run_mcmc = jax.vmap(rw_metropolis_sampler, in_axes=(0, None, None, 0), out_axes=0)
-
-# print("Initializing sampler class")
-# local_sampler_caller = lambda x: make_mala_sampler(x, jit=True)
 
 print("Initializing sampler class")
 
 nf_sampler = Sampler(
     n_dim,
     rng_key_set,
-    local_sampler_caller,
-    {'dt':1e-1},
-    neal_funnel,
+    jnp.zeros(5),
+    MALA_Sampler,
     model,
     n_loop_training=n_loop_training,
     n_loop_production=n_loop_production,
@@ -64,16 +57,24 @@ nf_sampler = Sampler(
     batch_size=batch_size,
     use_global=True,
 )
-print("Sampling")
 
-nf_sampler.sample(initial_position)
-chains, log_prob, local_accs, global_accs, loss_vals = nf_sampler.get_sampler_state()
-nf_samples = nf_sampler.sample_flow()
+nf_sampler.sample(initial_position, data)
+summary = nf_sampler.get_sampler_state(training=True)
+chains, log_prob, local_accs, global_accs, loss_vals = summary.values()
+nf_samples = nf_sampler.sample_flow(10000)
+
+print(
+    "chains shape: ",
+    chains.shape,
+    "local_accs shape: ",
+    local_accs.shape,
+    "global_accs shape: ",
+    global_accs.shape,
+)
 
 chains = np.array(chains)
 nf_samples = np.array(nf_samples[1])
 loss_vals = np.array(loss_vals)
-
 import corner
 import matplotlib.pyplot as plt
 
