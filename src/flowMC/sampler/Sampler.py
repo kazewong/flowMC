@@ -65,7 +65,7 @@ class Sampler:
         self.n_chains = kwargs.get("n_chains", 20)
         self.n_epochs = kwargs.get("n_epochs", 30)
         self.learning_rate = kwargs.get("learning_rate", 0.01)
-        self.max_samples = kwargs.get("max_samples", 10000)
+        self.max_samples = kwargs.get("max_samples", 100000)
         self.momentum = kwargs.get("momentum", 0.9)
         self.batch_size = kwargs.get("batch_size", 10000)
         self.use_global = kwargs.get("use_global", True)
@@ -73,6 +73,7 @@ class Sampler:
         self.keep_quantile = kwargs.get("keep_quantile", 0)
         self.local_autotune = kwargs.get("local_autotune", None)
         self.train_thinning = kwargs.get("train_thinning", 1)
+        self.n_sample_max = kwargs.get("n_sample_max", 10000)
         self.verbose = kwargs.get("verbose", False)
 
         self.variables = {"mean": None, "var": None}
@@ -84,7 +85,7 @@ class Sampler:
             n_chains=self.n_chains, n_dims=n_dim, n_step=self.n_local_steps, data=data
         )
 
-        self.global_sampler = NFProposal(self.local_sampler.logpdf, jit=self.local_sampler.jit, model=nf_model)
+        self.global_sampler = NFProposal(self.local_sampler.logpdf, jit=self.local_sampler.jit, model=nf_model, n_sample_max=self.n_sample_max)
 
         self.likelihood_vec = self.local_sampler.logpdf_vmap
 
