@@ -1,6 +1,6 @@
 from typing import Callable, Tuple
 import jax.numpy as jnp
-from jaxtyping import Array
+from jaxtyping import Array, Int, Float
 from flowMC.nfmodel.utils import make_training_loop
 from flowMC.sampler.NF_proposal import NFProposal
 import optax
@@ -8,6 +8,7 @@ from flowMC.sampler.Proposal_Base import ProposalBase
 from flowMC.nfmodel.base import NFModel
 from tqdm import tqdm
 import equinox as eqx
+import numpy as np
 
 
 class Sampler:
@@ -418,3 +419,63 @@ class Sampler:
         self.summary = {}
         self.summary["training"] = training
         self.summary["production"] = production
+
+    def get_global_acceptance_distribution(self, n_bins: int = 10, training: bool = False) -> tuple[Int[Array, "n_bin n_loop"], Float[Array, "n_bin n_loop"]]:
+        """
+        Get the global acceptance distribution as a histogram per epoch.
+
+        Returns:
+            axis (Device Array): Axis of the histogram.
+            hist (Device Array): Histogram of the global acceptance distribution.
+        """
+        if training == True:
+            n_loop = self.n_loop_training
+            global_accs = self.summary["training"]["global_accs"]
+        else:
+            n_loop = self.n_loop_production
+            global_accs = self.summary["production"]["global_accs"]
+
+        hist = [np.histogram(global_accs[:, i*(self.n_global_steps-1): (i+1)*(self.n_global_steps-1)].mean(axis=1), bins=n_bins) for i in range(n_loop)]
+        hist = np.array([hist[i][0] for i in range(n_loop)]).T
+        axis = np.array([hist[i][1][:-1] for i in range(n_loop)]).T
+        return axis, hist
+
+    def get_local_acceptance_distribution(self, n_bins: int = 10, training: bool = False) -> tuple[Int[Array, "n_bin n_loop"], Float[Array, "n_bin n_loop"]]:
+        """
+        Get the local acceptance distribution as a histogram per epoch.
+
+        Returns:
+            axis (Device Array): Axis of the histogram.
+            hist (Device Array): Histogram of the local acceptance distribution.
+        """
+        if training == True:
+            n_loop = self.n_loop_training
+            local_accs = self.summary["training"]["local_accs"]
+        else:
+            n_loop = self.n_loop_production
+            local_accs = self.summary["production"]["local_accs"]
+
+        hist = [np.histogram(local_accs[:, i*(self.n_local_steps-1): (i+1)*(self.n_local_steps-1)].mean(axis=1), bins=n_bins) for i in range(n_loop)]
+        hist = np.array([hist[i][0] for i in range(n_loop)]).T
+        axis = np.array([hist[i][1][:-1] for i in range(n_loop)]).T
+        return axis, hist
+
+    def get_log_prob_distribution(self, n_bins: int = 10, training: bool = False) -> tuple[Int[Array, "n_bin n_loop"], Float[Array, "n_bin n_loop"]]:
+        """
+        Get the log probability distribution as a histogram per epoch.
+
+        Returns:
+            axis (Device Array): Axis of the histogram.
+            hist (Device Array): Histogram of the log probability distribution.
+        """
+        if training == True:
+            n_loop = self.n_loop_training
+            log_prob = self.summary["training"]["log_prob"]
+        else:
+            n_loop = self.n_loop_production
+            log_prob = self.summary["production"]["log_prob"]
+
+        hist = [np.histogram(log_prob[:, i*(self.n_local_steps-1): (i+1)*(self.n_local_steps-1)].mean(axis=1), bins=n_bins) for i in range(n_loop)]
+        hist = np.array([hist[i][0] for i in range(n_loop)]).T
+        axis = np.array([hist[i][1][:-1] for i in range(n_loop)]).T
+        return axis, hist
