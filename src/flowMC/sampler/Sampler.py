@@ -91,6 +91,7 @@ class Sampler:
         self.likelihood_vec = self.local_sampler.logpdf_vmap
 
         tx = optax.adam(self.learning_rate, self.momentum)
+        self.optim_state = tx.init(eqx.filter(self.nf_model, eqx.is_array))
         self.nf_training_loop, train_epoch, train_step = make_training_loop(tx)
 
         # Initialized result dictionary
@@ -216,10 +217,11 @@ class Sampler:
                     lambda m: m._data_cov, self.nf_model, self.variables["cov"]
                 )
 
-                self.rng_keys_nf, self.global_sampler.model, loss_values = self.nf_training_loop(
+                self.rng_keys_nf, self.global_sampler.model, self.optim_state, loss_values = self.nf_training_loop(
                     self.rng_keys_nf,
                     self.nf_model,
                     flat_chain,
+                    self.optim_state,
                     self.n_epochs,
                     self.batch_size,
                     self.verbose,
@@ -436,8 +438,8 @@ class Sampler:
             global_accs = self.summary["production"]["global_accs"]
 
         hist = [np.histogram(global_accs[:, i*(self.n_global_steps-1): (i+1)*(self.n_global_steps-1)].mean(axis=1), bins=n_bins) for i in range(n_loop)]
-        hist = np.array([hist[i][0] for i in range(n_loop)]).T
         axis = np.array([hist[i][1][:-1] for i in range(n_loop)]).T
+        hist = np.array([hist[i][0] for i in range(n_loop)]).T
         return axis, hist
 
     def get_local_acceptance_distribution(self, n_bins: int = 10, training: bool = False) -> tuple[Int[Array, "n_bin n_loop"], Float[Array, "n_bin n_loop"]]:
@@ -456,8 +458,8 @@ class Sampler:
             local_accs = self.summary["production"]["local_accs"]
 
         hist = [np.histogram(local_accs[:, i*(self.n_local_steps-1): (i+1)*(self.n_local_steps-1)].mean(axis=1), bins=n_bins) for i in range(n_loop)]
-        hist = np.array([hist[i][0] for i in range(n_loop)]).T
         axis = np.array([hist[i][1][:-1] for i in range(n_loop)]).T
+        hist = np.array([hist[i][0] for i in range(n_loop)]).T
         return axis, hist
 
     def get_log_prob_distribution(self, n_bins: int = 10, training: bool = False) -> tuple[Int[Array, "n_bin n_loop"], Float[Array, "n_bin n_loop"]]:
@@ -476,6 +478,6 @@ class Sampler:
             log_prob = self.summary["production"]["log_prob"]
 
         hist = [np.histogram(log_prob[:, i*(self.n_local_steps-1): (i+1)*(self.n_local_steps-1)].mean(axis=1), bins=n_bins) for i in range(n_loop)]
-        hist = np.array([hist[i][0] for i in range(n_loop)]).T
         axis = np.array([hist[i][1][:-1] for i in range(n_loop)]).T
+        hist = np.array([hist[i][0] for i in range(n_loop)]).T
         return axis, hist

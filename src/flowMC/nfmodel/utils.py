@@ -18,6 +18,7 @@ def make_training_loop(optim: optax.GradientTransformation) -> Callable:
     Returns:
         train_flow: Function that trains the model.
     """
+
     @eqx.filter_value_and_grad
     def loss_fn(model, x):
         return -jnp.mean(model.log_prob(x))
@@ -55,10 +56,18 @@ def make_training_loop(optim: optax.GradientTransformation) -> Callable:
                 value, model, state = train_step(model, batch, state)
         else:
             value, model, state = train_step(model, train_ds, state)
-            
+
         return value, model, state
 
-    def train_flow(rng: PRNGKeyArray, model: eqx.Module, data: Array, num_epochs: int, batch_size: int, verbose: bool = True) -> Tuple[PRNGKeyArray, eqx.Module, Array]:
+    def train_flow(
+        rng: PRNGKeyArray,
+        model: eqx.Module,
+        data: Array,
+        state: optax.OptState,
+        num_epochs: int,
+        batch_size: int,
+        verbose: bool = True,
+    ) -> Tuple[PRNGKeyArray, eqx.Module, Array]:
         """Train a normalizing flow model.
 
         Args:
@@ -74,7 +83,6 @@ def make_training_loop(optim: optax.GradientTransformation) -> Callable:
             model (eqx.Model): Updated NF model.
             loss_values (Array): Loss values.
         """
-        state = optim.init(eqx.filter(model,eqx.is_array))
         loss_values = jnp.zeros(num_epochs)
         if verbose:
             pbar = trange(num_epochs, desc="Training NF", miniters=int(num_epochs / 10))
@@ -87,7 +95,6 @@ def make_training_loop(optim: optax.GradientTransformation) -> Callable:
             rng, input_rng = jax.random.split(rng)
             # Run an optimization step over a training batch
             value, model, state = train_epoch(input_rng, model, state, data, batch_size)
-            # print('Train loss: %.3f' % value)
             loss_values = loss_values.at[epoch].set(value)
             if loss_values[epoch] < best_loss:
                 best_model = model
@@ -100,6 +107,6 @@ def make_training_loop(optim: optax.GradientTransformation) -> Callable:
                     if epoch == num_epochs:
                         pbar.set_description(f"Training NF, current loss: {value:.3f}")
 
-        return rng, best_model, loss_values
+        return rng, best_model, state, loss_values
 
     return train_flow, train_epoch, train_step
