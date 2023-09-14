@@ -92,7 +92,7 @@ class Sampler:
 
         self.likelihood_vec = self.local_sampler.logpdf_vmap
 
-        tx = optax.adam(self.learning_rate, self.momentum)
+        tx = optax.chain(optax.clip(1.0),optax.adam(self.learning_rate, self.momentum))
         self.optim_state = tx.init(eqx.filter(self.nf_model, eqx.is_array))
         self.nf_training_loop, train_epoch, train_step = make_training_loop(tx)
 

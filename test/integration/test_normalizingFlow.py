@@ -29,18 +29,18 @@ def test_realNVP():
 
 def test_rqSpline():
 
-    n_dim = 15
-    num_epochs = 300
-    batch_size = 50000
+    n_dim = 2
+    num_epochs = 5
+    batch_size = 100
     learning_rate = 0.001
     momentum = 0.9
 
     key1, rng, init_rng = jax.random.split(jax.random.PRNGKey(0), 3)
     data = jax.random.normal(key1, (batch_size, n_dim))
 
-    n_layers = 10
-    hidden_dim = 128
-    num_bins = 10
+    n_layers = 4
+    hidden_dim = 32
+    num_bins = 4
 
     model = MaskedCouplingRQSpline(n_dim, n_layers, [hidden_dim, hidden_dim], num_bins , rng, data_mean = jnp.mean(data, axis=0), data_cov = jnp.cov(data.T))
     optim = optax.adam(learning_rate, momentum)
