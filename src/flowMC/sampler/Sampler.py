@@ -1,3 +1,4 @@
+import pickle
 from typing import Callable, Tuple
 import jax.numpy as jnp
 from jaxtyping import Array, Int, Float
@@ -438,7 +439,7 @@ class Sampler:
             n_loop = self.n_loop_production
             global_accs = self.summary["production"]["global_accs"]
 
-        hist = [np.histogram(global_accs[:, i*(self.n_global_steps-1): (i+1)*(self.n_global_steps-1)].mean(axis=1), bins=n_bins) for i in range(n_loop)]
+        hist = [np.histogram(global_accs[:, i*(self.n_global_steps//self.output_thinning-1): (i+1)*(self.n_global_steps//self.output_thinning-1)].mean(axis=1), bins=n_bins) for i in range(n_loop)]
         axis = np.array([hist[i][1][:-1] for i in range(n_loop)]).T
         hist = np.array([hist[i][0] for i in range(n_loop)]).T
         return axis, hist
@@ -458,7 +459,7 @@ class Sampler:
             n_loop = self.n_loop_production
             local_accs = self.summary["production"]["local_accs"]
 
-        hist = [np.histogram(local_accs[:, i*(self.n_local_steps-1): (i+1)*(self.n_local_steps-1)].mean(axis=1), bins=n_bins) for i in range(n_loop)]
+        hist = [np.histogram(local_accs[:, i*(self.n_local_steps//self.output_thinning-1): (i+1)*(self.n_local_steps//self.output_thinning-1)].mean(axis=1), bins=n_bins) for i in range(n_loop)]
         axis = np.array([hist[i][1][:-1] for i in range(n_loop)]).T
         hist = np.array([hist[i][0] for i in range(n_loop)]).T
         return axis, hist
@@ -478,7 +479,7 @@ class Sampler:
             n_loop = self.n_loop_production
             log_prob = self.summary["production"]["log_prob"]
 
-        hist = [np.histogram(log_prob[:, i*(self.n_local_steps-1): (i+1)*(self.n_local_steps-1)].mean(axis=1), bins=n_bins) for i in range(n_loop)]
+        hist = [np.histogram(log_prob[:, i*(self.n_local_steps//self.output_thinning-1): (i+1)*(self.n_local_steps//self.output_thinning-1)].mean(axis=1), bins=n_bins) for i in range(n_loop)]
         axis = np.array([hist[i][1][:-1] for i in range(n_loop)]).T
         hist = np.array([hist[i][0] for i in range(n_loop)]).T
         return axis, hist
