@@ -74,6 +74,7 @@ class Sampler:
         self.keep_quantile = kwargs.get("keep_quantile", 0)
         self.local_autotune = kwargs.get("local_autotune", None)
         self.train_thinning = kwargs.get("train_thinning", 1)
+        self.output_thinning = kwargs.get("output_thinning", 1)
         self.n_sample_max = kwargs.get("n_sample_max", 10000)
         self.verbose = kwargs.get("verbose", False)
 
@@ -166,14 +167,14 @@ class Sampler:
         )
 
         self.summary[summary_mode]["chains"] = jnp.append(
-            self.summary[summary_mode]["chains"], positions, axis=1
+            self.summary[summary_mode]["chains"], positions[:, ::self.output_thinning], axis=1
         )
         self.summary[summary_mode]["log_prob"] = jnp.append(
-            self.summary[summary_mode]["log_prob"], log_prob, axis=1
+            self.summary[summary_mode]["log_prob"], log_prob[:, ::self.output_thinning], axis=1
         )
 
         self.summary[summary_mode]["local_accs"] = jnp.append(
-            self.summary[summary_mode]["local_accs"], local_acceptance[:, 1:], axis=1
+            self.summary[summary_mode]["local_accs"], local_acceptance[:, 1::self.output_thinning], axis=1
         )
 
         if self.use_global == True:
@@ -247,15 +248,15 @@ class Sampler:
             )
 
             self.summary[summary_mode]["chains"] = jnp.append(
-                self.summary[summary_mode]["chains"], nf_chain, axis=1
+                self.summary[summary_mode]["chains"], nf_chain[:, ::self.output_thinning], axis=1
             )
             self.summary[summary_mode]["log_prob"] = jnp.append(
-                self.summary[summary_mode]["log_prob"], log_prob, axis=1
+                self.summary[summary_mode]["log_prob"], log_prob[:, ::self.output_thinning], axis=1
             )
 
             self.summary[summary_mode]["global_accs"] = jnp.append(
                 self.summary[summary_mode]["global_accs"],
-                global_acceptance[:, 1:],
+                global_acceptance[:, 1::self.output_thinning],
                 axis=1,
             )
 
@@ -481,3 +482,13 @@ class Sampler:
         axis = np.array([hist[i][1][:-1] for i in range(n_loop)]).T
         hist = np.array([hist[i][0] for i in range(n_loop)]).T
         return axis, hist
+
+    def save_summary(self, path: str):
+        """
+        Save the summary to a file.
+
+        Args:
+            path (str): Path to save the summary.
+        """
+        with open(path, "wb") as f:
+            pickle.dump(self.summary, f)
