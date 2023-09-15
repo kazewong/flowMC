@@ -18,10 +18,12 @@ def test_realNVP():
 
     model = RealNVP(2, 4, 32, rng)
     optim = optax.adam(learning_rate, momentum)
+    state = optim.init(eqx.filter(model, eqx.is_array))
+
 
     train_flow, train_epoch, train_step = make_training_loop(optim)
-    rng, best_model, loss_values = train_flow(
-        rng, model, data, num_epochs, batch_size, verbose = True
+    rng, best_model, state, loss_values = train_flow(
+        rng, model, data, state, num_epochs, batch_size, verbose = True
     )
     rng_key_nf = jax.random.PRNGKey(124098)
     model.sample(rng_key_nf, 10000)
@@ -29,20 +31,26 @@ def test_realNVP():
 
 def test_rqSpline():
 
-    key1, rng, init_rng = jax.random.split(jax.random.PRNGKey(0), 3)
-    data = jax.random.normal(key1, (100,2))
-
+    n_dim = 2
     num_epochs = 5
     batch_size = 100
     learning_rate = 0.001
     momentum = 0.9
 
-    model = MaskedCouplingRQSpline(2, 4, [32,32], 4 , rng, data_mean = jnp.mean(data, axis=0), data_cov = jnp.cov(data.T))
+    key1, rng, init_rng = jax.random.split(jax.random.PRNGKey(0), 3)
+    data = jax.random.normal(key1, (batch_size, n_dim))
+
+    n_layers = 4
+    hidden_dim = 32
+    num_bins = 4
+
+    model = MaskedCouplingRQSpline(n_dim, n_layers, [hidden_dim, hidden_dim], num_bins , rng, data_mean = jnp.mean(data, axis=0), data_cov = jnp.cov(data.T))
     optim = optax.adam(learning_rate, momentum)
+    state = optim.init(eqx.filter(model, eqx.is_array))
 
     train_flow, train_epoch, train_step = make_training_loop(optim)
-    rng, best_model, loss_values = train_flow(
-        rng, model, data, num_epochs, batch_size, verbose = True
+    rng, best_model, state, loss_values = train_flow(
+        rng, model, data, state, num_epochs, batch_size, verbose = True
     )
     rng_key_nf = jax.random.PRNGKey(124098)
     model.sample(rng_key_nf, 10000)

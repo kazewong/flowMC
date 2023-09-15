@@ -266,10 +266,12 @@ class TestNF:
             data_cov=jnp.cov(data.T),
         )
         optim = optax.adam(learning_rate, momentum)
+        state = optim.init(eqx.filter(model, eqx.is_array))
+
 
         train_flow, train_epoch, train_step = make_training_loop(optim)
-        rng, self.model, loss_values = train_flow(
-            rng, model, data, num_epochs, batch_size, verbose=True
+        rng, self.model, state, loss_values = train_flow(
+            rng, model, data, state, num_epochs, batch_size, verbose=True
         )
         key1, rng, init_rng = jax.random.split(jax.random.PRNGKey(1), 3)
 

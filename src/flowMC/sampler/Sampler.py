@@ -1,6 +1,7 @@
+import pickle
 from typing import Callable, Tuple
 import jax.numpy as jnp
-from jaxtyping import Array
+from jaxtyping import Array, Int, Float
 from flowMC.nfmodel.utils import make_training_loop
 from flowMC.sampler.NF_proposal import NFProposal
 import optax
@@ -8,6 +9,7 @@ from flowMC.sampler.Proposal_Base import ProposalBase
 from flowMC.nfmodel.base import NFModel
 from tqdm import tqdm
 import equinox as eqx
+import numpy as np
 
 
 class Sampler:
@@ -73,6 +75,7 @@ class Sampler:
         self.keep_quantile = kwargs.get("keep_quantile", 0)
         self.local_autotune = kwargs.get("local_autotune", None)
         self.train_thinning = kwargs.get("train_thinning", 1)
+        self.output_thinning = kwargs.get("output_thinning", 1)
         self.n_sample_max = kwargs.get("n_sample_max", 10000)
         self.verbose = kwargs.get("verbose", False)
 
@@ -89,7 +92,8 @@ class Sampler:
 
         self.likelihood_vec = self.local_sampler.logpdf_vmap
 
-        tx = optax.adam(self.learning_rate, self.momentum)
+        tx = optax.chain(optax.clip(1.0),optax.adam(self.learning_rate, self.momentum))
+        self.optim_state = tx.init(eqx.filter(self.nf_model, eqx.is_array))
         self.nf_training_loop, train_epoch, train_step = make_training_loop(tx)
 
         # Initialized result dictionary
@@ -164,14 +168,14 @@ class Sampler:
         )
 
         self.summary[summary_mode]["chains"] = jnp.append(
-            self.summary[summary_mode]["chains"], positions, axis=1
+            self.summary[summary_mode]["chains"], positions[:, ::self.output_thinning], axis=1
         )
         self.summary[summary_mode]["log_prob"] = jnp.append(
-            self.summary[summary_mode]["log_prob"], log_prob, axis=1
+            self.summary[summary_mode]["log_prob"], log_prob[:, ::self.output_thinning], axis=1
         )
 
         self.summary[summary_mode]["local_accs"] = jnp.append(
-            self.summary[summary_mode]["local_accs"], local_acceptance[:, 1:], axis=1
+            self.summary[summary_mode]["local_accs"], local_acceptance[:, 1::self.output_thinning], axis=1
         )
 
         if self.use_global == True:
@@ -215,10 +219,11 @@ class Sampler:
                     lambda m: m._data_cov, self.nf_model, self.variables["cov"]
                 )
 
-                self.rng_keys_nf, self.global_sampler.model, loss_values = self.nf_training_loop(
+                self.rng_keys_nf, self.global_sampler.model, self.optim_state, loss_values = self.nf_training_loop(
                     self.rng_keys_nf,
                     self.nf_model,
                     flat_chain,
+                    self.optim_state,
                     self.n_epochs,
                     self.batch_size,
                     self.verbose,
@@ -244,15 +249,15 @@ class Sampler:
             )
 
             self.summary[summary_mode]["chains"] = jnp.append(
-                self.summary[summary_mode]["chains"], nf_chain, axis=1
+                self.summary[summary_mode]["chains"], nf_chain[:, ::self.output_thinning], axis=1
             )
             self.summary[summary_mode]["log_prob"] = jnp.append(
-                self.summary[summary_mode]["log_prob"], log_prob, axis=1
+                self.summary[summary_mode]["log_prob"], log_prob[:, ::self.output_thinning], axis=1
             )
 
             self.summary[summary_mode]["global_accs"] = jnp.append(
                 self.summary[summary_mode]["global_accs"],
-                global_acceptance[:, 1:],
+                global_acceptance[:, 1::self.output_thinning],
                 axis=1,
             )
 
@@ -418,3 +423,73 @@ class Sampler:
         self.summary = {}
         self.summary["training"] = training
         self.summary["production"] = production
+
+    def get_global_acceptance_distribution(self, n_bins: int = 10, training: bool = False) -> tuple[Int[Array, "n_bin n_loop"], Float[Array, "n_bin n_loop"]]:
+        """
+        Get the global acceptance distribution as a histogram per epoch.
+
+        Returns:
+            axis (Device Array): Axis of the histogram.
+            hist (Device Array): Histogram of the global acceptance distribution.
+        """
+        if training == True:
+            n_loop = self.n_loop_training
+            global_accs = self.summary["training"]["global_accs"]
+        else:
+            n_loop = self.n_loop_production
+            global_accs = self.summary["production"]["global_accs"]
+
+        hist = [np.histogram(global_accs[:, i*(self.n_global_steps//self.output_thinning-1): (i+1)*(self.n_global_steps//self.output_thinning-1)].mean(axis=1), bins=n_bins) for i in range(n_loop)]
+        axis = np.array([hist[i][1][:-1] for i in range(n_loop)]).T
+        hist = np.array([hist[i][0] for i in range(n_loop)]).T
+        return axis, hist
+
+    def get_local_acceptance_distribution(self, n_bins: int = 10, training: bool = False) -> tuple[Int[Array, "n_bin n_loop"], Float[Array, "n_bin n_loop"]]:
+        """
+        Get the local acceptance distribution as a histogram per epoch.
+
+        Returns:
+            axis (Device Array): Axis of the histogram.
+            hist (Device Array): Histogram of the local acceptance distribution.
+        """
+        if training == True:
+            n_loop = self.n_loop_training
+            local_accs = self.summary["training"]["local_accs"]
+        else:
+            n_loop = self.n_loop_production
+            local_accs = self.summary["production"]["local_accs"]
+
+        hist = [np.histogram(local_accs[:, i*(self.n_local_steps//self.output_thinning-1): (i+1)*(self.n_local_steps//self.output_thinning-1)].mean(axis=1), bins=n_bins) for i in range(n_loop)]
+        axis = np.array([hist[i][1][:-1] for i in range(n_loop)]).T
+        hist = np.array([hist[i][0] for i in range(n_loop)]).T
+        return axis, hist
+
+    def get_log_prob_distribution(self, n_bins: int = 10, training: bool = False) -> tuple[Int[Array, "n_bin n_loop"], Float[Array, "n_bin n_loop"]]:
+        """
+        Get the log probability distribution as a histogram per epoch.
+
+        Returns:
+            axis (Device Array): Axis of the histogram.
+            hist (Device Array): Histogram of the log probability distribution.
+        """
+        if training == True:
+            n_loop = self.n_loop_training
+            log_prob = self.summary["training"]["log_prob"]
+        else:
+            n_loop = self.n_loop_production
+            log_prob = self.summary["production"]["log_prob"]
+
+        hist = [np.histogram(log_prob[:, i*(self.n_local_steps//self.output_thinning-1): (i+1)*(self.n_local_steps//self.output_thinning-1)].mean(axis=1), bins=n_bins) for i in range(n_loop)]
+        axis = np.array([hist[i][1][:-1] for i in range(n_loop)]).T
+        hist = np.array([hist[i][0] for i in range(n_loop)]).T
+        return axis, hist
+
+    def save_summary(self, path: str):
+        """
+        Save the summary to a file.
+
+        Args:
+            path (str): Path to save the summary.
+        """
+        with open(path, "wb") as f:
+            pickle.dump(self.summary, f)
