@@ -11,7 +11,8 @@ import jax
 import jax.numpy as jnp
 import equinox as eqx
 from jaxtyping import Array
-    
+
+
 class MLP(eqx.Module):
     r"""Multilayer perceptron.
 
@@ -22,31 +23,44 @@ class MLP(eqx.Module):
     Attributes:
         layers (List): List of layers.
         activation (Callable): Activation function.
-        use_bias (bool): Whether to use bias.        
+        use_bias (bool): Whether to use bias.
     """
     layers: List
 
-    def __init__(self, shape: Iterable[int], key: jax.random.PRNGKey, scale: float = 1e-4, activation: Callable = jax.nn.relu, use_bias: bool = True):
+    def __init__(
+        self,
+        shape: Iterable[int],
+        key: jax.random.PRNGKey,
+        scale: float = 1e-4,
+        activation: Callable = jax.nn.relu,
+        use_bias: bool = True,
+    ):
         self.layers = []
         for i in range(len(shape) - 2):
             key, subkey1, subkey2 = jax.random.split(key, 3)
-            layer = eqx.nn.Linear(shape[i], shape[i + 1], key=subkey1, use_bias=use_bias)
-            weight = jax.random.normal(subkey2, (shape[i + 1], shape[i]))*jnp.sqrt(scale/shape[i])
+            layer = eqx.nn.Linear(
+                shape[i], shape[i + 1], key=subkey1, use_bias=use_bias
+            )
+            weight = jax.random.normal(subkey2, (shape[i + 1], shape[i])) * jnp.sqrt(
+                scale / shape[i]
+            )
             layer = eqx.tree_at(lambda l: l.weight, layer, weight)
             self.layers.append(layer)
             self.layers.append(activation)
         key, subkey = jax.random.split(key)
-        self.layers.append(eqx.nn.Linear(shape[-2], shape[-1], key=subkey, use_bias=use_bias))
+        self.layers.append(
+            eqx.nn.Linear(shape[-2], shape[-1], key=subkey, use_bias=use_bias)
+        )
 
     def __call__(self, x: Array):
         for layer in self.layers:
             x = layer(x)
         return x
-    
+
     @property
     def n_input(self) -> int:
         return self.layers[0].in_features
-    
+
     @property
     def n_output(self) -> int:
         return self.layers[-1].out_features
@@ -81,16 +95,17 @@ class MaskedCouplingLayer(Bijection):
         self._mask = mask
 
     def forward(self, x: Array) -> Tuple[Array, Array]:
-        y, log_det = self.bijector(x, x*self.mask)
-        y = (1-self.mask)*y + self.mask*x
-        log_det = ((1-self.mask)*log_det).sum()
+        y, log_det = self.bijector(x, x * self.mask)
+        y = (1 - self.mask) * y + self.mask * x
+        log_det = ((1 - self.mask) * log_det).sum()
         return y, log_det
 
     def inverse(self, x: Array) -> Tuple[Array, Array]:
-        y, log_det = self.bijector.inverse(x, x*self.mask)
-        y = (1-self.mask)*y + self.mask*x
-        log_det = ((1-self.mask)*log_det).sum()
+        y, log_det = self.bijector.inverse(x, x * self.mask)
+        y = (1 - self.mask) * y + self.mask * x
+        log_det = ((1 - self.mask) * log_det).sum()
         return y, log_det
+
 
 class MLPAffine(Bijection):
     scale_MLP: MLP
@@ -118,8 +133,9 @@ class MLPAffine(Bijection):
         scale = jnp.tanh(self.scale_MLP(condition_x)) * self.dt
         shift = self.shift_MLP(condition_x) * self.dt
         log_det = -scale
-        y = x  * jnp.exp(-scale) - shift
+        y = x * jnp.exp(-scale) - shift
         return y, log_det
+
 
 class ScalarAffine(Bijection):
     scale: Array
@@ -142,10 +158,11 @@ class ScalarAffine(Bijection):
         log_det = -self.scale
         return y, log_det
 
+
 class Gaussian(Distribution):
 
     r"""Multivariate Gaussian distribution.
-    
+
     Args:
         mean (Array): Mean.
         cov (Array): Covariance matrix.
@@ -184,7 +201,8 @@ class Gaussian(Distribution):
 
     def sample(self, key: jax.random.PRNGKey, n_samples: int = 1) -> Array:
         return jax.random.multivariate_normal(key, self.mean, self.cov, (n_samples,))
-    
+
+
 class Composable(Distribution):
 
     distributions: list[Distribution]
@@ -197,11 +215,11 @@ class Composable(Distribution):
     def log_prob(self, x: Array) -> Array:
         log_prob = 0
         for dist, (_, ranges) in zip(self.distributions, self.partitions.items()):
-            log_prob += dist.log_prob(x[ranges[0]:ranges[1]])
+            log_prob += dist.log_prob(x[ranges[0] : ranges[1]])
         return log_prob
-    
+
     def sample(self, rng_key: jax.random.PRNGKey, n_samples: int) -> Array:
         samples = {}
-        for dist, (key,_) in zip(self.distributions, self.partitions.items()):
+        for dist, (key, _) in zip(self.distributions, self.partitions.items()):
             rng_key, sub_key = jax.random.split(rng_key)
             samples[key] = dist.sample(sub_key, n_samples=n_samples)

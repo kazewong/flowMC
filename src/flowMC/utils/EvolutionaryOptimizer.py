@@ -3,6 +3,7 @@ import jax
 import jax.numpy as jnp
 import tqdm
 
+
 class EvolutionaryOptimizer:
 
     """
@@ -42,7 +43,7 @@ class EvolutionaryOptimizer:
         self.es_params = self.strategy.default_params.replace(clip_min=0, clip_max=1)
         self.verbose = verbose
 
-    def optimize(self, objective, bound, n_loops = 100, seed = 9527):
+    def optimize(self, objective, bound, n_loops=100, seed=9527):
         """
         Optimize the objective function.
 
@@ -62,7 +63,11 @@ class EvolutionaryOptimizer:
         None
         """
         rng = jax.random.PRNGKey(seed)
-        progress_bar = tqdm.tqdm(range(n_loops), "Generation: ") if self.verbose else range(n_loops)
+        progress_bar = (
+            tqdm.tqdm(range(n_loops), "Generation: ")
+            if self.verbose
+            else range(n_loops)
+        )
         self.bound = bound
         self.state = self.strategy.initialize(rng, self.es_params)
         for i in progress_bar:
@@ -70,8 +75,13 @@ class EvolutionaryOptimizer:
             x, state = self.strategy.ask(rng_gen, self.state, self.es_params)
             theta = x * (bound[:, 1] - bound[:, 0]) + bound[:, 0]
             fitness = objective(theta)
-            self.state = self.strategy.tell(x, fitness.astype(jnp.float32), state, self.es_params)
-            if self.verbose: progress_bar.set_description(f"Generation: {i}, Fitness: {self.state.best_fitness:.4f}")
+            self.state = self.strategy.tell(
+                x, fitness.astype(jnp.float32), state, self.es_params
+            )
+            if self.verbose:
+                progress_bar.set_description(
+                    f"Generation: {i}, Fitness: {self.state.best_fitness:.4f}"
+                )
 
     def get_result(self):
         """
@@ -85,6 +95,9 @@ class EvolutionaryOptimizer:
             The best fitness.
         """
 
-        best_member = self.state.best_member* (self.bound[:, 1] - self.bound[:, 0]) + self.bound[:, 0]
+        best_member = (
+            self.state.best_member * (self.bound[:, 1] - self.bound[:, 0])
+            + self.bound[:, 0]
+        )
         best_fitness = self.state.best_fitness
         return best_member, best_fitness

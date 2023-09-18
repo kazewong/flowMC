@@ -1,5 +1,5 @@
 import pickle
-from typing import Callable, Tuple
+from typing import Tuple
 import jax.numpy as jnp
 from jaxtyping import Array, Int, Float
 from flowMC.nfmodel.utils import make_training_loop
@@ -27,16 +27,25 @@ class Sampler:
         n_local_steps (int, optional): Number of local steps per loop. Defaults to 50.
         n_global_steps (int, optional): Number of global steps per loop. Defaults to 50.
         n_chains (int, optional): Number of chains. Defaults to 20.
-        n_epochs (int, optional): Number of epochs per training loop. Defaults to 30.
-        learning_rate (float, optional): Learning rate for the NF model. Defaults to 0.01.
-        max_samples (int, optional): Maximum number of samples fed to training the NF model. Defaults to 10000.
+        n_epochs (int, optional):
+            Number of epochs per training loop. Defaults to 30.
+        learning_rate (float, optional):
+            Learning rate for the NF model. Defaults to 0.01.
+        max_samples (int, optional):
+            Maximum number of samples fed to training the NF model. Defaults to 10000.
         momentum (float, optional): Momentum for the NF model. Defaults to 0.9.
         batch_size (int, optional): Batch size for the NF model. Defaults to 10000.
-        use_global (bool, optional): Whether to use global sampler. Defaults to True.
-        logging (bool, optional): Whether to log the training process. Defaults to True.
-        keep_quantile (float, optional): Quantile of chains to keep when training the normalizing flow model. Defaults to 0..
-        local_autotune (None, optional): Auto-tune function for the local sampler. Defaults to None.
-        train_thinning (int, optional): Thinning for the data used to train the normalizing flow. Defaults to 1.
+        use_global (bool, optional):
+            Whether to use global sampler. Defaults to True.
+        logging (bool, optional):
+            Whether to log the training process. Defaults to True.
+        keep_quantile (float, optional):
+            Quantile of chains to keep when training the normalizing flow model.
+            Defaults to 0.
+        local_autotune (None, optional):
+            Auto-tune function for the local sampler. Defaults to None.
+        train_thinning (int, optional):
+            Thinning for the data used to train the normalizing flow. Defaults to 1.
     """
 
     @property
@@ -88,11 +97,16 @@ class Sampler:
             n_chains=self.n_chains, n_dims=n_dim, n_step=self.n_local_steps, data=data
         )
 
-        self.global_sampler = NFProposal(self.local_sampler.logpdf, jit=self.local_sampler.jit, model=nf_model, n_sample_max=self.n_sample_max)
+        self.global_sampler = NFProposal(
+            self.local_sampler.logpdf,
+            jit=self.local_sampler.jit,
+            model=nf_model,
+            n_sample_max=self.n_sample_max,
+        )
 
         self.likelihood_vec = self.local_sampler.logpdf_vmap
 
-        tx = optax.chain(optax.clip(1.0),optax.adam(self.learning_rate, self.momentum))
+        tx = optax.chain(optax.clip(1.0), optax.adam(self.learning_rate, self.momentum))
         self.optim_state = tx.init(eqx.filter(self.nf_model, eqx.is_array))
         self.nf_training_loop, train_epoch, train_step = make_training_loop(tx)
 
@@ -134,7 +148,7 @@ class Sampler:
 
         self.local_sampler_tuning(initial_position, data)
         last_step = initial_position
-        if self.use_global == True:
+        if self.use_global is True:
             last_step = self.global_sampler_tuning(last_step, data)
 
         last_step = self.production_run(last_step, data)
@@ -143,23 +157,31 @@ class Sampler:
         self, initial_position: jnp.array, data: jnp.array, training=False
     ) -> jnp.array:
         """
-        One sampling loop that iterate through the local sampler and potentially the global sampler.
+        One sampling loop that iterate through the local sampler
+        and potentially the global sampler.
         If training is set to True, the loop will also train the normalizing flow model.
 
         Args:
             initial_position (jnp.array): Initial position. Shape (n_chains, n_dim)
-            training (bool, optional): Whether to train the normalizing flow model. Defaults to False.
+            training (bool, optional):
+            Whether to train the normalizing flow model. Defaults to False.
 
         Returns:
-            chains (jnp.array): Samples from the posterior. Shape (n_chains, n_local_steps + n_global_steps, n_dim)
+            chains (jnp.array):
+            Samples from the posterior. Shape (n_chains, n_local_steps + n_global_steps, n_dim)
         """
 
-        if training == True:
+        if training is True:
             summary_mode = "training"
         else:
             summary_mode = "production"
 
-        self.rng_keys_mcmc, positions, log_prob, local_acceptance = self.local_sampler.sample(
+        (
+            self.rng_keys_mcmc,
+            positions,
+            log_prob,
+            local_acceptance,
+        ) = self.local_sampler.sample(
             self.rng_keys_mcmc,
             self.n_local_steps,
             initial_position,
@@ -168,18 +190,24 @@ class Sampler:
         )
 
         self.summary[summary_mode]["chains"] = jnp.append(
-            self.summary[summary_mode]["chains"], positions[:, ::self.output_thinning], axis=1
+            self.summary[summary_mode]["chains"],
+            positions[:, :: self.output_thinning],
+            axis=1,
         )
         self.summary[summary_mode]["log_prob"] = jnp.append(
-            self.summary[summary_mode]["log_prob"], log_prob[:, ::self.output_thinning], axis=1
+            self.summary[summary_mode]["log_prob"],
+            log_prob[:, :: self.output_thinning],
+            axis=1,
         )
 
         self.summary[summary_mode]["local_accs"] = jnp.append(
-            self.summary[summary_mode]["local_accs"], local_acceptance[:, 1::self.output_thinning], axis=1
+            self.summary[summary_mode]["local_accs"],
+            local_acceptance[:, 1 :: self.output_thinning],
+            axis=1,
         )
 
-        if self.use_global == True:
-            if training == True:
+        if self.use_global is True:
+            if training is True:
                 positions = self.summary["training"]["chains"][
                     :, :: self.train_thinning
                 ]
@@ -219,7 +247,12 @@ class Sampler:
                     lambda m: m._data_cov, self.nf_model, self.variables["cov"]
                 )
 
-                self.rng_keys_nf, self.global_sampler.model, self.optim_state, loss_values = self.nf_training_loop(
+                (
+                    self.rng_keys_nf,
+                    self.global_sampler.model,
+                    self.optim_state,
+                    loss_values,
+                ) = self.nf_training_loop(
                     self.rng_keys_nf,
                     self.nf_model,
                     flat_chain,
@@ -245,19 +278,23 @@ class Sampler:
                 self.n_global_steps,
                 positions[:, -1],
                 data,
-                verbose = self.verbose
+                verbose=self.verbose,
             )
 
             self.summary[summary_mode]["chains"] = jnp.append(
-                self.summary[summary_mode]["chains"], nf_chain[:, ::self.output_thinning], axis=1
+                self.summary[summary_mode]["chains"],
+                nf_chain[:, :: self.output_thinning],
+                axis=1,
             )
             self.summary[summary_mode]["log_prob"] = jnp.append(
-                self.summary[summary_mode]["log_prob"], log_prob[:, ::self.output_thinning], axis=1
+                self.summary[summary_mode]["log_prob"],
+                log_prob[:, :: self.output_thinning],
+                axis=1,
             )
 
             self.summary[summary_mode]["global_accs"] = jnp.append(
                 self.summary[summary_mode]["global_accs"],
-                global_acceptance[:, 1::self.output_thinning],
+                global_acceptance[:, 1 :: self.output_thinning],
                 axis=1,
             )
 
@@ -352,7 +389,7 @@ class Sampler:
             training (bool): Whether to get the training set sampler state. Defaults to False.
 
         """
-        if training == True:
+        if training is True:
             return self.summary["training"]
         else:
             return self.summary["production"]
@@ -424,7 +461,9 @@ class Sampler:
         self.summary["training"] = training
         self.summary["production"] = production
 
-    def get_global_acceptance_distribution(self, n_bins: int = 10, training: bool = False) -> tuple[Int[Array, "n_bin n_loop"], Float[Array, "n_bin n_loop"]]:
+    def get_global_acceptance_distribution(
+        self, n_bins: int = 10, training: bool = False
+    ) -> tuple[Int[Array, "n_bin n_loop"], Float[Array, "n_bin n_loop"]]:
         """
         Get the global acceptance distribution as a histogram per epoch.
 
@@ -432,19 +471,32 @@ class Sampler:
             axis (Device Array): Axis of the histogram.
             hist (Device Array): Histogram of the global acceptance distribution.
         """
-        if training == True:
+        if training is True:
             n_loop = self.n_loop_training
             global_accs = self.summary["training"]["global_accs"]
         else:
             n_loop = self.n_loop_production
             global_accs = self.summary["production"]["global_accs"]
 
-        hist = [np.histogram(global_accs[:, i*(self.n_global_steps//self.output_thinning-1): (i+1)*(self.n_global_steps//self.output_thinning-1)].mean(axis=1), bins=n_bins) for i in range(n_loop)]
+        hist = [
+            np.histogram(
+                global_accs[
+                    :,
+                    i
+                    * (self.n_global_steps // self.output_thinning - 1) : (i + 1)
+                    * (self.n_global_steps // self.output_thinning - 1),
+                ].mean(axis=1),
+                bins=n_bins,
+            )
+            for i in range(n_loop)
+        ]
         axis = np.array([hist[i][1][:-1] for i in range(n_loop)]).T
         hist = np.array([hist[i][0] for i in range(n_loop)]).T
         return axis, hist
 
-    def get_local_acceptance_distribution(self, n_bins: int = 10, training: bool = False) -> tuple[Int[Array, "n_bin n_loop"], Float[Array, "n_bin n_loop"]]:
+    def get_local_acceptance_distribution(
+        self, n_bins: int = 10, training: bool = False
+    ) -> tuple[Int[Array, "n_bin n_loop"], Float[Array, "n_bin n_loop"]]:
         """
         Get the local acceptance distribution as a histogram per epoch.
 
@@ -452,19 +504,32 @@ class Sampler:
             axis (Device Array): Axis of the histogram.
             hist (Device Array): Histogram of the local acceptance distribution.
         """
-        if training == True:
+        if training is True:
             n_loop = self.n_loop_training
             local_accs = self.summary["training"]["local_accs"]
         else:
             n_loop = self.n_loop_production
             local_accs = self.summary["production"]["local_accs"]
 
-        hist = [np.histogram(local_accs[:, i*(self.n_local_steps//self.output_thinning-1): (i+1)*(self.n_local_steps//self.output_thinning-1)].mean(axis=1), bins=n_bins) for i in range(n_loop)]
+        hist = [
+            np.histogram(
+                local_accs[
+                    :,
+                    i
+                    * (self.n_local_steps // self.output_thinning - 1) : (i + 1)
+                    * (self.n_local_steps // self.output_thinning - 1),
+                ].mean(axis=1),
+                bins=n_bins,
+            )
+            for i in range(n_loop)
+        ]
         axis = np.array([hist[i][1][:-1] for i in range(n_loop)]).T
         hist = np.array([hist[i][0] for i in range(n_loop)]).T
         return axis, hist
 
-    def get_log_prob_distribution(self, n_bins: int = 10, training: bool = False) -> tuple[Int[Array, "n_bin n_loop"], Float[Array, "n_bin n_loop"]]:
+    def get_log_prob_distribution(
+        self, n_bins: int = 10, training: bool = False
+    ) -> tuple[Int[Array, "n_bin n_loop"], Float[Array, "n_bin n_loop"]]:
         """
         Get the log probability distribution as a histogram per epoch.
 
@@ -472,14 +537,25 @@ class Sampler:
             axis (Device Array): Axis of the histogram.
             hist (Device Array): Histogram of the log probability distribution.
         """
-        if training == True:
+        if training is True:
             n_loop = self.n_loop_training
             log_prob = self.summary["training"]["log_prob"]
         else:
             n_loop = self.n_loop_production
             log_prob = self.summary["production"]["log_prob"]
 
-        hist = [np.histogram(log_prob[:, i*(self.n_local_steps//self.output_thinning-1): (i+1)*(self.n_local_steps//self.output_thinning-1)].mean(axis=1), bins=n_bins) for i in range(n_loop)]
+        hist = [
+            np.histogram(
+                log_prob[
+                    :,
+                    i
+                    * (self.n_local_steps // self.output_thinning - 1) : (i + 1)
+                    * (self.n_local_steps // self.output_thinning - 1),
+                ].mean(axis=1),
+                bins=n_bins,
+            )
+            for i in range(n_loop)
+        ]
         axis = np.array([hist[i][1][:-1] for i in range(n_loop)]).T
         hist = np.array([hist[i][0] for i in range(n_loop)]).T
         return axis, hist

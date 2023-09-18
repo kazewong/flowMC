@@ -61,8 +61,12 @@ class HMC(ProposalBase):
 
     def leapfrog_kernel(self, carry, extras):
         position, momentum, data = carry
-        position = position + self.params["step_size"] * self.grad_kinetic(momentum, self.params)
-        momentum = momentum - self.params["step_size"] * self.grad_potential(position, data)
+        position = position + self.params["step_size"] * self.grad_kinetic(
+            momentum, self.params
+        )
+        momentum = momentum - self.params["step_size"] * self.grad_potential(
+            position, data
+        )
         return (position, momentum, data), extras
 
     def leapfrog_step(self, position, momentum, data):
@@ -74,7 +78,9 @@ class HMC(ProposalBase):
             (position, momentum, data),
             jnp.arange(self.n_leapfrog - 1),
         )
-        position = position + self.params["step_size"] * self.grad_kinetic(momentum, self.params)
+        position = position + self.params["step_size"] * self.grad_kinetic(
+            momentum, self.params
+        )
         momentum = momentum - 0.5 * self.params["step_size"] * self.grad_potential(
             position, data
         )
@@ -151,7 +157,7 @@ class HMC(ProposalBase):
     ]:
         keys = jax.vmap(jax.random.split)(rng_key)
         rng_key = keys[:, 0]
-        rng_init = keys[:, 1]
+        keys[:, 1]
         logp = self.logpdf_vmap(initial_position, data)
         n_chains = rng_key.shape[0]
         acceptance = jnp.zeros((n_chains, n_steps))

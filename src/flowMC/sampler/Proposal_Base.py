@@ -21,7 +21,7 @@ class ProposalBase:
             in_axes=(None, (0, 0, 0, 0, None)),
             out_axes=(0, 0, 0, 0, None),
         )
-        if self.jit == True:
+        if self.jit is True:
             self.logpdf_vmap = jax.jit(self.logpdf_vmap)
             self.kernel = jax.jit(self.kernel)
             self.kernel_vmap = jax.jit(self.kernel_vmap)
@@ -29,7 +29,7 @@ class ProposalBase:
             self.update_vmap = jax.jit(self.update_vmap)
 
     def precompilation(self, n_chains, n_dims, n_step, data):
-        if self.jit == True:
+        if self.jit is True:
             print("jit is requested, precompiling kernels and update...")
         else:
             print("jit is not requested, compiling only vmap functions...")

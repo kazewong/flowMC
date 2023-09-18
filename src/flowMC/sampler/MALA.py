@@ -18,9 +18,7 @@ class MALA(ProposalBase):
         params: dictionary of parameters for the sampler
     """
 
-    def __init__(
-        self, logpdf: Callable, jit: bool, params: dict, use_autotune=False
-    ):
+    def __init__(self, logpdf: Callable, jit: bool, params: dict, use_autotune=False):
         super().__init__(logpdf, jit, params)
         self.params = params
         self.logpdf = logpdf
@@ -41,9 +39,7 @@ class MALA(ProposalBase):
         position: Float[Array, "ndim"],
         log_prob: Float[Array, "1"],
         data: PyTree,
-    ) -> tuple[
-        Float[Array, "ndim"], Float[Array, "1"], Int[Array, "1"]
-    ]:
+    ) -> tuple[Float[Array, "ndim"], Float[Array, "1"], Int[Array, "1"]]:
         """
         Metropolis-adjusted Langevin algorithm kernel.
         This is a kernel that only evolve a single chain.
@@ -114,7 +110,8 @@ class MALA(ProposalBase):
         acceptance = acceptance.at[i].set(do_accept)
         return (key, positions, log_p, acceptance, data)
 
-    def sample(self,
+    def sample(
+        self,
         rng_key: PRNGKeyArray,
         n_steps: int,
         initial_position: Float[Array, "n_chains ndim"],
@@ -144,7 +141,6 @@ class MALA(ProposalBase):
         for i in iterator_loop:
             state = self.update_vmap(i, state)
         return state[:-1]
-
 
     def mala_sampler_autotune(
         self, rng_key, initial_position, log_prob, data, params, max_iter=30

@@ -50,7 +50,9 @@ state = (
 RWMCMC_sampler.update_vmap(1, state)
 
 
-state = RWMCMC_sampler.sample(rng_key_set[1], n_local_steps, initial_position[:, 0], data)
+state = RWMCMC_sampler.sample(
+    rng_key_set[1], n_local_steps, initial_position[:, 0], data
+)
 
 
 from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline

@@ -3,7 +3,6 @@ from flowMC.utils.PRNG_keys import initialize_rng_keys
 import jax
 import jax.numpy as jnp
 from jax.scipy.special import logsumexp
-import numpy as np
 
 
 def dual_moon_pe(x, data):
@@ -53,9 +52,7 @@ state = (
 MALA_Sampler.update_vmap(1, state)
 
 
-state = MALA_Sampler.sample(
-    rng_key_set[1], n_local_steps, initial_position[:, 0], data
-)
+state = MALA_Sampler.sample(rng_key_set[1], n_local_steps, initial_position[:, 0], data)
 
 
 from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline

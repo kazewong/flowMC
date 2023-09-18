@@ -8,9 +8,10 @@ from flowMC.nfmodel.common import MLP, MaskedCouplingLayer, MLPAffine, Gaussian
 from jaxtyping import Array
 from functools import partial
 
+
 class AffineCoupling(eqx.Module):
     """
-    Affine coupling layer. 
+    Affine coupling layer.
     (Defined in the RealNVP paper https://arxiv.org/abs/1605.08803)
     We use tanh as the default activation function.
 
@@ -20,12 +21,21 @@ class AffineCoupling(eqx.Module):
         mask: (ndarray) Alternating mask for the affine coupling layer.
         dt: (float) Scaling factor for the affine coupling layer.
     """
+
     _mask: Array
     scale_MLP: eqx.Module
     translate_MLP: eqx.Module
     dt: float = 1
 
-    def __init__(self, n_features: int, n_hidden: int, mask:Array, key: jax.random.PRNGKey, dt: float = 1, scale: float = 1e-4):
+    def __init__(
+        self,
+        n_features: int,
+        n_hidden: int,
+        mask: Array,
+        key: jax.random.PRNGKey,
+        dt: float = 1,
+        scale: float = 1e-4,
+    ):
         self._mask = mask
         self.dt = dt
         key, scale_subkey, translate_subkey = jax.random.split(key, 3)
@@ -45,7 +55,7 @@ class AffineCoupling(eqx.Module):
         return self.forward(x)
 
     def forward(self, x: Array) -> Tuple[Array, Array]:
-        """ From latent space to data space
+        """From latent space to data space
 
         Args:
             x: (Array) Latent space.
@@ -66,14 +76,14 @@ class AffineCoupling(eqx.Module):
         return outputs, log_det
 
     def inverse(self, x: Array) -> Tuple[Array, Array]:
-        """ From data space to latent space
+        """From data space to latent space
 
         Args:
             x: (Array) Data space.
 
         Returns:
             outputs: (Array) Latent space.
-            log_det: (Array) Log determinant of the Jacobian. 
+            log_det: (Array) Log determinant of the Jacobian.
         """
         s = self.mask * self.scale_MLP(x * (1 - self.mask))
         s = jnp.tanh(s) * self.dt
@@ -81,7 +91,8 @@ class AffineCoupling(eqx.Module):
         log_det = -s.sum()
         outputs = x * jnp.exp(-s) - t
         return outputs, log_det
-    
+
+
 class RealNVP(NFModel):
     """
     RealNVP mode defined in the paper https://arxiv.org/abs/1605.08803.
@@ -116,17 +127,21 @@ class RealNVP(NFModel):
     def data_cov(self):
         return jax.lax.stop_gradient(self._data_cov)
 
-    def __init__(self,
-                n_features: int,
-                n_layer: int,
-                n_hidden: int,
-                key: jax.random.PRNGKey,
-                **kwargs):
+    def __init__(
+        self,
+        n_features: int,
+        n_layer: int,
+        n_hidden: int,
+        key: jax.random.PRNGKey,
+        **kwargs
+    ):
 
         if kwargs.get("base_dist") is not None:
             self.base_dist = kwargs.get("base_dist")
         else:
-            self.base_dist = Gaussian(jnp.zeros(n_features), jnp.eye(n_features), learnable=False)
+            self.base_dist = Gaussian(
+                jnp.zeros(n_features), jnp.eye(n_features), learnable=False
+            )
 
         if kwargs.get("data_mean") is not None:
             self._data_mean = kwargs.get("data_mean")
@@ -143,7 +158,7 @@ class RealNVP(NFModel):
         for i in range(n_layer):
             key, scale_subkey, shift_subkey = jax.random.split(key, 3)
             mask = np.ones(n_features)
-            mask[int(n_features / 2):] = 0
+            mask[int(n_features / 2) :] = 0
             if i % 2 == 0:
                 mask = 1 - mask
             mask = jnp.array(mask)
@@ -162,7 +177,6 @@ class RealNVP(NFModel):
         else:
             self._data_cov = jnp.eye(n_features)
 
-
     def __call__(self, x: Array) -> Tuple[Array, Array]:
         return self.forward(x)
 
@@ -175,17 +189,16 @@ class RealNVP(NFModel):
 
     @partial(jax.vmap, in_axes=(None, 0))
     def inverse(self, x: Array) -> Tuple[Array, Array]:
-        """ From latent space to data space"""
-        log_det = 0.
+        """From latent space to data space"""
+        log_det = 0.0
         for layer in reversed(self.affine_coupling):
             x, log_det_i = layer.inverse(x)
             log_det += log_det_i
         return x, log_det
 
-
     @eqx.filter_jit
     def sample(self, rng_key: jax.random.PRNGKey, n_samples: int) -> Array:
-        
+
         samples = self.base_dist.sample(rng_key, n_samples)
         samples = self.inverse(samples)[0]
         samples = samples * jnp.sqrt(jnp.diag(self.data_cov)) + self.data_mean
@@ -194,10 +207,9 @@ class RealNVP(NFModel):
     @eqx.filter_jit
     @partial(jax.vmap, in_axes=(None, 0))
     def log_prob(self, x: Array) -> Array:
-        x = (x-self.data_mean)/jnp.sqrt(jnp.diag(self.data_cov))
+        x = (x - self.data_mean) / jnp.sqrt(jnp.diag(self.data_cov))
         y, log_det = self.__call__(x)
         log_det = log_det + jax.scipy.stats.multivariate_normal.logpdf(
             y, jnp.zeros(self.n_features), jnp.eye(self.n_features)
         )
         return log_det
-

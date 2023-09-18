@@ -3,7 +3,6 @@ import jax
 import jax.numpy as jnp  # JAX NumPy
 
 from flowMC.nfmodel.utils import *
-import equinox as eqx
 import optax  # Optimizers
 from flowMC.nfmodel.utils import make_training_loop
 
@@ -26,12 +25,19 @@ data = jnp.array(data[0])
 
 key1, rng, init_rng = jax.random.split(jax.random.PRNGKey(0), 3)
 
-model = MaskedCouplingRQSpline(2, 10, [128,128], 8 , init_rng, data_cov = jnp.cov(data.T), data_mean = jnp.mean(data, axis=0))
+model = MaskedCouplingRQSpline(
+    2,
+    10,
+    [128, 128],
+    8,
+    init_rng,
+    data_cov=jnp.cov(data.T),
+    data_mean=jnp.mean(data, axis=0),
+)
 
 optim = optax.adam(learning_rate)
 train_flow, _, _ = make_training_loop(optim)
 
 key, model, loss = train_flow(rng, model, data, num_epochs, batch_size, verbose=True)
 
-nf_samples = model.sample(jax.random.PRNGKey(124098),5000)
- 
+nf_samples = model.sample(jax.random.PRNGKey(124098), 5000)

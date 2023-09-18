@@ -18,6 +18,7 @@ from jax.experimental import host_callback
 from jax.tree_util import tree_flatten, tree_unflatten
 from jaxtyping import PyTree
 
+
 def wrap_python_log_prob_fn(python_log_prob_fn: Callable[..., Array]):
     @custom_vmap
     @wraps(python_log_prob_fn)
@@ -31,7 +32,9 @@ def wrap_python_log_prob_fn(python_log_prob_fn: Callable[..., Array]):
         )
 
     @log_prob_fn.def_vmap
-    def _(axis_size: int, in_batched: List[bool], params: Array, data: PyTree) -> Tuple[Array, bool]:
+    def _(
+        axis_size: int, in_batched: List[bool], params: Array, data: PyTree
+    ) -> Tuple[Array, bool]:
         del axis_size, in_batched
 
         if _arraylike(params):
@@ -39,12 +42,14 @@ def wrap_python_log_prob_fn(python_log_prob_fn: Callable[..., Array]):
             eval_one = python_log_prob_fn
         else:
             flat_params, unravel = ravel_ensemble(params)
-            eval_one = lambda x: python_log_prob_fn(unravel(x))
+
+            def eval_one(x):
+                return python_log_prob_fn(unravel(x))
 
         result_shape = jax.ShapeDtypeStruct((flat_params.shape[0],), flat_params.dtype)
 
         result = host_callback.call(
-            lambda y: np.stack([eval_one({"params":x,"data":data}) for x in y]),
+            lambda y: np.stack([eval_one({"params": x, "data": data}) for x in y]),
             flat_params,
             result_shape=result_shape,
         )
@@ -79,7 +84,10 @@ zip = safe_zip
 def ravel_ensemble(coords: PyTree) -> Tuple[Array, UnravelFn]:
     leaves, treedef = tree_flatten(coords)
     flat, unravel_inner = _ravel_inner(leaves)
-    unravel_one = lambda flat: tree_unflatten(treedef, unravel_inner(flat))
+
+    def unravel_one(flat):
+        return tree_unflatten(treedef, unravel_inner(flat))
+
     return flat, unravel_one
 
 
@@ -98,7 +106,9 @@ def _ravel_inner(lst: List[Array]) -> Tuple[Array, UnravelFn]:
             chunks = jnp.split(arr, indices[:-1])
             return [chunk.reshape(shape) for chunk, shape in zip(chunks, shapes)]
 
-        ravel = lambda arg: jnp.concatenate([jnp.ravel(e) for e in arg])
+        def ravel(arg):
+            return jnp.concatenate([jnp.ravel(e) for e in arg])
+
         raveled = jax.vmap(ravel)(lst)
         return raveled, unravel
 
@@ -119,8 +129,10 @@ def _ravel_inner(lst: List[Array]) -> Tuple[Array, UnravelFn]:
                     for chunk, shape, dtype in zip(chunks, shapes, from_dtypes)
                 ]
 
-        ravel = lambda arg: jnp.concatenate(
-            [jnp.ravel(lax.convert_element_type(e, to_dtype)) for e in arg]
-        )
+        def ravel(arg):
+            return jnp.concatenate(
+                [jnp.ravel(lax.convert_element_type(e, to_dtype)) for e in arg]
+            )
+
         raveled = jax.vmap(ravel)(lst)
         return raveled, unravel
