@@ -24,7 +24,7 @@ Five steps to use flowMC's guide
 1. You will find basic information such as installation and a quick guide in the [quickstart](quickstart.md).
 2. We give more information about tuning parameters of our sampler in the [configuration_guide](configuration.md).
 3. In tutorials, we have a set of more pedagogical notebooks that will give you a better understanding of the package infrastructure.
-4. We list some community examples in example, so users can see whether there is a similar use case they can adopt their code quickly.
+4. We list some community examples in [community_example](communityExamples.md), so users can see whether there is a similar use case they can adopt their code quickly.
 5. Finally, we have a list of frequently asked questions in [FAQ](FAQ.md).
 
    
