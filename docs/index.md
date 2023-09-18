@@ -1,5 +1,5 @@
 flowMC
-=====================================
+======
 
 **Normalizing-flow enhanced sampling package for probabilistic inference**
 

@@ -79,7 +79,7 @@ nav:
     - Quickstart: quickstart.md
     - Configuration: configuration.md
     - Tutorial: tutorials/
-    - Examples: examples/
+    - Examples: communityExamples.md
     - FAQ: FAQ.md
     - Contribution: contribution.md
     - API: api/flowMC/*
