@@ -5,11 +5,26 @@ import jax
 from jaxtyping import Array
 class NFModel(eqx.Module):
 
+    """
+    Base class for normalizing flow models.
+    
+    This is an abstract template that should not be directly used.
+    """
+
     @abstractmethod
     def __init__(self):
         return NotImplemented
 
     def __call__(self, x: Array) -> Tuple[Array, Array]:
+        """
+        Forward pass of the model.
+        
+        Args:
+            x (Array): Input data.
+
+        Returns:
+            Tuple[Array, Array]: Output data and log determinant of the Jacobian.
+        """
         return self.forward(x)
     
     @abstractmethod
@@ -22,10 +37,26 @@ class NFModel(eqx.Module):
 
     @abstractmethod
     def forward(self, x: Array) -> Tuple[Array, Array]:
+        """
+        Forward pass of the model.
+        
+        Args:
+            x (Array): Input data.
+            
+        Returns:
+            Tuple[Array, Array]: Output data and log determinant of the Jacobian."""
         return NotImplemented
 
     @abstractmethod
     def inverse(self, x: Array) -> Tuple[Array, Array]:
+        """
+        Inverse pass of the model.
+
+        Args:
+            x (Array): Input data.
+            
+        Returns:
+            Tuple[Array, Array]: Output data and log determinant of the Jacobian."""
         return NotImplemented
 
     def save_model(self, path: str):
@@ -35,6 +66,11 @@ class NFModel(eqx.Module):
         return eqx.tree_deserialise_leaves(path+".eqx", self)
 
 class Bijection(eqx.Module):
+
+    """
+    Base class for bijective transformations.
+    
+    This is an abstract template that should not be directly used."""
 
     @abstractmethod
     def __init__(self):
@@ -52,6 +88,12 @@ class Bijection(eqx.Module):
         return NotImplemented
 
 class Distribution(eqx.Module):
+
+    """
+    Base class for probability distributions.
+
+    This is an abstract template that should not be directly used.
+    """
 
     @abstractmethod
     def __init__(self):

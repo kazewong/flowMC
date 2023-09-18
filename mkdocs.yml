@@ -82,4 +82,4 @@ nav:
     - Examples: examples/
     - FAQ: FAQ.md
     - Contribution: contribution.md
-    - API: api/summary.md
+    - API: api/*
