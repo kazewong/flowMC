@@ -77,7 +77,7 @@ class Sampler:
         self.train_thinning = kwargs.get("train_thinning", 1)
         self.output_thinning = kwargs.get("output_thinning", 1)
         self.n_sample_max = kwargs.get("n_sample_max", 10000)
-        self.precomplie = kwargs.get("precompile", False)
+        self.precompile = kwargs.get("precompile", False)
         self.verbose = kwargs.get("verbose", False)
 
         self.variables = {"mean": None, "var": None}
