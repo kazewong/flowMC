@@ -77,6 +77,7 @@ class Sampler:
         self.train_thinning = kwargs.get("train_thinning", 1)
         self.output_thinning = kwargs.get("output_thinning", 1)
         self.n_sample_max = kwargs.get("n_sample_max", 10000)
+        self.precomplie = kwargs.get("precompile", False)
         self.verbose = kwargs.get("verbose", False)
 
         self.variables = {"mean": None, "var": None}
@@ -84,9 +85,10 @@ class Sampler:
         # Initialized local and global samplers
 
         self.local_sampler = local_sampler
-        self.local_sampler.precompilation(
-            n_chains=self.n_chains, n_dims=n_dim, n_step=self.n_local_steps, data=data
-        )
+        if self.precompile:
+            self.local_sampler.precompilation(
+                n_chains=self.n_chains, n_dims=n_dim, n_step=self.n_local_steps, data=data
+            )
 
         self.global_sampler = NFProposal(self.local_sampler.logpdf, jit=self.local_sampler.jit, model=nf_model, n_sample_max=self.n_sample_max)
 
