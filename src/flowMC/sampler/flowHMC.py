@@ -1,4 +1,5 @@
 import jax
+import jax.numpy as jnp
 from flowMC.nfmodel.base import NFModel
 from jaxtyping import Array, PRNGKeyArray, PyTree
 from typing import Callable
@@ -26,16 +27,41 @@ class flowHMC(HMC, NFProposal):
         if self.jit is True:
             self.update_vmap = jax.jit(self.update_vmap)
 
+    def covariance_estimate(self, points: Float[Array, "n_point n_dim"], k: int = 3) -> Float[Array, "n_point n_dim n_dim"]:
+        distance = jax.lax.dot(points, points.T)
+        neighbor_indcies = jax.lax.approx_min_k(distance, k=k)[1]
+        neighbor_points = points[neighbor_indcies].swapaxes(1, 2)
+        covariance = jax.vmap(jnp.cov)(neighbor_points)
+        return covariance
+
     def kernel(
         self,
         rng_key: PRNGKeyArray,
-        initial_position: Float[Array, "ndim"],
-        proposal_position: Float[Array, "ndim"],
-        log_prob_initial: Float[Array, "1"],
-        log_prob_proposal: Float[Array, "1"],
-        log_prob_nf_initial: Float[Array, "1"],
-        log_prob_nf_proposal: Float[Array, "1"],
+        position: Float[Array, "ndim"],
+        log_prob: Float[Array, "1"],
+        data: PyTree,
     ) -> tuple[Float[Array, "ndim"], Float[Array, "1"], Int[Array, "1"]]:
+        
+        key1, key2, key3 = jax.random.split(rng_key, 3)
+
+        momentum = (
+            jax.random.normal(key1, shape=position.shape)
+            * self.params["inverse_metric"] ** -0.5
+        )
+
+        # TODO: Double check whether I can compute the hamiltonian before the map
+        initial_Ham = log_prob + self.kinetic(momentum, self.params)
+
+        
+
+        # Sample momentum
+
+        # Push through map
+
+        # Make HMC step
+
+        # Compute acceptance probability
+
         pass
 
     def update(
