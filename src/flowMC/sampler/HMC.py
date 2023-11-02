@@ -27,17 +27,21 @@ class HMC(ProposalBase):
         if "condition_matrix" in params:
             self.inverse_metric = params["condition_matrix"]
         else:
+            print("condition_matrix not specified, using identity matrix")
             self.inverse_metric = 1
 
         if "step_size" in params:
             self.step_size = params["step_size"]
+        else:
+            print("step_size not specified, using default value 0.1")
+            self.step_size = 0.1
 
         if "n_leapfrog" in params:
             self.n_leapfrog = params["n_leapfrog"]
         else:
-            raise NotImplementedError
+            print("n_leapfrog not specified, using default value 10")
 
-        self.kinetic = lambda p, params: 0.5 * (p**2 * params["inverse_metric"]).sum()
+        self.kinetic = lambda p, params: 0.5 * (p**2 * self.inverse_metric).sum()
         self.grad_kinetic = jax.grad(self.kinetic)
         self.logpdf = self.potential
 
@@ -61,8 +65,12 @@ class HMC(ProposalBase):
 
     def leapfrog_kernel(self, carry, extras):
         position, momentum, data = carry
-        position = position + self.params["step_size"] * self.grad_kinetic(momentum, self.params)
-        momentum = momentum - self.params["step_size"] * self.grad_potential(position, data)
+        position = position + self.params["step_size"] * self.grad_kinetic(
+            momentum, self.params
+        )
+        momentum = momentum - self.params["step_size"] * self.grad_potential(
+            position, data
+        )
         return (position, momentum, data), extras
 
     def leapfrog_step(self, position, momentum, data):
@@ -74,7 +82,9 @@ class HMC(ProposalBase):
             (position, momentum, data),
             jnp.arange(self.n_leapfrog - 1),
         )
-        position = position + self.params["step_size"] * self.grad_kinetic(momentum, self.params)
+        position = position + self.params["step_size"] * self.grad_kinetic(
+            momentum, self.params
+        )
         momentum = momentum - 0.5 * self.params["step_size"] * self.grad_potential(
             position, data
         )
@@ -151,7 +161,7 @@ class HMC(ProposalBase):
     ]:
         keys = jax.vmap(jax.random.split)(rng_key)
         rng_key = keys[:, 0]
-        rng_init = keys[:, 1]
+        keys[:, 1]
         logp = self.logpdf_vmap(initial_position, data)
         n_chains = rng_key.shape[0]
         acceptance = jnp.zeros((n_chains, n_steps))
