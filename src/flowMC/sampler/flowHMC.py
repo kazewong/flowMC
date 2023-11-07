@@ -28,7 +28,7 @@ class flowHMC(HMC, NFProposal):
         params: dict = {},
     ):
         super().__init__(logpdf, jit, params)
-        self.kinetic = lambda p, M: 0.5 * (p**2 * M).sum()
+        self.kinetic = lambda p, M: 0.5 * (p @ M @ p)
         self.grad_kinetic = jax.grad(self.kinetic)
         self.model = model
         self.n_sample_max = n_sample_max
@@ -37,7 +37,7 @@ class flowHMC(HMC, NFProposal):
             self.update_vmap = jax.jit(self.update_vmap)
 
     def covariance_estimate(
-        self, points: Float[Array, "n_point n_dim"], k: int = 3
+        self, points: Float[Array, "n_point n_dim"], k: int = 10
     ) -> Float[Array, "n_point n_dim n_dim"]:
         distance = jax.lax.dot(points, points.T)
         neighbor_indcies = jax.lax.approx_min_k(distance, k=k)[1]
@@ -57,10 +57,12 @@ class flowHMC(HMC, NFProposal):
 
         key1, key2 = jax.random.split(rng_key)
 
-        momentum = jax.random.normal(key1, shape=position.shape) * flow_metric**-0.5
+        momentum = jax.random.normal(key1, shape=position.shape) @ flow_metric
+
 
         # TODO: Double check whether I can compute the hamiltonian before the map
         initial_Ham = log_prob + self.kinetic(momentum, flow_metric)
+
 
         # First HMC part
 
@@ -70,8 +72,9 @@ class flowHMC(HMC, NFProposal):
 
         # Push through map
 
-        flow_start_prob = self.model.log_prob(middle_position)
-        flow_end_prob = self.model.log_prob(flow_position)
+
+        flow_start_prob = self.model.log_prob(middle_position[None])
+        flow_end_prob = self.model.log_prob(flow_position[None])
 
         # Second HMC part
 
@@ -83,15 +86,17 @@ class flowHMC(HMC, NFProposal):
 
         # Compute acceptance probability
 
-        log_acc = (final_Ham - initial_Ham) - (flow_end_prob - flow_start_prob)
+        log_acc = ((final_Ham - initial_Ham) - (flow_end_prob - flow_start_prob))
+
         uniform_random = jnp.log(jax.random.uniform(key2))
-        do_accept = log_acc > uniform_random
+        do_accept = (log_acc > uniform_random)
+
 
         # Update position
         position = jnp.where(do_accept, final_position, position)
         log_prob = jnp.where(do_accept, final_PE, log_prob)
 
-        return position, log_prob, do_accept
+        return position, log_prob[0], do_accept[0]
 
     def update(
         self, i, state
@@ -102,20 +107,20 @@ class flowHMC(HMC, NFProposal):
         Int[Array, "n_step 1"],
         PyTree,
     ]:
-        key, positions, PE, acceptance, flow_position, flow_metric, data = state
+        key, positions, potential, acceptance, flow_position, flow_metric, data = state
         key, subkey = random.split(key)
         new_position, new_log_prob, do_accept = self.kernel(
             subkey,
             positions[i - 1],
-            PE[i - 1],
+            potential[i - 1],
             flow_position[i - 1],
             flow_metric[i - 1],
             data,
         )
         positions = positions.at[i].set(new_position)
-        PE = PE.at[i].set(new_log_prob)
+        potential = potential.at[i].set(new_log_prob)
         acceptance = acceptance.at[i].set(do_accept)
-        return (key, positions, PE, acceptance, flow_position, flow_metric, data)
+        return (key, positions, potential, acceptance, flow_position, flow_metric, data)
 
     def sample(
         self,
@@ -133,22 +138,21 @@ class flowHMC(HMC, NFProposal):
 
         n_chains = initial_position.shape[0]
         n_dim = initial_position.shape[-1]
-        log_prob_initial = self.logpdf_vmap(initial_position, data)[:, None]
+        log_prob_initial = self.logpdf_vmap(initial_position, data)
 
         proposal_position, proposal_metric = self.sample_flow(
-            subkeys[0], initial_position, data, n_steps
+            subkeys[0], initial_position, n_steps
         )
 
         state = (
             jax.random.split(subkeys[1], n_chains),
             jnp.zeros((n_chains, n_steps, n_dim)) + initial_position[:, None],
-            jnp.zeros((n_chains, n_steps)) + log_prob_initial,
-            jax.zeros((n_chains, n_steps)),
+            jnp.zeros((n_chains, n_steps)) + log_prob_initial[:, None],
+            jnp.zeros((n_chains, n_steps)),
             proposal_position,
             proposal_metric,
             data,
         )
-
 
         if verbose:
             iterator_loop = tqdm(
@@ -169,9 +173,8 @@ class flowHMC(HMC, NFProposal):
     def sample_flow(
         self,
         rng_key: PRNGKeyArray,
-        n_steps: int,
         initial_position: Float[Array, "n_chains ndim"],
-        data: PyTree,
+        n_steps: int,
     ):
         n_chains = initial_position.shape[0]
         n_dim = initial_position.shape[-1]

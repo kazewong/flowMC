@@ -17,13 +17,13 @@ def dual_moon_pe(x, data):
     return -(term1 - logsumexp(term2) - logsumexp(term3))
 
 
-n_dim = 5
+n_dim = 2
 n_chains = 15
 n_local_steps = 30
 step_size = 0.1
 n_leapfrog = 10
 
-data = jnp.arange(5)
+data = jnp.arange(n_dim)
 
 rng_key_set = initialize_rng_keys(n_chains, seed=42)
 
@@ -32,13 +32,24 @@ model = MaskedCouplingRQSpline(n_dim, 4, [32, 32], 4, jax.random.PRNGKey(10))
 
 flowHMC_sampler = flowHMC(
     dual_moon_pe,
-    True,
+    False,
     model,
     params={
         "step_size": step_size,
         "n_leapfrog": n_leapfrog,
         "inverse_metric": jnp.ones(n_dim),
     },
+)
+
+n_steps = 10
+rng_key, *subkeys = jax.random.split(jax.random.PRNGKey(0), 3)
+
+n_chains = initial_position.shape[0]
+n_dim = initial_position.shape[-1]
+log_prob_initial = flowHMC_sampler.logpdf_vmap(initial_position, data)
+
+proposal_position, proposal_metric = flowHMC_sampler.sample_flow(
+    subkeys[0], initial_position, n_steps
 )
 
 initial_PE = flowHMC_sampler.logpdf_vmap(initial_position, data)

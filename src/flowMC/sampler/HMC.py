@@ -39,6 +39,7 @@ class HMC(ProposalBase):
         if "n_leapfrog" in params:
             self.n_leapfrog = params["n_leapfrog"]
         else:
+            self.n_leapfrog = 10
             print("n_leapfrog not specified, using default value 10")
 
         self.kinetic = lambda p, metric: 0.5 * (p**2 * metric).sum()
@@ -76,7 +77,7 @@ class HMC(ProposalBase):
         momentum = momentum - 0.5 * self.params["step_size"] * self.grad_potential(
             position, data
         )
-        (position, momentum, data), _ = jax.lax.scan(
+        (position, momentum, data, metric), _ = jax.lax.scan(
             self.leapfrog_kernel,
             (position, momentum, data, metric),
             jnp.arange(self.n_leapfrog - 1),
