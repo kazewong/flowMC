@@ -8,6 +8,7 @@ from flowMC.sampler.NF_proposal import NFProposal
 from jaxtyping import Array, Float, Int, PRNGKeyArray
 from math import ceil
 from jax import random
+from tqdm import tqdm
 
 
 # Note that the inverse metric needs float64 precision
@@ -56,10 +57,7 @@ class flowHMC(HMC, NFProposal):
 
         key1, key2 = jax.random.split(rng_key)
 
-        momentum = (
-            jax.random.normal(key1, shape=position.shape)
-            * flow_metric ** -0.5
-        )
+        momentum = jax.random.normal(key1, shape=position.shape) * flow_metric**-0.5
 
         # TODO: Double check whether I can compute the hamiltonian before the map
         initial_Ham = log_prob + self.kinetic(momentum, flow_metric)
@@ -108,16 +106,16 @@ class flowHMC(HMC, NFProposal):
         key, subkey = random.split(key)
         new_position, new_log_prob, do_accept = self.kernel(
             subkey,
-            positions[i-1],
-            PE[i-1],
-            flow_position[i-1],
-            flow_metric[i-1],
-            data)
+            positions[i - 1],
+            PE[i - 1],
+            flow_position[i - 1],
+            flow_metric[i - 1],
+            data,
+        )
         positions = positions.at[i].set(new_position)
         PE = PE.at[i].set(new_log_prob)
         acceptance = acceptance.at[i].set(do_accept)
         return (key, positions, PE, acceptance, flow_position, flow_metric, data)
-
 
     def sample(
         self,
@@ -136,13 +134,36 @@ class flowHMC(HMC, NFProposal):
         n_chains = initial_position.shape[0]
         n_dim = initial_position.shape[-1]
         log_prob_initial = self.logpdf_vmap(initial_position, data)[:, None]
-        log_prob_nf_initial = self.model.log_prob(initial_position)[:, None]
 
-        proposal_position, proposal_metric, log_prob_proposal, log_prob_nf_proposal = self.sample_flow(
+        proposal_position, proposal_metric = self.sample_flow(
             subkeys[0], initial_position, data, n_steps
         )
 
-            
+        state = (
+            jax.random.split(subkeys[1], n_chains),
+            jnp.zeros((n_chains, n_steps, n_dim)) + initial_position[:, None],
+            jnp.zeros((n_chains, n_steps)) + log_prob_initial,
+            jax.zeros((n_chains, n_steps)),
+            proposal_position,
+            proposal_metric,
+            data,
+        )
+
+
+        if verbose:
+            iterator_loop = tqdm(
+                range(1, n_steps),
+                desc="Sampling Locally",
+                miniters=int(n_steps / 10),
+            )
+        else:
+            iterator_loop = range(1, n_steps)
+
+        for i in iterator_loop:
+            state = self.update_vmap(i, state)
+
+        state = (state[0], state[1], -state[2], state[3])
+        return state
 
 
     def sample_flow(
@@ -170,8 +191,6 @@ class flowHMC(HMC, NFProposal):
                     initial_position.shape[-1],
                 )
             )
-            log_prob_proposal = jnp.zeros((n_batch, n_sample))
-            log_prob_nf_proposal = jnp.zeros((n_batch, n_sample))
             for i in range(n_batch):
                 rng_key, subkey = random.split(rng_key)
                 proposal_position = proposal_position.at[i].set(
@@ -182,38 +201,22 @@ class flowHMC(HMC, NFProposal):
                         self.covariance_estimate(proposal_position[i])
                     )
                 )
-                log_prob_proposal = log_prob_proposal.at[i].set(
-                    self.logpdf_vmap(proposal_position[i], data)
-                )
-                log_prob_nf_proposal = log_prob_nf_proposal.at[i].set(
-                    self.model.log_prob(proposal_position[i])
-                )
 
             proposal_position = proposal_position.reshape(-1, n_dim)[:total_size]
-            proposal_metric = proposal_metric.reshape(-1, n_dim, n_dim)[
-                :total_size
-            ]
-            log_prob_proposal = log_prob_proposal.reshape(-1)[:total_size]
-            log_prob_nf_proposal = log_prob_nf_proposal.reshape(-1)[:total_size]
+            proposal_metric = proposal_metric.reshape(-1, n_dim, n_dim)[:total_size]
 
         else:
             proposal_position = self.model.sample(rng_key, total_size)
-            proposal_metric = jax.vmap(jnp.linalg.inv)(self.covariance_estimate(proposal_position))
-            log_prob_proposal = self.logpdf_vmap(proposal_position, data)
-            log_prob_nf_proposal = self.model.log_prob(proposal_position)
+            proposal_metric = jax.vmap(jnp.linalg.inv)(
+                self.covariance_estimate(proposal_position)
+            )
 
         proposal_position = proposal_position.reshape(n_chains, n_steps, n_dim)
-        proposal_metric = proposal_metric.reshape(
-            n_chains, n_steps, n_dim, n_dim
-        )
-        log_prob_proposal = log_prob_proposal.reshape(n_chains, n_steps)
-        log_prob_nf_proposal = log_prob_nf_proposal.reshape(n_chains, n_steps)
+        proposal_metric = proposal_metric.reshape(n_chains, n_steps, n_dim, n_dim)
 
         return (
             proposal_position,
             proposal_metric,
-            log_prob_proposal,
-            log_prob_nf_proposal,
         )
 
     def tree_flatten(self):

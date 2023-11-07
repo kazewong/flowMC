@@ -160,7 +160,6 @@ class HMC(ProposalBase):
     ]:
         keys = jax.vmap(jax.random.split)(rng_key)
         rng_key = keys[:, 0]
-        keys[:, 1]
         logp = self.logpdf_vmap(initial_position, data)
         n_chains = rng_key.shape[0]
         acceptance = jnp.zeros((n_chains, n_steps))
