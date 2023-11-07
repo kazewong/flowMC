@@ -158,9 +158,9 @@ class NFProposal(ProposalBase):
     def sample_flow(
         self,
         rng_key: PRNGKeyArray,
-        n_steps: int,
         initial_position: Float[Array, "n_chains ndim"],
-        data: PyTree,
+        data,
+        n_steps: int,
     ):
         n_chains = initial_position.shape[0]
         n_dim = initial_position.shape[-1]
