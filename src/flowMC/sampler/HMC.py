@@ -41,9 +41,8 @@ class HMC(ProposalBase):
         else:
             print("n_leapfrog not specified, using default value 10")
 
-        self.kinetic = lambda p, params: 0.5 * (p**2 * self.inverse_metric).sum()
+        self.kinetic = lambda p, metric: 0.5 * (p**2 * metric).sum()
         self.grad_kinetic = jax.grad(self.kinetic)
-        self.logpdf = self.potential
 
     def get_initial_hamiltonian(
         self,
@@ -61,29 +60,29 @@ class HMC(ProposalBase):
             jax.random.normal(rng_key, shape=position.shape)
             * params["inverse_metric"] ** -0.5
         )
-        return self.potential(position, data) + self.kinetic(momentum, params)
+        return self.potential(position, data) + self.kinetic(momentum, params["inverse_metric"])
 
     def leapfrog_kernel(self, carry, extras):
-        position, momentum, data = carry
+        position, momentum, data, metric = carry
         position = position + self.params["step_size"] * self.grad_kinetic(
-            momentum, self.params
+            momentum, metric
         )
         momentum = momentum - self.params["step_size"] * self.grad_potential(
             position, data
         )
-        return (position, momentum, data), extras
+        return (position, momentum, data, metric), extras
 
-    def leapfrog_step(self, position, momentum, data):
+    def leapfrog_step(self, position, momentum, data, metric):
         momentum = momentum - 0.5 * self.params["step_size"] * self.grad_potential(
             position, data
         )
         (position, momentum, data), _ = jax.lax.scan(
             self.leapfrog_kernel,
-            (position, momentum, data),
+            (position, momentum, data, metric),
             jnp.arange(self.n_leapfrog - 1),
         )
         position = position + self.params["step_size"] * self.grad_kinetic(
-            momentum, self.params
+            momentum, metric
         )
         momentum = momentum - 0.5 * self.params["step_size"] * self.grad_potential(
             position, data
@@ -112,12 +111,12 @@ class HMC(ProposalBase):
             jax.random.normal(key1, shape=position.shape)
             * self.params["inverse_metric"] ** -0.5
         )
-        H = log_prob + self.kinetic(momentum, self.params)
+        H = log_prob + self.kinetic(momentum, self.params["inverse_metric"])
         proposed_position, proposed_momentum = self.leapfrog_step(
-            position, momentum, data
+            position, momentum, data, self.params["inverse_metric"]
         )
         proposed_PE = self.potential(proposed_position, data)
-        proposed_ham = proposed_PE + self.kinetic(proposed_momentum, self.params)
+        proposed_ham = proposed_PE + self.kinetic(proposed_momentum, self.params["inverse_metric"])
         log_acc = H - proposed_ham
         log_uniform = jnp.log(jax.random.uniform(key2))
 
