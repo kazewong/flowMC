@@ -104,7 +104,20 @@ class flowHMC(HMC, NFProposal):
         Int[Array, "n_step 1"],
         PyTree,
     ]:
-        pass
+        key, positions, PE, acceptance, flow_position, flow_metric, data = state
+        key, subkey = random.split(key)
+        new_position, new_log_prob, do_accept = self.kernel(
+            subkey,
+            positions[i-1],
+            PE[i-1],
+            flow_position[i-1],
+            flow_metric[i-1],
+            data)
+        positions = positions.at[i].set(new_position)
+        PE = PE.at[i].set(new_log_prob)
+        acceptance = acceptance.at[i].set(do_accept)
+        return (key, positions, PE, acceptance, flow_position, flow_metric, data)
+
 
     def sample(
         self,
@@ -118,7 +131,19 @@ class flowHMC(HMC, NFProposal):
         Float[Array, "n_chains n_steps 1"],
         Int[Array, "n_chains n_steps 1"],
     ]:
-        pass
+        rng_key, *subkeys = random.split(rng_key, 3)
+
+        n_chains = initial_position.shape[0]
+        n_dim = initial_position.shape[-1]
+        log_prob_initial = self.logpdf_vmap(initial_position, data)[:, None]
+        log_prob_nf_initial = self.model.log_prob(initial_position)[:, None]
+
+        proposal_position, proposal_metric, log_prob_proposal, log_prob_nf_proposal = self.sample_flow(
+            subkeys[0], initial_position, data, n_steps
+        )
+
+            
+
 
     def sample_flow(
         self,
