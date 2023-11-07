@@ -1,7 +1,7 @@
 from typing import Tuple
 import jax
 import jax.numpy as jnp
-from jax import random, vmap
+from jax import random
 from tqdm import tqdm
 from flowMC.nfmodel.base import NFModel
 from jaxtyping import Array, PRNGKeyArray, PyTree
