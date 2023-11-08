@@ -74,7 +74,7 @@ nf_sampler = Sampler(n_dim,
                     n_epochs = 30,
                     learning_rate = 1e-2,
                     batch_size = 1000,
-                    n_chains = n_chains,
-                    global_sampler = flowHMC_sampler)
+                    n_chains = n_chains,)
+                    # global_sampler = flowHMC_sampler)
 
 nf_sampler.sample(initial_position, data)

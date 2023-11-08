@@ -60,19 +60,16 @@ class flowHMC(HMC, NFProposal):
         momentum = jax.random.normal(key1, shape=position.shape) @ flow_cov
         mass_matrix = jnp.linalg.inv(flow_cov)
 
-
         # TODO: Double check whether I can compute the hamiltonian before the map
         initial_Ham = log_prob + self.kinetic(momentum, mass_matrix)
-
 
         # First HMC part
 
         middle_position, middle_momentum = self.leapfrog_step(
             position, momentum, data, mass_matrix
         )
-
+    
         # Push through map
-
 
         flow_start_prob = self.model.log_prob(middle_position[None])
         flow_end_prob = self.model.log_prob(flow_position[None])
@@ -87,11 +84,10 @@ class flowHMC(HMC, NFProposal):
 
         # Compute acceptance probability
 
-        log_acc = ((final_Ham - initial_Ham) - (flow_end_prob - flow_start_prob))
+        log_acc = (final_Ham - initial_Ham) - (flow_end_prob - flow_start_prob)
 
         uniform_random = jnp.log(jax.random.uniform(key2))
-        do_accept = (log_acc > uniform_random)
-
+        do_accept = log_acc > uniform_random
 
         # Update position
         position = jnp.where(do_accept, final_position, position)
@@ -140,7 +136,7 @@ class flowHMC(HMC, NFProposal):
         n_dim = initial_position.shape[-1]
         log_prob_initial = self.logpdf_vmap(initial_position, data)
 
-        rng_key, *subkey = random.split(rng_key, n_chains+1)
+        rng_key, *subkey = random.split(rng_key, n_chains + 1)
 
         subkey = jnp.array(subkey)
 
@@ -174,7 +170,6 @@ class flowHMC(HMC, NFProposal):
 
         return (rng_key, state[1], -state[2], state[3])
 
-
     def sample_flow(
         self,
         rng_key: PRNGKeyArray,
@@ -205,11 +200,13 @@ class flowHMC(HMC, NFProposal):
                     self.model.sample(subkey, n_sample)
                 )
                 proposal_covariance = proposal_covariance.at[i].set(
-                        self.covariance_estimate(proposal_position[i])
+                    self.covariance_estimate(proposal_position[i])
                 )
 
             proposal_position = proposal_position.reshape(-1, n_dim)[:total_size]
-            proposal_covariance = proposal_covariance.reshape(-1, n_dim, n_dim)[:total_size]
+            proposal_covariance = proposal_covariance.reshape(-1, n_dim, n_dim)[
+                :total_size
+            ]
 
         else:
             proposal_position = self.model.sample(rng_key, total_size)
@@ -218,7 +215,9 @@ class flowHMC(HMC, NFProposal):
             )
 
         proposal_position = proposal_position.reshape(n_chains, n_steps, n_dim)
-        proposal_covariance = proposal_covariance.reshape(n_chains, n_steps, n_dim, n_dim)
+        proposal_covariance = proposal_covariance.reshape(
+            n_chains, n_steps, n_dim, n_dim
+        )
 
         return (
             proposal_position,
