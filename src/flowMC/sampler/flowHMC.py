@@ -177,7 +177,7 @@ class flowHMC(HMC, NFProposal):
         if verbose:
             iterator_loop = tqdm(
                 range(1, n_steps),
-                desc="Sampling Locally",
+                desc="Sampling Globally",
                 miniters=int(n_steps / 10),
             )
         else:

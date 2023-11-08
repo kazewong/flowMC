@@ -46,6 +46,8 @@ class HMC(ProposalBase):
         self.grad_kinetic = jax.grad(self.kinetic)
         self.logpdf = self.potential
         self.logpdf_vmap = jax.vmap(self.logpdf, in_axes=(0, None))
+        if self.jit:
+            self.logpdf_vmap = jax.jit(self.logpdf_vmap)
 
     def get_initial_hamiltonian(
         self,
