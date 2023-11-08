@@ -135,18 +135,23 @@ class flowHMC(HMC, NFProposal):
         Float[Array, "n_chains n_steps 1"],
         Int[Array, "n_chains n_steps 1"],
     ]:
-        _, subkey = random.split(rng_key[0]+1)
 
         n_chains = initial_position.shape[0]
         n_dim = initial_position.shape[-1]
         log_prob_initial = self.logpdf_vmap(initial_position, data)
 
+        rng_key, *subkey = random.split(rng_key, n_chains+1)
+
+        subkey = jnp.array(subkey)
+
+        rng_key, nf_key = random.split(rng_key)
+
         proposal_position, proposal_cov = self.sample_flow(
-            subkey, initial_position, n_steps
+            nf_key, initial_position, n_steps
         )
 
         state = (
-            rng_key,
+            subkey,
             jnp.zeros((n_chains, n_steps, n_dim)) + initial_position[:, None],
             jnp.zeros((n_chains, n_steps)) + log_prob_initial[:, None],
             jnp.zeros((n_chains, n_steps)),
@@ -167,8 +172,7 @@ class flowHMC(HMC, NFProposal):
         for i in iterator_loop:
             state = self.update_vmap(i, state)
 
-        state = (state[0], state[1], -state[2], state[3])
-        return state
+        return (rng_key, state[1], -state[2], state[3])
 
 
     def sample_flow(

@@ -1,3 +1,4 @@
+from flowMC.sampler.MALA import MALA
 from flowMC.sampler.flowHMC import flowHMC
 from flowMC.utils.PRNG_keys import initialize_rng_keys
 import jax
@@ -33,6 +34,9 @@ rng_key_set = initialize_rng_keys(n_chains, seed=42)
 initial_position = jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
 model = MaskedCouplingRQSpline(n_dim, 4, [32, 32], 4, jax.random.PRNGKey(10))
 
+step_size = 1e-1
+local_sampler = MALA(log_posterior, True, {"step_size": step_size})
+
 flowHMC_sampler = flowHMC(
     log_posterior,
     True,
@@ -63,13 +67,14 @@ momentum = jax.random.normal(subkeys[0], shape=initial_position.shape)
 nf_sampler = Sampler(n_dim,
                     rng_key_set,
                     data,
-                    flowHMC_sampler,
+                    local_sampler,
                     model,
                     n_local_steps = 50,
                     n_global_steps = 50,
                     n_epochs = 30,
                     learning_rate = 1e-2,
                     batch_size = 1000,
-                    n_chains = n_chains)
+                    n_chains = n_chains,
+                    global_sampler = flowHMC_sampler)
 
 nf_sampler.sample(initial_position, data)

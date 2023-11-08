@@ -153,7 +153,7 @@ class NFProposal(ProposalBase):
             iterator_loop = range(1, n_steps)
         for i in iterator_loop:
             state = self.update_vmap(i, state)
-        return rng_key, state[1], state[3], state[5], state[7]
+        return (state[0], state[1], state[3], state[7])
 
     def sample_flow(
         self,
