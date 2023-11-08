@@ -21,22 +21,22 @@ def log_posterior(x, data):
 # def log_posterior(x, data):
 #     return -0.5 * jnp.sum((x-data) ** 2)
 
-n_dim = 2
+n_dim = 5
 n_chains = 15
 n_local_steps = 30
 step_size = 0.1
-n_leapfrog = 10
+n_leapfrog = 3
 
-data = jnp.repeat(jnp.arange(n_dim)[None], n_chains, axis=0)
+data = jnp.arange(n_dim)
 
 rng_key_set = initialize_rng_keys(n_chains, seed=42)
 
 initial_position = jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
 model = MaskedCouplingRQSpline(n_dim, 4, [32, 32], 4, jax.random.PRNGKey(10))
 
-step_size = 1e-1
 local_sampler = MALA(log_posterior, True, {"step_size": step_size})
 
+step_size = 0.01
 flowHMC_sampler = flowHMC(
     log_posterior,
     True,
@@ -64,6 +64,7 @@ initial_PE = flowHMC_sampler.logpdf_vmap(initial_position, data)
 momentum = jax.random.normal(subkeys[0], shape=initial_position.shape)
 
 
+
 nf_sampler = Sampler(n_dim,
                     rng_key_set,
                     data,
@@ -73,8 +74,8 @@ nf_sampler = Sampler(n_dim,
                     n_global_steps = 50,
                     n_epochs = 30,
                     learning_rate = 1e-2,
-                    batch_size = 1000,
-                    n_chains = n_chains)#,
-                    # global_sampler = flowHMC_sampler)
+                    batch_size = 10000,
+                    n_chains = n_chains,
+                    global_sampler = flowHMC_sampler)
 
 nf_sampler.sample(initial_position, data)

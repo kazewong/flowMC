@@ -32,7 +32,8 @@ class flowHMC(HMC, NFProposal):
         self.grad_kinetic = jax.grad(self.kinetic)
         self.model = model
         self.n_sample_max = n_sample_max
-        self.update_vmap = jax.vmap(self.update, in_axes=(None, (0)))
+        self.production_covariance = jnp.eye(model.n_features)
+        self.update_vmap = jax.vmap(self.update, in_axes=(None, (0, 0, 0, 0, 0, 0, None)), out_axes=(0, 0, 0, 0, 0, 0, None))
         if self.jit is True:
             self.update_vmap = jax.jit(self.update_vmap)
 
@@ -57,7 +58,10 @@ class flowHMC(HMC, NFProposal):
 
         key1, key2 = jax.random.split(rng_key)
 
-        momentum = jnp.dot(jax.random.normal(key1, shape=position.shape), jnp.linalg.cholesky(flow_cov).T)
+        momentum = jnp.dot(
+            jax.random.normal(key1, shape=position.shape),
+            jnp.linalg.cholesky(flow_cov).T,
+        )
         mass_matrix = jnp.linalg.inv(flow_cov)
 
         # TODO: Double check whether I can compute the hamiltonian before the map
@@ -146,6 +150,19 @@ class flowHMC(HMC, NFProposal):
         proposal_position, proposal_cov = self.sample_flow(
             nf_key, initial_position, n_steps
         )
+
+        if mode == "production":
+            if self.production_covariance is None:
+                self.production_covariance = jnp.cov(proposal_position)
+            proposal_cov = jnp.repeat(
+                jnp.repeat(
+                    self.production_covariance[None, None],
+                    proposal_position.shape[0],
+                    axis=0,
+                ),
+                proposal_position.shape[1],
+                axis=1,
+            )
 
         state = (
             subkey,
