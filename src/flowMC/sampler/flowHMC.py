@@ -57,7 +57,7 @@ class flowHMC(HMC, NFProposal):
 
         key1, key2 = jax.random.split(rng_key)
 
-        momentum = jax.random.normal(key1, shape=position.shape) @ flow_cov
+        momentum = jnp.dot(jax.random.normal(key1, shape=position.shape), jnp.linalg.cholesky(flow_cov).T)
         mass_matrix = jnp.linalg.inv(flow_cov)
 
         # TODO: Double check whether I can compute the hamiltonian before the map
@@ -68,7 +68,7 @@ class flowHMC(HMC, NFProposal):
         middle_position, middle_momentum = self.leapfrog_step(
             position, momentum, data, mass_matrix
         )
-    
+
         # Push through map
 
         flow_start_prob = self.model.log_prob(middle_position[None])
@@ -84,7 +84,7 @@ class flowHMC(HMC, NFProposal):
 
         # Compute acceptance probability
 
-        log_acc = (final_Ham - initial_Ham) - (flow_end_prob - flow_start_prob)
+        log_acc = -(final_Ham - initial_Ham) - (flow_end_prob - flow_start_prob)
 
         uniform_random = jnp.log(jax.random.uniform(key2))
         do_accept = log_acc > uniform_random
@@ -126,6 +126,7 @@ class flowHMC(HMC, NFProposal):
         initial_position: Float[Array, "n_chains ndim"],
         data: PyTree,
         verbose: bool = False,
+        mode: str = "training",
     ) -> tuple[
         Float[Array, "n_chains n_steps ndim"],
         Float[Array, "n_chains n_steps 1"],

@@ -100,6 +100,7 @@ class NFProposal(ProposalBase):
         initial_position: Float[Array, "n_chains ndim"],
         data: PyTree,
         verbose: bool = False,
+        mode: str = "training",
     ) -> tuple[
         Float[Array, "n_chains n_steps ndim"],
         Float[Array, "n_chains n_steps 1"],

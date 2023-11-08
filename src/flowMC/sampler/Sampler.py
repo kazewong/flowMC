@@ -248,7 +248,8 @@ class Sampler:
                 self.n_global_steps,
                 positions[:, -1],
                 data,
-                verbose = self.verbose
+                verbose = self.verbose,
+                mode = summary_mode
             )
 
             self.summary[summary_mode]["chains"] = jnp.append(
