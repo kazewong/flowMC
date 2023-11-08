@@ -18,10 +18,7 @@ def log_posterior(x, data):
     term3 = -0.5 * ((x[1:2] + jnp.array([-3.0, 3.0])) / 0.6) ** 2
     return -(term1 - logsumexp(term2) - logsumexp(term3))
 
-# def log_posterior(x, data):
-#     return -0.5 * jnp.sum((x-data) ** 2)
-
-n_dim = 5
+n_dim = 8
 n_chains = 15
 n_local_steps = 30
 step_size = 0.1
@@ -62,8 +59,6 @@ proposal_position, proposal_metric = flowHMC_sampler.sample_flow(
 initial_PE = flowHMC_sampler.logpdf_vmap(initial_position, data)
 
 momentum = jax.random.normal(subkeys[0], shape=initial_position.shape)
-
-
 
 nf_sampler = Sampler(n_dim,
                     rng_key_set,
