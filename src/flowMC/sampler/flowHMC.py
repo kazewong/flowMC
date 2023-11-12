@@ -58,11 +58,12 @@ class flowHMC(HMC, NFProposal):
 
         key1, key2 = jax.random.split(rng_key)
 
+        noise = jnp.abs(flow_cov).min()*0.1*jnp.eye(flow_cov.shape[0]) # Add small jitter to avoid numerical issues
+
         momentum = jnp.dot(
             jax.random.normal(key1, shape=position.shape),
-            jnp.linalg.cholesky(flow_cov).T,
-        )
-        mass_matrix = jnp.linalg.inv(flow_cov)
+            jnp.linalg.cholesky(flow_cov + noise).T)
+        mass_matrix = jnp.linalg.inv(flow_cov + noise)
 
         # TODO: Double check whether I can compute the hamiltonian before the map
         initial_Ham = log_prob + self.kinetic(momentum, mass_matrix)
@@ -70,7 +71,7 @@ class flowHMC(HMC, NFProposal):
         # First HMC part
 
         middle_position, middle_momentum = self.leapfrog_step(
-            position, momentum, data, mass_matrix
+            position, momentum, data, mass_matrix, self.n_leapfrog
         )
 
         # Push through map
@@ -81,7 +82,7 @@ class flowHMC(HMC, NFProposal):
         # Second HMC part
 
         final_position, final_momentum = self.leapfrog_step(
-            flow_position, middle_momentum, data, mass_matrix
+            flow_position, middle_momentum, data, mass_matrix, self.n_leapfrog
         )
         final_PE = self.potential(final_position, data)
         final_Ham = final_PE + self.kinetic(final_momentum, mass_matrix)
@@ -228,9 +229,7 @@ class flowHMC(HMC, NFProposal):
 
         else:
             proposal_position = self.model.sample(rng_key, total_size)
-            proposal_covariance = jax.vmap(jnp.linalg.inv)(
-                self.covariance_estimate(proposal_position)
-            )
+            proposal_covariance = self.covariance_estimate(proposal_position)
 
         proposal_position = proposal_position.reshape(n_chains, n_steps, n_dim)
         proposal_covariance = proposal_covariance.reshape(

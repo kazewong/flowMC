@@ -77,14 +77,14 @@ class HMC(ProposalBase):
         )
         return (position, momentum, data, metric), extras
 
-    def leapfrog_step(self, position, momentum, data, metric):
+    def leapfrog_step(self, position, momentum, data, metric, n_step):
         momentum = momentum - 0.5 * self.params["step_size"] * self.grad_potential(
             position, data
         )
         (position, momentum, data, metric), _ = jax.lax.scan(
             self.leapfrog_kernel,
             (position, momentum, data, metric),
-            jnp.arange(self.n_leapfrog - 1),
+            jnp.arange(n_step - 1),
         )
         position = position + self.params["step_size"] * self.grad_kinetic(
             momentum, metric
@@ -118,7 +118,7 @@ class HMC(ProposalBase):
         )
         H = log_prob + self.kinetic(momentum, self.params["inverse_metric"])
         proposed_position, proposed_momentum = self.leapfrog_step(
-            position, momentum, data, self.params["inverse_metric"]
+            position, momentum, data, self.params["inverse_metric"], n_step=self.n_leapfrog
         )
         proposed_PE = self.potential(proposed_position, data)
         proposed_ham = proposed_PE + self.kinetic(proposed_momentum, self.params["inverse_metric"])
