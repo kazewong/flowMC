@@ -32,13 +32,13 @@ class flowHMC(HMC, NFProposal):
         self.grad_kinetic = jax.grad(self.kinetic)
         self.model = model
         self.n_sample_max = n_sample_max
-        self.production_covariance = jnp.eye(model.n_features)
+        self.production_covariance = params['condition_matrix'] #None if params['condition_matrix'] is None else params['condition_matrix']
         self.update_vmap = jax.vmap(self.update, in_axes=(None, (0, 0, 0, 0, 0, 0, None)), out_axes=(0, 0, 0, 0, 0, 0, None))
         if self.jit is True:
             self.update_vmap = jax.jit(self.update_vmap)
 
     def covariance_estimate(
-        self, points: Float[Array, "n_point n_dim"], k: int = 10
+        self, points: Float[Array, "n_point n_dim"], k: int = 100
     ) -> Float[Array, "n_point n_dim n_dim"]:
         distance = jax.lax.dot(points, points.T)
         neighbor_indcies = jax.lax.approx_min_k(distance, k=k)[1]
@@ -93,6 +93,7 @@ class flowHMC(HMC, NFProposal):
 
         uniform_random = jnp.log(jax.random.uniform(key2))
         do_accept = log_acc > uniform_random
+
 
         # Update position
         position = jnp.where(do_accept, final_position, position)
@@ -152,18 +153,18 @@ class flowHMC(HMC, NFProposal):
             nf_key, initial_position, n_steps
         )
 
-        if mode == "production":
-            if self.production_covariance is None:
-                self.production_covariance = jnp.cov(proposal_position)
-            proposal_cov = jnp.repeat(
-                jnp.repeat(
-                    self.production_covariance[None, None],
-                    proposal_position.shape[0],
-                    axis=0,
-                ),
-                proposal_position.shape[1],
-                axis=1,
-            )
+        # if mode == "production":
+        #     if self.production_covariance is None:
+        #         self.production_covariance = jnp.cov(proposal_position)
+        proposal_cov = jnp.repeat(
+            jnp.repeat(
+                self.production_covariance[None, None],
+                proposal_position.shape[0],
+                axis=0,
+            ),
+            proposal_position.shape[1],
+            axis=1,
+        )
 
         state = (
             subkey,
