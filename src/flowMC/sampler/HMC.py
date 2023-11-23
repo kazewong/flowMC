@@ -42,6 +42,11 @@ class HMC(ProposalBase):
             self.n_leapfrog = 10
             print("n_leapfrog not specified, using default value 10")
 
+        coefs = jnp.ones((self.n_leapfrog+2, 2))
+        coefs = coefs.at[0].set(jnp.array([0, 0.5]))
+        coefs = coefs.at[0].set(jnp.array([0, 0.5]))
+        self.leapfrog_coefs = coefs
+
         self.kinetic = lambda p, metric: 0.5 * (p**2 * metric).sum()
         self.grad_kinetic = jax.grad(self.kinetic)
         self.logpdf = self.potential
@@ -69,28 +74,19 @@ class HMC(ProposalBase):
 
     def leapfrog_kernel(self, carry, extras):
         position, momentum, data, metric = carry
-        position = position + self.params["step_size"] * self.grad_kinetic(
+        position = position + self.params["step_size"] * extras[0] * self.grad_kinetic(
             momentum, metric
         )
-        momentum = momentum - self.params["step_size"] * self.grad_potential(
+        momentum = momentum - self.params["step_size"] * extras[1] * self.grad_potential(
             position, data
         )
         return (position, momentum, data, metric), extras
 
-    def leapfrog_step(self, position, momentum, data, metric, n_step):
-        momentum = momentum - 0.5 * self.params["step_size"] * self.grad_potential(
-            position, data
-        )
+    def leapfrog_step(self, position, momentum, data, metric):
         (position, momentum, data, metric), _ = jax.lax.scan(
             self.leapfrog_kernel,
             (position, momentum, data, metric),
-            jnp.arange(n_step - 1),
-        )
-        position = position + self.params["step_size"] * self.grad_kinetic(
-            momentum, metric
-        )
-        momentum = momentum - 0.5 * self.params["step_size"] * self.grad_potential(
-            position, data
+            self.leapfrog_coefs,
         )
         return position, momentum
 
@@ -118,7 +114,7 @@ class HMC(ProposalBase):
         )
         H = log_prob + self.kinetic(momentum, self.params["inverse_metric"])
         proposed_position, proposed_momentum = self.leapfrog_step(
-            position, momentum, data, self.params["inverse_metric"], n_step=self.n_leapfrog
+            position, momentum, data, self.params["inverse_metric"]
         )
         proposed_PE = self.potential(proposed_position, data)
         proposed_ham = proposed_PE + self.kinetic(proposed_momentum, self.params["inverse_metric"])
