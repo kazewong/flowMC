@@ -66,12 +66,12 @@ class flowHMC(HMC, NFProposal):
         mass_matrix = jnp.linalg.inv(flow_cov + noise)
 
         # TODO: Double check whether I can compute the hamiltonian before the map
-        initial_Ham = log_prob + self.kinetic(momentum, mass_matrix)
+        initial_Ham = - log_prob + self.kinetic(momentum, mass_matrix)
 
         # First HMC part
 
         middle_position, middle_momentum = self.leapfrog_step(
-            position, momentum, data, mass_matrix, self.n_leapfrog
+            position, momentum, data, mass_matrix
         )
 
         # Push through map
@@ -82,7 +82,7 @@ class flowHMC(HMC, NFProposal):
         # Second HMC part
 
         final_position, final_momentum = self.leapfrog_step(
-            flow_position, middle_momentum, data, mass_matrix, self.n_leapfrog
+            flow_position, middle_momentum, data, mass_matrix
         )
         final_PE = self.potential(final_position, data)
         final_Ham = final_PE + self.kinetic(final_momentum, mass_matrix)
@@ -97,7 +97,7 @@ class flowHMC(HMC, NFProposal):
 
         # Update position
         position = jnp.where(do_accept, final_position, position)
-        log_prob = jnp.where(do_accept, final_PE, log_prob)
+        log_prob = jnp.where(do_accept, - final_PE, log_prob)
 
         return position, log_prob[0], do_accept[0]
 
@@ -188,7 +188,7 @@ class flowHMC(HMC, NFProposal):
         for i in iterator_loop:
             state = self.update_vmap(i, state)
 
-        return (rng_key, state[1], -state[2], state[3])
+        return (rng_key, state[1], state[2], state[3])
 
     def sample_flow(
         self,

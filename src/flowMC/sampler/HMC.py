@@ -112,7 +112,7 @@ class HMC(ProposalBase):
             jax.random.normal(key1, shape=position.shape)
             * self.params["inverse_metric"] ** -0.5
         )
-        H = log_prob + self.kinetic(momentum, self.params["inverse_metric"])
+        H = - log_prob + self.kinetic(momentum, self.params["inverse_metric"])
         proposed_position, proposed_momentum = self.leapfrog_step(
             position, momentum, data, self.params["inverse_metric"]
         )
@@ -124,7 +124,7 @@ class HMC(ProposalBase):
         do_accept = log_uniform < log_acc
 
         position = jnp.where(do_accept, proposed_position, position)
-        log_prob = jnp.where(do_accept, proposed_PE, log_prob)
+        log_prob = jnp.where(do_accept, -proposed_PE, log_prob)
 
         return position, log_prob, do_accept
 
@@ -197,5 +197,5 @@ class HMC(ProposalBase):
         for i in iterator_loop:
             state = self.update_vmap(i, state)
 
-        state = (state[0], state[1], -state[2], state[3])
+        state = (state[0], state[1], state[2], state[3])
         return state
