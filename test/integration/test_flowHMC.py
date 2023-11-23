@@ -41,7 +41,7 @@ flowHMC_sampler = flowHMC(
     params={
         "step_size": step_size,
         "n_leapfrog": n_leapfrog,
-        "inverse_metric": jnp.ones(n_dim),
+        "condition_matrix": jnp.eye(n_dim),
     },
 )
 
