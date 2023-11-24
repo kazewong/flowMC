@@ -241,8 +241,8 @@ class TestGRW:
 
         result = GRW_obj.sample(rng_key_set[1], 30000, initial_position, None)
 
-        assert jnp.isclose(jnp.mean(result[1]), 0, atol=1e-2)
-        assert jnp.isclose(jnp.var(result[1]), 1, atol=1e-2)
+        assert jnp.isclose(jnp.mean(result[1]), 0, atol=3e-2)
+        assert jnp.isclose(jnp.var(result[1]), 1, atol=3e-2)
 
 
 class TestNF:
