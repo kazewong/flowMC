@@ -21,7 +21,7 @@ class TestHMC:
         HMC_obj = HMC(
             log_posterior,
             True,
-            {"step_size": 1, "n_leapfrog": 5, "condition_matrix": jnp.ones(n_dim)},
+            {"step_size": 1, "n_leapfrog": 5, "condition_matrix": jnp.eye(n_dim)},
         )
 
         rng_key_set = initialize_rng_keys(n_chains, seed=42)
@@ -51,7 +51,7 @@ class TestHMC:
         HMC_obj = HMC(
             log_posterior,
             True,
-            {"step_size": 1, "n_leapfrog": 5, "condition_matrix": jnp.ones(n_dim)},
+            {"step_size": 1, "n_leapfrog": 5, "condition_matrix": jnp.eye(n_dim)},
         )
 
         rng_key_set = initialize_rng_keys(n_chains, seed=42)
