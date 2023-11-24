@@ -1,4 +1,4 @@
-from abc import abstractmethod
+from abc import abstractmethod, abstractproperty
 from typing import Tuple
 import equinox as eqx
 import jax
@@ -57,6 +57,10 @@ class NFModel(eqx.Module):
             
         Returns:
             Tuple[Array, Array]: Output data and log determinant of the Jacobian."""
+        return NotImplemented
+
+    @abstractproperty
+    def n_features(self) -> int:
         return NotImplemented
 
     def save_model(self, path: str):

@@ -71,6 +71,7 @@ class Sampler:
         self.momentum = kwargs.get("momentum", 0.9)
         self.batch_size = kwargs.get("batch_size", 10000)
         self.use_global = kwargs.get("use_global", True)
+        self.global_sampler = kwargs.get("global_sampler", None)
         self.logging = kwargs.get("logging", True)
         self.keep_quantile = kwargs.get("keep_quantile", 0)
         self.local_autotune = kwargs.get("local_autotune", None)
@@ -90,7 +91,8 @@ class Sampler:
                 n_chains=self.n_chains, n_dims=n_dim, n_step=self.n_local_steps, data=data
             )
 
-        self.global_sampler = NFProposal(self.local_sampler.logpdf, jit=self.local_sampler.jit, model=nf_model, n_sample_max=self.n_sample_max)
+        if self.global_sampler is None:
+            self.global_sampler = NFProposal(self.local_sampler.logpdf, jit=self.local_sampler.jit, model=nf_model, n_sample_max=self.n_sample_max)
 
         self.likelihood_vec = self.local_sampler.logpdf_vmap
 
@@ -240,14 +242,14 @@ class Sampler:
                 self.rng_keys_nf,
                 nf_chain,
                 log_prob,
-                log_prob_nf,
                 global_acceptance,
             ) = self.global_sampler.sample(
                 self.rng_keys_nf,
                 self.n_global_steps,
                 positions[:, -1],
                 data,
-                verbose = self.verbose
+                verbose = self.verbose,
+                mode = summary_mode
             )
 
             self.summary[summary_mode]["chains"] = jnp.append(

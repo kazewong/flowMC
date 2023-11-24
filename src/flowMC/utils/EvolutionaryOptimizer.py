@@ -41,8 +41,10 @@ class EvolutionaryOptimizer:
         self.strategy = CMA_ES(num_dims=ndims, popsize=popsize, elite_ratio=0.5)
         self.es_params = self.strategy.default_params.replace(clip_min=0, clip_max=1)
         self.verbose = verbose
+        self.history = []
+        self.state = None
 
-    def optimize(self, objective, bound, n_loops = 100, seed = 9527):
+    def optimize(self, objective, bound, n_loops = 100, seed = 9527, keep_history_step = 0):
         """
         Optimize the objective function.
 
@@ -62,16 +64,29 @@ class EvolutionaryOptimizer:
         None
         """
         rng = jax.random.PRNGKey(seed)
+        key, subkey = jax.random.split(rng)
         progress_bar = tqdm.tqdm(range(n_loops), "Generation: ") if self.verbose else range(n_loops)
         self.bound = bound
-        self.state = self.strategy.initialize(rng, self.es_params)
-        for i in progress_bar:
-            rng, rng_gen, rng_eval = jax.random.split(rng, 3)
-            x, state = self.strategy.ask(rng_gen, self.state, self.es_params)
-            theta = x * (bound[:, 1] - bound[:, 0]) + bound[:, 0]
-            fitness = objective(theta)
-            self.state = self.strategy.tell(x, fitness.astype(jnp.float32), state, self.es_params)
-            if self.verbose: progress_bar.set_description(f"Generation: {i}, Fitness: {self.state.best_fitness:.4f}")
+        self.state = self.strategy.initialize(key, self.es_params)
+        if keep_history_step > 0:
+            self.history = []
+            for i in progress_bar:
+                key, self.state, theta = self.optimize_step(subkey, self.state, objective, bound)
+                if i%keep_history_step == 0: self.history.append(theta)
+                if self.verbose: progress_bar.set_description(f"Generation: {i}, Fitness: {self.state.best_fitness:.4f}")
+            self.history = jnp.array(self.history)
+        else:
+            for i in progress_bar:
+                key, self.state, _ = self.optimize_step(subkey, self.state, objective, bound)
+                if self.verbose: progress_bar.set_description(f"Generation: {i}, Fitness: {self.state.best_fitness:.4f}")
+
+    def optimize_step(self, key: jax.random.PRNGKey, state, objective: callable, bound):
+        key, subkey = jax.random.split(key)
+        x, state = self.strategy.ask(subkey, state, self.es_params)
+        theta = x * (bound[:, 1] - bound[:, 0]) + bound[:, 0]
+        fitness = objective(theta)
+        state = self.strategy.tell(x, fitness.astype(jnp.float32), state, self.es_params)
+        return key, state, theta
 
     def get_result(self):
         """
