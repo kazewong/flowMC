@@ -67,7 +67,7 @@ class Sampler:
         self.n_chains = kwargs.get("n_chains", 20)
         self.n_epochs = kwargs.get("n_epochs", 30)
         self.learning_rate = kwargs.get("learning_rate", 0.01)
-        self.max_samples = kwargs.get("max_samples", 100000)
+        self.max_samples = kwargs.get("max_samples", 10000)
         self.momentum = kwargs.get("momentum", 0.9)
         self.batch_size = kwargs.get("batch_size", 10000)
         self.use_global = kwargs.get("use_global", True)
