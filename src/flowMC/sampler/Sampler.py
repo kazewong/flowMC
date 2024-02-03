@@ -7,36 +7,18 @@ from flowMC.sampler.NF_proposal import NFProposal
 import optax
 from flowMC.sampler.Proposal_Base import ProposalBase
 from flowMC.nfmodel.base import NFModel
+from flowMC.utils import initialize_summary_dict
 from tqdm import tqdm
 import equinox as eqx
 import numpy as np
-
+import matplotlib.pyplot as plt
+from flowMC.utils.hyperparameters import flowmc_default_hyperparameters
 
 class Sampler:
     """
     Sampler class that host configuration parameters, NF model, and local sampler
 
-    Args:
-        n_dim (int): Dimension of the problem.
-        rng_key_set (Tuple): Tuple of random number generator keys.
-        data (Device Array): Extra data to be passed to the likelihood function.
-        local_sampler (Callable): Local sampler maker
-        nf_model (NFModel): Normalizing flow model.
-        n_loop_training (int, optional): Number of training loops. Defaults to 3.
-        n_loop_production (int, optional): Number of production loops. Defaults to 3.
-        n_local_steps (int, optional): Number of local steps per loop. Defaults to 50.
-        n_global_steps (int, optional): Number of global steps per loop. Defaults to 50.
-        n_chains (int, optional): Number of chains. Defaults to 20.
-        n_epochs (int, optional): Number of epochs per training loop. Defaults to 30.
-        learning_rate (float, optional): Learning rate for the NF model. Defaults to 0.01.
-        max_samples (int, optional): Maximum number of samples fed to training the NF model. Defaults to 10000.
-        momentum (float, optional): Momentum for the NF model. Defaults to 0.9.
-        batch_size (int, optional): Batch size for the NF model. Defaults to 10000.
-        use_global (bool, optional): Whether to use global sampler. Defaults to True.
-        logging (bool, optional): Whether to log the training process. Defaults to True.
-        keep_quantile (float, optional): Quantile of chains to keep when training the normalizing flow model. Defaults to 0..
-        local_autotune (None, optional): Auto-tune function for the local sampler. Defaults to None.
-        train_thinning (int, optional): Thinning for the data used to train the normalizing flow. Defaults to 1.
+    For information regarding the hyperparameters to be passed, see flowMC.utils.hyperparameters
     """
 
     @property
@@ -60,25 +42,14 @@ class Sampler:
         self.rng_keys_mcmc = rng_keys_mcmc
         self.n_dim = n_dim
 
-        self.n_loop_training = kwargs.get("n_loop_training", 3)
-        self.n_loop_production = kwargs.get("n_loop_production", 3)
-        self.n_local_steps = kwargs.get("n_local_steps", 50)
-        self.n_global_steps = kwargs.get("n_global_steps", 50)
-        self.n_chains = kwargs.get("n_chains", 20)
-        self.n_epochs = kwargs.get("n_epochs", 30)
-        self.learning_rate = kwargs.get("learning_rate", 0.01)
-        self.max_samples = kwargs.get("max_samples", 100000)
-        self.momentum = kwargs.get("momentum", 0.9)
-        self.batch_size = kwargs.get("batch_size", 10000)
-        self.use_global = kwargs.get("use_global", True)
-        self.logging = kwargs.get("logging", True)
-        self.keep_quantile = kwargs.get("keep_quantile", 0)
-        self.local_autotune = kwargs.get("local_autotune", None)
-        self.train_thinning = kwargs.get("train_thinning", 1)
-        self.output_thinning = kwargs.get("output_thinning", 1)
-        self.n_sample_max = kwargs.get("n_sample_max", 10000)
-        self.precompile = kwargs.get("precompile", False)
-        self.verbose = kwargs.get("verbose", False)
+        # Set and override any given hyperparameters
+        self.hyperparameters = flowmc_default_hyperparameters
+        hyperparameter_names = list(flowmc_default_hyperparameters.keys())
+        for key, value in kwargs.items():
+            if key in hyperparameter_names:
+                self.hyperparameters[key] = value
+        for key, value in self.hyperparameters.items():
+            setattr(self, key, value)
 
         self.variables = {"mean": None, "var": None}
 
@@ -98,19 +69,10 @@ class Sampler:
         self.optim_state = tx.init(eqx.filter(self.nf_model, eqx.is_array))
         self.nf_training_loop, train_epoch, train_step = make_training_loop(tx)
 
-        # Initialized result dictionary
-        training = {}
-        training["chains"] = jnp.empty((self.n_chains, 0, self.n_dim))
-        training["log_prob"] = jnp.empty((self.n_chains, 0))
-        training["local_accs"] = jnp.empty((self.n_chains, 0))
-        training["global_accs"] = jnp.empty((self.n_chains, 0))
+        # Initialized result dictionaries
+        training = initialize_summary_dict(self)
         training["loss_vals"] = jnp.empty((0, self.n_epochs))
-
-        production = {}
-        production["chains"] = jnp.empty((self.n_chains, 0, self.n_dim))
-        production["log_prob"] = jnp.empty((self.n_chains, 0))
-        production["local_accs"] = jnp.empty((self.n_chains, 0))
-        production["global_accs"] = jnp.empty((self.n_chains, 0))
+        production = initialize_summary_dict(self)
 
         self.summary = {}
         self.summary["training"] = training
@@ -341,7 +303,7 @@ class Sampler:
             last_step = self.sampling_loop(last_step, data)
         return last_step
 
-    def get_sampler_state(self, training: bool = False) -> dict:
+    def get_sampler_state(self, which: str = "training") -> dict:
         """
         Get the sampler state. There are two sets of sampler outputs one can get,
         the training set and the production set.
@@ -354,10 +316,7 @@ class Sampler:
             training (bool): Whether to get the training set sampler state. Defaults to False.
 
         """
-        if training == True:
-            return self.summary["training"]
-        else:
-            return self.summary["production"]
+        return self.summary[which]
 
     def sample_flow(self, n_samples: int) -> jnp.ndarray:
         """
@@ -495,3 +454,48 @@ class Sampler:
         """
         with open(path, "wb") as f:
             pickle.dump(self.summary, f)
+
+    def plot_summary(self, which: str = "training", **plotkwargs) -> None:
+        """
+        Create plots of the most important quantities in the summary.
+
+        Args:
+            which (str, optional): Which summary dictionary to show in plots. Defaults to "training".
+        """
+        
+        # Choose the dataset
+        data = self.get_sampler_state(which)
+        # TODO add loss values in plotting
+        keys = ["local_accs", "global_accs", "log_prob"]
+        
+        for key in keys:
+            self._single_plot(data, key, which, **plotkwargs)
+            
+    def _single_plot(self, data: dict, name: str, which: str = "training", **plotkwargs):
+        """
+        Create a single plot of a quantity in the summary.
+
+        Args:
+            data (dict): Dictionary with the summary data.
+            name (str): Name of the quantity to plot.
+            which (str, optional): Name of this summary dict. Defaults to "training".
+        """
+        # Get plot kwargs
+        figsize = plotkwargs["figsize"] if "figsize" in plotkwargs else (12, 8)
+        alpha = plotkwargs["alpha"] if "alpha" in plotkwargs else 1
+        eps = 1e-3
+        
+        # Prepare plot data
+        plotdata = data[name]        
+        mean = jnp.mean(plotdata, axis=0)
+        x = [i+1 for i in range(len(mean))]
+        
+        # Plot
+        plt.figure(figsize=figsize)
+        plt.plot(x, mean, linestyle="-", color="blue", alpha=alpha)
+        plt.xlabel("Iteration")
+        plt.ylabel(f"{name} ({which})")
+        # Extras for some variables:
+        if "acc" in name:
+            plt.ylim(0-eps, 1+eps)
+        plt.savefig(f"{self.outdir}{name}_{which}.png", bbox_inches='tight')
