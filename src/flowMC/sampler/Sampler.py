@@ -7,13 +7,12 @@ from flowMC.sampler.NF_proposal import NFProposal
 import optax
 from flowMC.sampler.Proposal_Base import ProposalBase
 from flowMC.nfmodel.base import NFModel
-from flowMC.utils import initialize_summary_dict
 from tqdm import tqdm
 import equinox as eqx
 import numpy as np
 import matplotlib.pyplot as plt
 
-flowmc_default_hyperparameters = {
+default_hyperparameters = {
     "n_loop_training": 3,
     "n_loop_production": 3,
     "n_loop_pretraining": 0,
@@ -87,8 +86,8 @@ class Sampler:
         self.n_dim = n_dim
 
         # Set and override any given hyperparameters
-        self.hyperparameters = flowmc_default_hyperparameters
-        hyperparameter_names = list(flowmc_default_hyperparameters.keys())
+        self.hyperparameters = default_hyperparameters
+        hyperparameter_names = list(default_hyperparameters.keys())
         for key, value in kwargs.items():
             if key in hyperparameter_names:
                 self.hyperparameters[key] = value
@@ -499,47 +498,22 @@ class Sampler:
         with open(path, "wb") as f:
             pickle.dump(self.summary, f)
 
-    def plot_summary(self, which: str = "training", **plotkwargs) -> None:
-        """
-        Create plots of the most important quantities in the summary.
+def initialize_summary_dict(sampler: Sampler) -> dict:
+    """
+    Generate an empty dictionary to store the summary of the sampler.
 
-        Args:
-            which (str, optional): Which summary dictionary to show in plots. Defaults to "training".
-        """
-        
-        # Choose the dataset
-        data = self.get_sampler_state(which)
-        # TODO add loss values in plotting
-        keys = ["local_accs", "global_accs", "log_prob"]
-        
-        for key in keys:
-            self._single_plot(data, key, which, **plotkwargs)
-            
-    def _single_plot(self, data: dict, name: str, which: str = "training", **plotkwargs):
-        """
-        Create a single plot of a quantity in the summary.
+    Args:
+        sampler (Sampler): The sampler object from which dimensions of arrays are taken.
 
-        Args:
-            data (dict): Dictionary with the summary data.
-            name (str): Name of the quantity to plot.
-            which (str, optional): Name of this summary dict. Defaults to "training".
-        """
-        # Get plot kwargs
-        figsize = plotkwargs["figsize"] if "figsize" in plotkwargs else (12, 8)
-        alpha = plotkwargs["alpha"] if "alpha" in plotkwargs else 1
-        eps = 1e-3
+    Returns:
+        dict: Dictionary where the keys are the quantities to store and the values are empty arrays.
+    """
+    
+    my_dict = dict()
+
+    my_dict["chains"] = jnp.empty((sampler.n_chains, 0, sampler.n_dim))
+    my_dict["log_prob"] = jnp.empty((sampler.n_chains, 0))
+    my_dict["local_accs"] = jnp.empty((sampler.n_chains, 0))
+    my_dict["global_accs"] = jnp.empty((sampler.n_chains, 0))
         
-        # Prepare plot data
-        plotdata = data[name]        
-        mean = jnp.mean(plotdata, axis=0)
-        x = [i+1 for i in range(len(mean))]
-        
-        # Plot
-        plt.figure(figsize=figsize)
-        plt.plot(x, mean, linestyle="-", color="blue", alpha=alpha)
-        plt.xlabel("Iteration")
-        plt.ylabel(f"{name} ({which})")
-        # Extras for some variables:
-        if "acc" in name:
-            plt.ylim(0-eps, 1+eps)
-        plt.savefig(f"{self.outdir}{name}_{which}.png", bbox_inches='tight')
+    return my_dict
