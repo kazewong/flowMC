@@ -11,7 +11,7 @@ def plot_summary(sampler: Sampler, which: str = "training", **plotkwargs) -> Non
     """
     
     # Choose the dataset
-    data = Sampler.get_sampler_state(which)
+    data = Sampler.get_sampler_state(which = which)
     # TODO add loss values in plotting
     keys = ["local_accs", "global_accs", "log_prob"]
     
