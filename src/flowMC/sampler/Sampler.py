@@ -10,7 +10,6 @@ from flowMC.nfmodel.base import NFModel
 from tqdm import tqdm
 import equinox as eqx
 import numpy as np
-import matplotlib.pyplot as plt
 
 default_hyperparameters = {
     "n_loop_training": 3,
