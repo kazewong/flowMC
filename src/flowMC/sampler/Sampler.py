@@ -346,7 +346,7 @@ class Sampler:
             last_step = self.sampling_loop(last_step, data)
         return last_step
 
-    def get_sampler_state(self, which: str = "training") -> dict:
+    def get_sampler_state(self, training: bool = False) -> dict:
         """
         Get the sampler state. There are two sets of sampler outputs one can get,
         the training set and the production set.
@@ -359,7 +359,10 @@ class Sampler:
             training (bool): Whether to get the training set sampler state. Defaults to False.
 
         """
-        return self.summary[which]
+        if training == True:
+            return self.summary["training"]
+        else:
+            return self.summary["production"]
 
     def sample_flow(self, n_samples: int) -> jnp.ndarray:
         """
