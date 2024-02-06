@@ -112,14 +112,24 @@ class Sampler:
         self.optim_state = tx.init(eqx.filter(self.nf_model, eqx.is_array))
         self.nf_training_loop, train_epoch, train_step = make_training_loop(tx)
 
-        # Initialized result dictionaries
-        training = initialize_summary_dict(self)
+        # Initialized result dictionary
+        training = {}
+        training["chains"] = jnp.empty((self.n_chains, 0, self.n_dim))
+        training["log_prob"] = jnp.empty((self.n_chains, 0))
+        training["local_accs"] = jnp.empty((self.n_chains, 0))
+        training["global_accs"] = jnp.empty((self.n_chains, 0))
         training["loss_vals"] = jnp.empty((0, self.n_epochs))
-        production = initialize_summary_dict(self)
+
+        production = {}
+        production["chains"] = jnp.empty((self.n_chains, 0, self.n_dim))
+        production["log_prob"] = jnp.empty((self.n_chains, 0))
+        production["local_accs"] = jnp.empty((self.n_chains, 0))
+        production["global_accs"] = jnp.empty((self.n_chains, 0))
 
         self.summary = {}
         self.summary["training"] = training
         self.summary["production"] = production
+
 
     def sample(self, initial_position: Array, data: dict):
         """
@@ -500,23 +510,3 @@ class Sampler:
         """
         with open(path, "wb") as f:
             pickle.dump(self.summary, f)
-
-def initialize_summary_dict(sampler: Sampler) -> dict:
-    """
-    Generate an empty dictionary to store the summary of the sampler.
-
-    Args:
-        sampler (Sampler): The sampler object from which dimensions of arrays are taken.
-
-    Returns:
-        dict: Dictionary where the keys are the quantities to store and the values are empty arrays.
-    """
-    
-    my_dict = dict()
-
-    my_dict["chains"] = jnp.empty((sampler.n_chains, 0, sampler.n_dim))
-    my_dict["log_prob"] = jnp.empty((sampler.n_chains, 0))
-    my_dict["local_accs"] = jnp.empty((sampler.n_chains, 0))
-    my_dict["global_accs"] = jnp.empty((sampler.n_chains, 0))
-        
-    return my_dict
