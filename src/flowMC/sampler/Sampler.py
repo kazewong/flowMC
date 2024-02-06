@@ -84,6 +84,7 @@ class Sampler:
         self.rng_keys_mcmc = rng_keys_mcmc
         self.n_dim = n_dim
 
+
         # Set and override any given hyperparameters
         self.hyperparameters = default_hyperparameters
         hyperparameter_names = list(default_hyperparameters.keys())
@@ -103,7 +104,8 @@ class Sampler:
                 n_chains=self.n_chains, n_dims=n_dim, n_step=self.n_local_steps, data=data
             )
 
-        self.global_sampler = NFProposal(self.local_sampler.logpdf, jit=self.local_sampler.jit, model=nf_model, n_sample_max=self.n_sample_max)
+        if self.global_sampler is None:
+            self.global_sampler = NFProposal(self.local_sampler.logpdf, jit=self.local_sampler.jit, model=nf_model, n_sample_max=self.n_sample_max)
 
         self.likelihood_vec = self.local_sampler.logpdf_vmap
 
@@ -254,14 +256,14 @@ class Sampler:
                 self.rng_keys_nf,
                 nf_chain,
                 log_prob,
-                log_prob_nf,
                 global_acceptance,
             ) = self.global_sampler.sample(
                 self.rng_keys_nf,
                 self.n_global_steps,
                 positions[:, -1],
                 data,
-                verbose = self.verbose
+                verbose = self.verbose,
+                mode = summary_mode
             )
 
             self.summary[summary_mode]["chains"] = jnp.append(

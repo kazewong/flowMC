@@ -1,8 +1,8 @@
-from abc import abstractmethod
+from abc import abstractmethod, abstractproperty
 from typing import Tuple
 import equinox as eqx
 import jax
-from jaxtyping import Array
+from jaxtyping import Array, PRNGKeyArray, Float
 class NFModel(eqx.Module):
 
     """
@@ -59,6 +59,10 @@ class NFModel(eqx.Module):
             Tuple[Array, Array]: Output data and log determinant of the Jacobian."""
         return NotImplemented
 
+    @abstractproperty
+    def n_features(self) -> int:
+        return NotImplemented
+
     def save_model(self, path: str):
         eqx.tree_serialise_leaves(path+".eqx", self)
 
@@ -107,5 +111,5 @@ class Distribution(eqx.Module):
         return NotImplemented
 
     @abstractmethod
-    def sample(self, rng_key: jax.random.PRNGKey, n_samples: int) -> Array:
+    def sample(self, rng_key: PRNGKeyArray, n_samples: int) -> Float[Array, " n_samples n_features"]:
         return NotImplemented
