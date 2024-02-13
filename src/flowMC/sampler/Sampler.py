@@ -60,7 +60,7 @@ class Sampler:
         "n_sample_max": "(int) Maximum number of samples fed to training the NF model",
         "precompile": "(bool) Whether to precompile",
         "verbose": "(bool) Show steps of algorithm in detail",
-        "outdir_name": "(str) Location to which to save plots, samples and hyperparameter settings. Note: should ideally start with `./` and also end with `/`"
+        "outdir": "(str) Location to which to save plots, samples and hyperparameter settings. Note: should ideally start with `./` and also end with `/`"
     """
 
     @property

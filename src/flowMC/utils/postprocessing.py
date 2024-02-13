@@ -54,8 +54,6 @@ def _single_plot(data: dict, name: str, which: str = "training", outdir: str = "
         plt.ylim(0-eps, 1+eps)
     plt.savefig(f"{outdir}{name}_{which}.png", bbox_inches='tight')
     
-    
-    
 def gelman_rubin(chains: Float[Array, "n_chains n_steps n_dim"], discard_fraction: float = 0.1) -> Array:
     """
     Compute the Gelman-Rubin R statistic for each parameter in the chains.
