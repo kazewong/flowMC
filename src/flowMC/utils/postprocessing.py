@@ -1,18 +1,18 @@
 import matplotlib.pyplot as plt
 import jax.numpy as jnp
-from flowMC.sampler.Sampler import Sampler
+# from flowMC.sampler.Sampler import Sampler
 from jaxtyping import Float, Array
 
-def plot_summary(sampler: Sampler, which: str = "training", **plotkwargs) -> None:
+def plot_summary(sampler: object, training: bool = False, **plotkwargs) -> None:
     """
     Create plots of the most important quantities in the summary.
 
     Args:
-        which (str, optional): Which summary dictionary to show in plots. Defaults to "training".
+        training (bool, optional): If True, plot training quantities. If False, plot production quantities. Defaults to False.
     """
     
     # Choose the dataset
-    data = Sampler.get_sampler_state(which = which)
+    data = sampler.get_sampler_state(training=training)
     # TODO add loss values in plotting
     keys = ["local_accs", "global_accs", "log_prob"]
     if sampler.track_gelman_rubin:
@@ -25,6 +25,10 @@ def plot_summary(sampler: Sampler, which: str = "training", **plotkwargs) -> Non
         outdir = "./outdir/"
     
     for key in keys:
+        if training:
+            which = "training"
+        else:
+            which = "production"
         _single_plot(data, key, which, outdir=outdir, **plotkwargs)
             
 def _single_plot(data: dict, name: str, which: str = "training", outdir: str = "./outdir/", **plotkwargs):

@@ -15,7 +15,6 @@ import numpy as np
 default_hyperparameters = {
     "n_loop_training": 3,
     "n_loop_production": 3,
-    "n_loop_pretraining": 0,
     "n_local_steps": 50,
     "n_global_steps": 50,
     "n_chains": 20,
@@ -25,6 +24,7 @@ default_hyperparameters = {
     "momentum": 0.9,
     "batch_size": 10000,
     "use_global": True,
+    "global_sampler": None,
     "logging": True,
     "keep_quantile": 0,
     "local_autotune": None,
@@ -44,7 +44,6 @@ class Sampler:
     Args:
         "n_loop_training": "(int): Number of training loops.",
         "n_loop_production": "(int): Number of production loops.",
-        "n_loop_pretraining": "(int): Number of pretraining loops.",
         "n_local_steps": "(int) Number of local steps per loop.",
         "n_global_steps": "(int) Number of local steps per loop.",
         "n_chains": "(int) Number of chains",
@@ -54,6 +53,7 @@ class Sampler:
         "momentum": "(float) Momentum used in the training of the NF model with the Adam optimizer",
         "batch_size": "(int) Size of batches used to train the NF",
         "use_global": "(bool) Whether to use an NF proposal as global sampler",
+        "global_sampler": "(NFProposal) Global sampler",
         "logging": "(bool) Whether to log the training process",
         "keep_quantile": "Quantile of chains to keep when training the normalizing flow model",
         "local_autotune": "(Callable) Auto-tune function for the local sampler",
@@ -107,8 +107,7 @@ class Sampler:
             )
 
         if self.global_sampler is None:
-            global_sampler = NFProposal(self.local_sampler.logpdf, jit=self.local_sampler.jit, model=nf_model, n_sample_max=self.n_sample_max)
-        self.global_sampler = global_sampler
+            self.global_sampler = NFProposal(self.local_sampler.logpdf, jit=self.local_sampler.jit, model=nf_model, n_sample_max=self.n_sample_max)
 
         self.likelihood_vec = self.local_sampler.logpdf_vmap
 
