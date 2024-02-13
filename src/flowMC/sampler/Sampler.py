@@ -105,7 +105,8 @@ class Sampler:
             )
 
         if self.global_sampler is None:
-            self.global_sampler = NFProposal(self.local_sampler.logpdf, jit=self.local_sampler.jit, model=nf_model, n_sample_max=self.n_sample_max)
+            global_sampler = NFProposal(self.local_sampler.logpdf, jit=self.local_sampler.jit, model=nf_model, n_sample_max=self.n_sample_max)
+        self.global_sampler = global_sampler
 
         self.likelihood_vec = self.local_sampler.logpdf_vmap
 
