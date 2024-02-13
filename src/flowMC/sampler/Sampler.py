@@ -7,6 +7,7 @@ from flowMC.sampler.NF_proposal import NFProposal
 import optax
 from flowMC.sampler.Proposal_Base import ProposalBase
 from flowMC.nfmodel.base import NFModel
+from flowMC.utils.postprocessing import gelman_rubin
 from tqdm import tqdm
 import equinox as eqx
 import numpy as np
@@ -32,7 +33,8 @@ default_hyperparameters = {
     "n_sample_max": 10000,
     "precompile": False,
     "verbose": False,
-    "outdir": "./outdir/"
+    "outdir": "./outdir/",
+    "track_gelman_rubin": False,
 }
 
 class Sampler:
@@ -127,6 +129,10 @@ class Sampler:
         production["log_prob"] = jnp.empty((self.n_chains, 0))
         production["local_accs"] = jnp.empty((self.n_chains, 0))
         production["global_accs"] = jnp.empty((self.n_chains, 0))
+        
+        if self.track_gelman_rubin:
+            training["gelman_rubin"] = jnp.empty((self.n_dim, 0))
+            production["gelman_rubin"] = jnp.empty((self.n_dim, 0))
 
         self.summary = {}
         self.summary["training"] = training
@@ -278,6 +284,15 @@ class Sampler:
                 self.summary[summary_mode]["global_accs"],
                 global_acceptance[:, 1::self.output_thinning],
                 axis=1,
+            )
+            
+        if self.track_gelman_rubin:
+            # Get chains up to this point and compute Gelman-Rubin R statistic
+            chains = self.summary[summary_mode]["chains"]
+            R = gelman_rubin(chains)
+            R = jnp.reshape(R, (-1, 1))
+            self.summary[summary_mode]["gelman_rubin"] = jnp.append(
+                self.summary[summary_mode]["gelman_rubin"], R, axis=1
             )
 
         last_step = self.summary[summary_mode]["chains"][:, -1]
