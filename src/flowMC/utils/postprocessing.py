@@ -15,6 +15,8 @@ def plot_summary(sampler: Sampler, which: str = "training", **plotkwargs) -> Non
     data = Sampler.get_sampler_state(which = which)
     # TODO add loss values in plotting
     keys = ["local_accs", "global_accs", "log_prob"]
+    if sampler.track_gelman_rubin:
+        keys.append("gelman_rubin")
     
     # Check if outdir is property of sampler
     if hasattr(sampler, "outdir"):
