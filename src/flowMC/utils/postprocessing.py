@@ -59,38 +59,3 @@ def _single_plot(data: dict, name: str, which: str = "training", outdir: str = "
     if "acc" in name:
         plt.ylim(0-eps, 1+eps)
     plt.savefig(f"{outdir}{name}_{which}.png", bbox_inches='tight')
-    
-def gelman_rubin(chains: Float[Array, "n_chains n_steps n_dim"], discard_fraction: float = 0.1) -> Array:
-    """
-    Compute the Gelman-Rubin R statistic for each parameter in the chains.
-    """
-    _, _, n_dim = jnp.shape(chains)
-    
-    R_list = []
-    
-    for i in range(n_dim):
-        # Get shape of chains for this parameter
-        samples = chains[:, :, i]
-        n_chains, length_chain = jnp.shape(samples)
-        # Discard burn-in
-        start_index = int(jnp.round(discard_fraction * length_chain))
-        cut_samples = samples[:, start_index:]
-        # Do Gelman-Rubin statistic computation
-        chain_means = jnp.mean(cut_samples, axis=1)
-        chain_vars = jnp.var(cut_samples, axis=1)
-        BoverN = jnp.var(chain_means)
-        W = jnp.mean(chain_vars)
-        sigmaHat2 = W + BoverN
-        m = n_chains
-        VHat = sigmaHat2 + BoverN/m
-        try:
-            R = VHat/W
-        except:
-            print(f"Error when computer Gelman-Rubin R statistic.")
-            R = jnp.nan
-        
-        R = float(R)
-        R_list.append(R)
-    
-    R_list = jnp.array(R_list)
-    return R_list
