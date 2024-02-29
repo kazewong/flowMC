@@ -71,13 +71,13 @@ class EvolutionaryOptimizer:
         if keep_history_step > 0:
             self.history = []
             for i in progress_bar:
-                key, self.state, theta = self.optimize_step(subkey, self.state, objective, bound)
+                subkey, self.state, theta = self.optimize_step(subkey, self.state, objective, bound)
                 if i%keep_history_step == 0: self.history.append(theta)
                 if self.verbose: progress_bar.set_description(f"Generation: {i}, Fitness: {self.state.best_fitness:.4f}")
             self.history = jnp.array(self.history)
         else:
             for i in progress_bar:
-                key, self.state, _ = self.optimize_step(subkey, self.state, objective, bound)
+                subkey, self.state, _ = self.optimize_step(subkey, self.state, objective, bound)
                 if self.verbose: progress_bar.set_description(f"Generation: {i}, Fitness: {self.state.best_fitness:.4f}")
 
     def optimize_step(self, key: jax.random.PRNGKey, state, objective: callable, bound):
