@@ -33,6 +33,7 @@ default_hyperparameters = {
     "precompile": False,
     "verbose": False,
     "outdir": "./outdir/",
+    "stopping_criterion_global_acc": 1.0,
 }
 
 class Sampler:
@@ -60,7 +61,8 @@ class Sampler:
         "n_sample_max": "(int) Maximum number of samples fed to training the NF model",
         "precompile": "(bool) Whether to precompile",
         "verbose": "(bool) Show steps of algorithm in detail",
-        "outdir": "(str) Location to which to save plots, samples and hyperparameter settings. Note: should ideally start with `./` and also end with `/`"
+        "outdir": "(str) Location to which to save plots, samples and hyperparameter settings. Note: should ideally start with `./` and also end with `/`",
+        "stopping_criterion_global_acc": "(float) Stopping criterion based on global acceptance rate",
     """
 
     @property
@@ -83,7 +85,6 @@ class Sampler:
         self.rng_keys_nf = rng_keys_nf
         self.rng_keys_mcmc = rng_keys_mcmc
         self.n_dim = n_dim
-
 
         # Set and override any given hyperparameters
         self.hyperparameters = default_hyperparameters
@@ -159,7 +160,7 @@ class Sampler:
 
     def sampling_loop(
         self, initial_position: jnp.array, data: jnp.array, training=False
-    ) -> jnp.array:
+    ) -> Tuple[jnp.array, dict]:
         """
         One sampling loop that iterate through the local sampler and potentially the global sampler.
         If training is set to True, the loop will also train the normalizing flow model.
@@ -171,6 +172,9 @@ class Sampler:
         Returns:
             chains (jnp.array): Samples from the posterior. Shape (n_chains, n_local_steps + n_global_steps, n_dim)
         """
+        
+        # TODO figure out best way to do this
+        auxiliary = {}
 
         if training == True:
             summary_mode = "training"
@@ -278,10 +282,13 @@ class Sampler:
                 global_acceptance[:, 1::self.output_thinning],
                 axis=1,
             )
+            
+            global_acc_mean = jnp.mean(global_acceptance)
+            auxiliary["global_acc_mean"] = global_acc_mean
 
         last_step = self.summary[summary_mode]["chains"][:, -1]
 
-        return last_step
+        return last_step, auxiliary
 
     def local_sampler_tuning(
         self, initial_position: jnp.array, data: jnp.array, max_iter: int = 100
@@ -332,7 +339,10 @@ class Sampler:
             range(self.n_loop_training),
             desc="Tuning global sampler",
         ):
-            last_step = self.sampling_loop(last_step, data, training=True)
+            last_step, auxiliary = self.sampling_loop(last_step, data, training=True)
+            if auxiliary["global_acc_mean"] > self.stopping_criterion_global_acc:
+                print("Early stopping: global acceptance target rate achieved")
+                break
         return last_step
 
     def production_run(
@@ -354,7 +364,7 @@ class Sampler:
             range(self.n_loop_production),
             desc="Production run",
         ):
-            last_step = self.sampling_loop(last_step, data)
+            last_step, _ = self.sampling_loop(last_step, data)
         return last_step
 
     def get_sampler_state(self, training: bool = False) -> dict:
