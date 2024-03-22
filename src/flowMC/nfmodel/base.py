@@ -1,5 +1,4 @@
 from abc import abstractmethod, abstractproperty
-from typing import Tuple
 import equinox as eqx
 import jax
 from jaxtyping import Array, PRNGKeyArray, Float
@@ -15,7 +14,7 @@ class NFModel(eqx.Module):
     def __init__(self):
         return NotImplemented
 
-    def __call__(self, x: Array) -> Tuple[Array, Array]:
+    def __call__(self, x: Array) -> tuple[Array, Array]:
         """
         Forward pass of the model.
 
@@ -23,7 +22,7 @@ class NFModel(eqx.Module):
             x (Array): Input data.
 
         Returns:
-            Tuple[Array, Array]: Output data and log determinant of the Jacobian.
+            tuple[Array, Array]: Output data and log determinant of the Jacobian.
         """
         return self.forward(x)
 
@@ -36,7 +35,7 @@ class NFModel(eqx.Module):
         return NotImplemented
 
     @abstractmethod
-    def forward(self, x: Array) -> Tuple[Array, Array]:
+    def forward(self, x: Array) -> tuple[Array, Array]:
         """
         Forward pass of the model.
 
@@ -44,11 +43,11 @@ class NFModel(eqx.Module):
             x (Array): Input data.
 
         Returns:
-            Tuple[Array, Array]: Output data and log determinant of the Jacobian."""
+            tuple[Array, Array]: Output data and log determinant of the Jacobian."""
         return NotImplemented
 
     @abstractmethod
-    def inverse(self, x: Array) -> Tuple[Array, Array]:
+    def inverse(self, x: Array) -> tuple[Array, Array]:
         """
         Inverse pass of the model.
 
@@ -56,7 +55,7 @@ class NFModel(eqx.Module):
             x (Array): Input data.
 
         Returns:
-            Tuple[Array, Array]: Output data and log determinant of the Jacobian."""
+            tuple[Array, Array]: Output data and log determinant of the Jacobian."""
         return NotImplemented
 
     @abstractproperty
@@ -81,15 +80,15 @@ class Bijection(eqx.Module):
     def __init__(self):
         return NotImplemented
 
-    def __call__(self, x: Array) -> Tuple[Array, Array]:
+    def __call__(self, x: Array) -> tuple[Array, Array]:
         return self.forward(x)
 
     @abstractmethod
-    def forward(self, x: Array) -> Tuple[Array, Array]:
+    def forward(self, x: Array) -> tuple[Array, Array]:
         return NotImplemented
 
     @abstractmethod
-    def inverse(self, x: Array) -> Tuple[Array, Array]:
+    def inverse(self, x: Array) -> tuple[Array, Array]:
         return NotImplemented
 
 
