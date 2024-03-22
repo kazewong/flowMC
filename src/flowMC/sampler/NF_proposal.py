@@ -98,50 +98,22 @@ class NFProposal(ProposalBase):
         initial_position: Float[Array, "n_chains ndim"],
         data: PyTree,
         verbose: bool = False,
+        mode: str = "training",
     ) -> tuple[
         Float[Array, "n_chains n_steps ndim"],
         Float[Array, "n_chains n_steps 1"],
         Int[Array, "n_chains n_steps 1"],
     ]:
+        rng_key, *subkeys = random.split(rng_key, 3)
+
         n_chains = initial_position.shape[0]
         n_dim = initial_position.shape[-1]
-        rng_key, *subkeys = random.split(rng_key, 3)
-        total_size = initial_position.shape[0] * n_steps
         log_prob_initial = self.logpdf_vmap(initial_position, data)[:, None]
         log_prob_nf_initial = self.model.log_prob(initial_position)[:, None]
-        if total_size > self.n_sample_max:
-            sampling_key = subkeys[0]
-            n_batch = ceil(total_size / self.n_sample_max)
-            n_sample = total_size // n_batch
-            proposal_position = jnp.zeros(
-                (n_batch, n_sample, initial_position.shape[-1])
-            )
-            log_prob_proposal = jnp.zeros((n_batch, n_sample))
-            log_prob_nf_proposal = jnp.zeros((n_batch, n_sample))
-            for i in range(n_batch):
-                sampling_key, subkey = random.split(sampling_key)
-                proposal_position = proposal_position.at[i].set(
-                    self.model.sample(subkey, n_sample)
-                )
-                log_prob_proposal = log_prob_proposal.at[i].set(
-                    self.logpdf_vmap(proposal_position[i], data)
-                )
-                log_prob_nf_proposal = log_prob_nf_proposal.at[i].set(
-                    self.model.log_prob(proposal_position[i])
-                )
 
-            proposal_position = proposal_position.reshape(-1, n_dim)[:total_size]
-            log_prob_proposal = log_prob_proposal.reshape(-1)[:total_size]
-            log_prob_nf_proposal = log_prob_nf_proposal.reshape(-1)[:total_size]
-
-        else:
-            proposal_position = self.model.sample(subkeys[0], total_size)
-            log_prob_proposal = self.logpdf_vmap(proposal_position, data)
-            log_prob_nf_proposal = self.model.log_prob(proposal_position)
-
-        proposal_position = proposal_position.reshape(n_chains, n_steps, n_dim)
-        log_prob_proposal = log_prob_proposal.reshape(n_chains, n_steps)
-        log_prob_nf_proposal = log_prob_nf_proposal.reshape(n_chains, n_steps)
+        proposal_position, log_prob_proposal, log_prob_nf_proposal = self.sample_flow(
+            subkeys[0], initial_position, data, n_steps
+        )
 
         state = (
             jax.random.split(subkeys[1], n_chains),
@@ -180,7 +152,53 @@ class NFProposal(ProposalBase):
             iterator_loop = range(1, n_steps)
         for i in iterator_loop:
             state = self.update_vmap(i, state)
-        return rng_key, state[1], state[3], state[5], state[7]
+        return (rng_key, state[1], state[3], state[7])
+
+    def sample_flow(
+        self,
+        rng_key: PRNGKeyArray,
+        initial_position: Float[Array, "n_chains ndim"],
+        data,
+        n_steps: int,
+    ):
+        n_chains = initial_position.shape[0]
+        n_dim = initial_position.shape[-1]
+        total_size = initial_position.shape[0] * n_steps
+        if total_size > self.n_sample_max:
+            rng_key = rng_key
+            n_batch = ceil(total_size / self.n_sample_max)
+            n_sample = total_size // n_batch
+            proposal_position = jnp.zeros(
+                (n_batch, n_sample, initial_position.shape[-1])
+            )
+            log_prob_proposal = jnp.zeros((n_batch, n_sample))
+            log_prob_nf_proposal = jnp.zeros((n_batch, n_sample))
+            for i in range(n_batch):
+                rng_key, subkey = random.split(rng_key)
+                proposal_position = proposal_position.at[i].set(
+                    self.model.sample(subkey, n_sample)
+                )
+                log_prob_proposal = log_prob_proposal.at[i].set(
+                    self.logpdf_vmap(proposal_position[i], data)
+                )
+                log_prob_nf_proposal = log_prob_nf_proposal.at[i].set(
+                    self.model.log_prob(proposal_position[i])
+                )
+
+            proposal_position = proposal_position.reshape(-1, n_dim)[:total_size]
+            log_prob_proposal = log_prob_proposal.reshape(-1)[:total_size]
+            log_prob_nf_proposal = log_prob_nf_proposal.reshape(-1)[:total_size]
+
+        else:
+            proposal_position = self.model.sample(rng_key, total_size)
+            log_prob_proposal = self.logpdf_vmap(proposal_position, data)
+            log_prob_nf_proposal = self.model.log_prob(proposal_position)
+
+        proposal_position = proposal_position.reshape(n_chains, n_steps, n_dim)
+        log_prob_proposal = log_prob_proposal.reshape(n_chains, n_steps)
+        log_prob_nf_proposal = log_prob_nf_proposal.reshape(n_chains, n_steps)
+
+        return proposal_position, log_prob_proposal, log_prob_nf_proposal
 
     def tree_flatten(self):
         children, aux_data = super().tree_flatten()

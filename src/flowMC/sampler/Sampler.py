@@ -11,41 +11,56 @@ from tqdm import tqdm
 import equinox as eqx
 import numpy as np
 
+default_hyperparameters = {
+    "n_loop_training": 3,
+    "n_loop_production": 3,
+    "n_local_steps": 50,
+    "n_global_steps": 50,
+    "n_chains": 20,
+    "n_epochs": 30,
+    "learning_rate": 0.001,
+    "max_samples": 100000,
+    "momentum": 0.9,
+    "batch_size": 10000,
+    "use_global": True,
+    "global_sampler": None,
+    "logging": True,
+    "keep_quantile": 0,
+    "local_autotune": None,
+    "train_thinning": 1,
+    "output_thinning": 1,
+    "n_sample_max": 10000,
+    "precompile": False,
+    "verbose": False,
+    "outdir": "./outdir/",
+}
 
 class Sampler:
     """
     Sampler class that host configuration parameters, NF model, and local sampler
 
     Args:
-        n_dim (int): Dimension of the problem.
-        rng_key_set (Tuple): Tuple of random number generator keys.
-        data (Device Array): Extra data to be passed to the likelihood function.
-        local_sampler (Callable): Local sampler maker
-        nf_model (NFModel): Normalizing flow model.
-        n_loop_training (int, optional): Number of training loops. Defaults to 3.
-        n_loop_production (int, optional): Number of production loops. Defaults to 3.
-        n_local_steps (int, optional): Number of local steps per loop. Defaults to 50.
-        n_global_steps (int, optional): Number of global steps per loop. Defaults to 50.
-        n_chains (int, optional): Number of chains. Defaults to 20.
-        n_epochs (int, optional):
-            Number of epochs per training loop. Defaults to 30.
-        learning_rate (float, optional):
-            Learning rate for the NF model. Defaults to 0.01.
-        max_samples (int, optional):
-            Maximum number of samples fed to training the NF model. Defaults to 10000.
-        momentum (float, optional): Momentum for the NF model. Defaults to 0.9.
-        batch_size (int, optional): Batch size for the NF model. Defaults to 10000.
-        use_global (bool, optional):
-            Whether to use global sampler. Defaults to True.
-        logging (bool, optional):
-            Whether to log the training process. Defaults to True.
-        keep_quantile (float, optional):
-            Quantile of chains to keep when training the normalizing flow model.
-            Defaults to 0.
-        local_autotune (None, optional):
-            Auto-tune function for the local sampler. Defaults to None.
-        train_thinning (int, optional):
-            Thinning for the data used to train the normalizing flow. Defaults to 1.
+        "n_loop_training": "(int): Number of training loops.",
+        "n_loop_production": "(int): Number of production loops.",
+        "n_local_steps": "(int) Number of local steps per loop.",
+        "n_global_steps": "(int) Number of local steps per loop.",
+        "n_chains": "(int) Number of chains",
+        "n_epochs": "(int) Number of epochs to train the NF per training loop",
+        "learning_rate": "(float) Learning rate used in the training of the NF",
+        "max_samples": "(int) Maximum number of samples fed to training the NF model",
+        "momentum": "(float) Momentum used in the training of the NF model with the Adam optimizer",
+        "batch_size": "(int) Size of batches used to train the NF",
+        "use_global": "(bool) Whether to use an NF proposal as global sampler",
+        "global_sampler": "(NFProposal) Global sampler",
+        "logging": "(bool) Whether to log the training process",
+        "keep_quantile": "Quantile of chains to keep when training the normalizing flow model",
+        "local_autotune": "(Callable) Auto-tune function for the local sampler",
+        "train_thinning": "(int) Thinning parameter for the data used to train the normalizing flow",
+        "output_thinning": "(int) Thinning parameter with which to save the data ",
+        "n_sample_max": "(int) Maximum number of samples fed to training the NF model",
+        "precompile": "(bool) Whether to precompile",
+        "verbose": "(bool) Show steps of algorithm in detail",
+        "outdir": "(str) Location to which to save plots, samples and hyperparameter settings. Note: should ideally start with `./` and also end with `/`"
     """
 
     @property
@@ -69,40 +84,28 @@ class Sampler:
         self.rng_keys_mcmc = rng_keys_mcmc
         self.n_dim = n_dim
 
-        self.n_loop_training = kwargs.get("n_loop_training", 3)
-        self.n_loop_production = kwargs.get("n_loop_production", 3)
-        self.n_local_steps = kwargs.get("n_local_steps", 50)
-        self.n_global_steps = kwargs.get("n_global_steps", 50)
-        self.n_chains = kwargs.get("n_chains", 20)
-        self.n_epochs = kwargs.get("n_epochs", 30)
-        self.learning_rate = kwargs.get("learning_rate", 0.01)
-        self.max_samples = kwargs.get("max_samples", 100000)
-        self.momentum = kwargs.get("momentum", 0.9)
-        self.batch_size = kwargs.get("batch_size", 10000)
-        self.use_global = kwargs.get("use_global", True)
-        self.logging = kwargs.get("logging", True)
-        self.keep_quantile = kwargs.get("keep_quantile", 0)
-        self.local_autotune = kwargs.get("local_autotune", None)
-        self.train_thinning = kwargs.get("train_thinning", 1)
-        self.output_thinning = kwargs.get("output_thinning", 1)
-        self.n_sample_max = kwargs.get("n_sample_max", 10000)
-        self.verbose = kwargs.get("verbose", False)
+
+        # Set and override any given hyperparameters
+        self.hyperparameters = default_hyperparameters
+        hyperparameter_names = list(default_hyperparameters.keys())
+        for key, value in kwargs.items():
+            if key in hyperparameter_names:
+                self.hyperparameters[key] = value
+        for key, value in self.hyperparameters.items():
+            setattr(self, key, value)
 
         self.variables = {"mean": None, "var": None}
 
         # Initialized local and global samplers
 
         self.local_sampler = local_sampler
-        self.local_sampler.precompilation(
-            n_chains=self.n_chains, n_dims=n_dim, n_step=self.n_local_steps, data=data
-        )
+        if self.precompile:
+            self.local_sampler.precompilation(
+                n_chains=self.n_chains, n_dims=n_dim, n_step=self.n_local_steps, data=data
+            )
 
-        self.global_sampler = NFProposal(
-            self.local_sampler.logpdf,
-            jit=self.local_sampler.jit,
-            model=nf_model,
-            n_sample_max=self.n_sample_max,
-        )
+        if self.global_sampler is None:
+            self.global_sampler = NFProposal(self.local_sampler.logpdf, jit=self.local_sampler.jit, model=nf_model, n_sample_max=self.n_sample_max)
 
         self.likelihood_vec = self.local_sampler.logpdf_vmap
 
@@ -127,6 +130,7 @@ class Sampler:
         self.summary = {}
         self.summary["training"] = training
         self.summary["production"] = production
+
 
     def sample(self, initial_position: Array, data: dict):
         """
@@ -271,14 +275,14 @@ class Sampler:
                 self.rng_keys_nf,
                 nf_chain,
                 log_prob,
-                log_prob_nf,
                 global_acceptance,
             ) = self.global_sampler.sample(
                 self.rng_keys_nf,
                 self.n_global_steps,
                 positions[:, -1],
                 data,
-                verbose=self.verbose,
+                verbose = self.verbose,
+                mode = summary_mode
             )
 
             self.summary[summary_mode]["chains"] = jnp.append(
