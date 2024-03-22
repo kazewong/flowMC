@@ -32,7 +32,7 @@ class NFModel(eqx.Module):
         return NotImplemented
 
     @abstractmethod
-    def sample(self, rng_key: jax.random.PRNGKey, n_samples: int) -> Array:
+    def sample(self, rng_key: PRNGKeyArray, n_samples: int) -> Array:
         return NotImplemented
 
     @abstractmethod
