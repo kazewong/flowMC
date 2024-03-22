@@ -34,7 +34,9 @@ class NFProposal(ProposalBase):
         log_prob_proposal: Float[Array, "1"],
         log_prob_nf_initial: Float[Array, "1"],
         log_prob_nf_proposal: Float[Array, "1"],
-    ) -> tuple[Float[Array, "ndim"], Float[Array, "1"], Int[Array, "1"]]:
+    ) -> tuple[
+        Float[Array, "ndim"], Float[Array, "1"], Float[Array, "1"], Int[Array, "1"]
+    ]:
         rng_key, subkey = random.split(rng_key)
 
         ratio = (log_prob_proposal - log_prob_initial) - (
@@ -47,14 +49,23 @@ class NFProposal(ProposalBase):
         log_prob_nf = jnp.where(do_accept, log_prob_nf_proposal, log_prob_nf_initial)
         return position, log_prob, log_prob_nf, do_accept
 
-    def update(
-        self, i, state
-    ) -> tuple[
+    def update(self, i: int, state: tuple[PRNGKeyArray,
+                                        Float[Array, "nstep ndim"],
+                                        Float[Array, "nstep ndim"],
+                                        Float[Array, "nstep 1"],
+                                        Float[Array, "nstep 1"],
+                                        Float[Array, "nstep 1"],
+                                        Float[Array, "nstep 1"],
+                                        Int[Array, "nstep 1"]
+                                        ]) -> tuple[
         PRNGKeyArray,
         Float[Array, "nstep ndim"],
+        Float[Array, "nstep ndim"],
+        Float[Array, "nstep 1"],
+        Float[Array, "nstep 1"],
+        Float[Array, "nstep 1"],
         Float[Array, "nstep 1"],
         Int[Array, "n_step 1"],
-        PyTree,
     ]:
         (
             key,
@@ -100,6 +111,7 @@ class NFProposal(ProposalBase):
         verbose: bool = False,
         mode: str = "training",
     ) -> tuple[
+        PRNGKeyArray,
         Float[Array, "n_chains n_steps ndim"],
         Float[Array, "n_chains n_steps 1"],
         Int[Array, "n_chains n_steps 1"],
