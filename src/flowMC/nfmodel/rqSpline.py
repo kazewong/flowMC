@@ -340,7 +340,7 @@ class MaskedCouplingRQSpline(NFModel):
         num_layers (int): Number of layers in the conditioner.
         hidden_size (Sequence[int]): Hidden size of the conditioner.
         num_bins (int): Number of bins in the spline.
-        key (jax.random.PRNGKey): Random key for initialization.
+        key (PRNGKeyArray): Random key for initialization.
         spline_range (Sequence[float]): Range of the spline. Defaults to (-10.0, 10.0).
 
     Properties:
@@ -373,7 +373,7 @@ class MaskedCouplingRQSpline(NFModel):
         n_layers: int,
         hidden_size: Sequence[int],
         num_bins: int,
-        key: jax.random.PRNGKey,
+        key: PRNGKeyArray,
         spline_range: Sequence[float] = (-10.0, 10.0),
         **kwargs
     ):
@@ -441,7 +441,7 @@ class MaskedCouplingRQSpline(NFModel):
         return x, log_det
 
     @eqx.filter_jit
-    def sample(self, rng_key: jax.random.PRNGKey, n_samples: int) -> Array:
+    def sample(self, rng_key: PRNGKeyArray, n_samples: int) -> Array:
         samples = self.base_dist.sample(rng_key, n_samples)
         samples = self.inverse(samples)[0]
         samples = samples * jnp.sqrt(jnp.diag(self.data_cov)) + self.data_mean

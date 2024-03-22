@@ -42,7 +42,7 @@ class HMC(ProposalBase):
             self.n_leapfrog = 10
             print("n_leapfrog not specified, using default value 10")
 
-        coefs = jnp.ones((self.n_leapfrog+2, 2))
+        coefs = jnp.ones((self.n_leapfrog + 2, 2))
         coefs = coefs.at[0].set(jnp.array([0, 0.5]))
         coefs = coefs.at[-1].set(jnp.array([1, 0.5]))
         self.leapfrog_coefs = coefs
@@ -50,10 +50,9 @@ class HMC(ProposalBase):
         self.kinetic = lambda p, metric: 0.5 * (p**2 * metric).sum()
         self.grad_kinetic = jax.grad(self.kinetic)
 
-
     def get_initial_hamiltonian(
         self,
-        rng_key: jax.random.PRNGKey,
+        rng_key: PRNGKeyArray,
         position: jnp.array,
         data: jnp.array,
         params: dict,
@@ -67,16 +66,18 @@ class HMC(ProposalBase):
             jax.random.normal(rng_key, shape=position.shape)
             * params["condition_matrix"] ** -0.5
         )
-        return self.potential(position, data) + self.kinetic(momentum, params["condition_matrix"])
+        return self.potential(position, data) + self.kinetic(
+            momentum, params["condition_matrix"]
+        )
 
     def leapfrog_kernel(self, carry, extras):
         position, momentum, data, metric, index = carry
-        position = position + self.params["step_size"] * self.leapfrog_coefs[index][0] * self.grad_kinetic(
-            momentum, metric
-        )
-        momentum = momentum - self.params["step_size"] * self.leapfrog_coefs[index][1] * self.grad_potential(
-            position, data
-        )
+        position = position + self.params["step_size"] * self.leapfrog_coefs[index][
+            0
+        ] * self.grad_kinetic(momentum, metric)
+        momentum = momentum - self.params["step_size"] * self.leapfrog_coefs[index][
+            1
+        ] * self.grad_potential(position, data)
         index = index + 1
         return (position, momentum, data, metric, index), extras
 
@@ -84,7 +85,7 @@ class HMC(ProposalBase):
         (position, momentum, data, metric, index), _ = jax.lax.scan(
             self.leapfrog_kernel,
             (position, momentum, data, metric, 0),
-            jnp.arange(self.n_leapfrog+2),
+            jnp.arange(self.n_leapfrog + 2),
         )
         return position, momentum
 
@@ -112,13 +113,16 @@ class HMC(ProposalBase):
         )
         momentum = jnp.dot(
             jax.random.normal(key1, shape=position.shape),
-            jnp.linalg.cholesky(jnp.linalg.inv(self.params["condition_matrix"])).T)
-        H = - log_prob + self.kinetic(momentum, self.params["condition_matrix"])
+            jnp.linalg.cholesky(jnp.linalg.inv(self.params["condition_matrix"])).T,
+        )
+        H = -log_prob + self.kinetic(momentum, self.params["condition_matrix"])
         proposed_position, proposed_momentum = self.leapfrog_step(
             position, momentum, data, self.params["condition_matrix"]
         )
         proposed_PE = self.potential(proposed_position, data)
-        proposed_ham = proposed_PE + self.kinetic(proposed_momentum, self.params["condition_matrix"])
+        proposed_ham = proposed_PE + self.kinetic(
+            proposed_momentum, self.params["condition_matrix"]
+        )
         log_acc = H - proposed_ham
         log_uniform = jnp.log(jax.random.uniform(key2))
 
@@ -129,9 +133,7 @@ class HMC(ProposalBase):
 
         return position, log_prob, do_accept
 
-    def update(
-        self, i, state
-    ) -> tuple[
+    def update(self, i, state) -> tuple[
         PRNGKeyArray,
         Float[Array, "nstep ndim"],
         Float[Array, "nstep 1"],

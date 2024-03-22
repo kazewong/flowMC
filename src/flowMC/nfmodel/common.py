@@ -1,4 +1,4 @@
-from typing import Callable, List, Iterable, Tuple
+from typing import Callable, List, Tuple
 
 import jax
 import jax.numpy as jnp
@@ -10,14 +10,14 @@ from flowMC.nfmodel.base import Bijection, Distribution
 import jax
 import jax.numpy as jnp
 import equinox as eqx
-from jaxtyping import Array, PRNGKeyArray
+from jaxtyping import Array, Float, PRNGKeyArray
 
 
 class MLP(eqx.Module):
     r"""Multilayer perceptron.
 
     Args:
-        shape (Iterable[int]): Shape of the MLP. The first element is the input dimension, the last element is the output dimension.
+        shape (List[int]): Shape of the MLP. The first element is the input dimension, the last element is the output dimension.
         key (PRNGKeyArray): Random key.
 
     Attributes:
@@ -29,7 +29,7 @@ class MLP(eqx.Module):
 
     def __init__(
         self,
-        shape: Iterable[int],
+        shape: List[int],
         key: PRNGKeyArray,
         scale: float = 1e-4,
         activation: Callable = jax.nn.relu,
@@ -52,7 +52,7 @@ class MLP(eqx.Module):
             eqx.nn.Linear(shape[-2], shape[-1], key=subkey, use_bias=use_bias)
         )
 
-    def __call__(self, x: Array):
+    def __call__(self, x: Float[Array, "n_in"]) -> Float[Array, "n_out"]:
         for layer in self.layers:
             x = layer(x)
         return x
@@ -83,24 +83,24 @@ class MaskedCouplingLayer(Bijection):
 
     """
 
-    _mask: Array
+    _mask: Float[Array, "n_dim"]
     bijector: Bijection
 
     @property
     def mask(self):
         return jax.lax.stop_gradient(self._mask)
 
-    def __init__(self, bijector: Bijection, mask: Array):
+    def __init__(self, bijector: Bijection, mask: Float[Array, "n_dim"]):
         self.bijector = bijector
         self._mask = mask
 
-    def forward(self, x: Array) -> Tuple[Array, Array]:
+    def forward(self, x: Float[Array, "n_dim"]) -> Tuple[Float[Array, "n_dim"], Float[Array, "n_dim"]]:
         y, log_det = self.bijector(x, x * self.mask)
         y = (1 - self.mask) * y + self.mask * x
         log_det = ((1 - self.mask) * log_det).sum()
         return y, log_det
 
-    def inverse(self, x: Array) -> Tuple[Array, Array]:
+    def inverse(self, x: Float[Array, "n_dim"]) -> Tuple[Float[Array, "n_dim"], Float[Array, "n_dim"]]:
         y, log_det = self.bijector.inverse(x, x * self.mask)
         y = (1 - self.mask) * y + self.mask * x
         log_det = ((1 - self.mask) * log_det).sum()
@@ -117,10 +117,10 @@ class MLPAffine(Bijection):
         self.shift_MLP = shift_MLP
         self.dt = dt
 
-    def __call__(self, x: Array, condition_x: Array) -> Tuple[Array, Array]:
+    def __call__(self, x: Float[Array, "n_dim"], condition_x: Array) -> Tuple[Array, float]:
         return self.forward(x, condition_x)
 
-    def forward(self, x: Array, condition_x: Array) -> Tuple[Array, Array]:
+    def forward(self, x: Array, condition_x: Array) -> Tuple[Array, float]:
         # Note that this note output log_det as an array instead of a number.
         # This is because we need to sum over the log_det in the masked coupling layer.
         scale = jnp.tanh(self.scale_MLP(condition_x)) * self.dt
@@ -129,7 +129,7 @@ class MLPAffine(Bijection):
         y = (x + shift) * jnp.exp(scale)
         return y, log_det
 
-    def inverse(self, x: Array, condition_x: Array) -> Tuple[Array, Array]:
+    def inverse(self, x: Array, condition_x: Array) -> Tuple[Array, float]:
         scale = jnp.tanh(self.scale_MLP(condition_x)) * self.dt
         shift = self.shift_MLP(condition_x) * self.dt
         log_det = -scale

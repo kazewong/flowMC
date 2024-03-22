@@ -5,7 +5,7 @@ import numpy as np
 import equinox as eqx
 from flowMC.nfmodel.base import NFModel, Distribution
 from flowMC.nfmodel.common import MLP, MaskedCouplingLayer, MLPAffine, Gaussian
-from jaxtyping import Array
+from jaxtyping import Array, Float, PRNGKeyArray
 from functools import partial
 
 
@@ -19,22 +19,22 @@ class AffineCoupling(eqx.Module):
         n_features: (int) The number of features in the input.
         n_hidden: (int) The number of hidden units in the MLP.
         mask: (ndarray) Alternating mask for the affine coupling layer.
-        dt: (float) Scaling factor for the affine coupling layer.
+        dt: (Float) Scaling factor for the affine coupling layer.
     """
 
     _mask: Array
-    scale_MLP: eqx.Module
-    translate_MLP: eqx.Module
-    dt: float = 1
+    scale_MLP: MLP
+    translate_MLP: MLP
+    dt: Float = 1
 
     def __init__(
         self,
         n_features: int,
         n_hidden: int,
         mask: Array,
-        key: jax.random.PRNGKey,
-        dt: float = 1,
-        scale: float = 1e-4,
+        key: PRNGKeyArray,
+        dt: Float = 1,
+        scale: Float = 1e-4,
     ):
         self._mask = mask
         self.dt = dt
@@ -102,7 +102,7 @@ class RealNVP(NFModel):
         n_layer: (int) The number of affine coupling layers.
         n_features: (int) The number of features in the input.
         n_hidden: (int) The number of hidden units in the MLP.
-        dt: (float) Scaling factor for the affine coupling layer.
+        dt: (Float) Scaling factor for the affine coupling layer.
 
     Properties:
         data_mean: (ndarray) Mean of Gaussian base distribution
@@ -112,8 +112,8 @@ class RealNVP(NFModel):
     base_dist: Distribution
     affine_coupling: List[MaskedCouplingLayer]
     _n_features: int
-    _data_mean: Array
-    _data_cov: Array
+    _data_mean: Array | None
+    _data_cov: Array | None
 
     @property
     def n_features(self):
@@ -128,16 +128,11 @@ class RealNVP(NFModel):
         return jax.lax.stop_gradient(self._data_cov)
 
     def __init__(
-        self,
-        n_features: int,
-        n_layer: int,
-        n_hidden: int,
-        key: jax.random.PRNGKey,
-        **kwargs
+        self, n_features: int, n_layer: int, n_hidden: int, key: PRNGKeyArray, **kwargs
     ):
 
         if kwargs.get("base_dist") is not None:
-            self.base_dist = kwargs.get("base_dist")
+            self.base_dist = kwargs.get("base_dist") # type: ignore
         else:
             self.base_dist = Gaussian(
                 jnp.zeros(n_features), jnp.eye(n_features), learnable=False
@@ -177,18 +172,18 @@ class RealNVP(NFModel):
         else:
             self._data_cov = jnp.eye(n_features)
 
-    def __call__(self, x: Array) -> Tuple[Array, Array]:
+    def __call__(self, x: Array) -> Tuple[Array, Float]:
         return self.forward(x)
 
-    def forward(self, x: Array) -> Tuple[Array, Array]:
-        log_det = 0
+    def forward(self, x: Array) -> Tuple[Array, Float]:
+        log_det = 0.0
         for i in range(len(self.affine_coupling)):
             x, log_det_i = self.affine_coupling[i](x)
             log_det += log_det_i
         return x, log_det
 
     @partial(jax.vmap, in_axes=(None, 0))
-    def inverse(self, x: Array) -> Tuple[Array, Array]:
+    def inverse(self, x: Array) -> Tuple[Array, Float]:
         """From latent space to data space"""
         log_det = 0.0
         for layer in reversed(self.affine_coupling):
@@ -197,8 +192,7 @@ class RealNVP(NFModel):
         return x, log_det
 
     @eqx.filter_jit
-    def sample(self, rng_key: jax.random.PRNGKey, n_samples: int) -> Array:
-
+    def sample(self, rng_key: PRNGKeyArray, n_samples: int) -> Array:
         samples = self.base_dist.sample(rng_key, n_samples)
         samples = self.inverse(samples)[0]
         samples = samples * jnp.sqrt(jnp.diag(self.data_cov)) + self.data_mean

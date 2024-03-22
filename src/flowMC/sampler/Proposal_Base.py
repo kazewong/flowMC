@@ -70,9 +70,7 @@ class ProposalBase:
         """
 
     @abstractmethod
-    def update(
-        self, i, state
-    ) -> tuple[
+    def update(self, i, state) -> tuple[
         PRNGKeyArray,
         Float[Array, "nstep ndim"],
         Float[Array, "nstep 1"],

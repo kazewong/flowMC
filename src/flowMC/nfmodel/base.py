@@ -14,20 +14,20 @@ class NFModel(eqx.Module):
     def __init__(self):
         return NotImplemented
 
-    def __call__(self, x: Array) -> tuple[Array, Array]:
+    def __call__(self, x: Float[Array, "n_dim"]) -> tuple[Float[Array, "n_dim"], Float]:
         """
         Forward pass of the model.
 
         Args:
-            x (Array): Input data.
+            x (Float[Array, "n_dim"]): Input data.
 
         Returns:
-            tuple[Array, Array]: Output data and log determinant of the Jacobian.
+            tuple[Float[Array, "n_dim"], Float]: Output data and log determinant of the Jacobian.
         """
         return self.forward(x)
 
     @abstractmethod
-    def log_prob(self, x: Array) -> Array:
+    def log_prob(self, x: Float[Array, "n_dim"]) -> Float:
         return NotImplemented
 
     @abstractmethod
@@ -35,27 +35,27 @@ class NFModel(eqx.Module):
         return NotImplemented
 
     @abstractmethod
-    def forward(self, x: Array) -> tuple[Array, Array]:
+    def forward(self, x: Float[Array, "n_dim"]) -> tuple[Float[Array, "n_dim"], Float]:
         """
         Forward pass of the model.
 
         Args:
-            x (Array): Input data.
+            x (Float[Array, "n_dim"]): Input data.
 
         Returns:
-            tuple[Array, Array]: Output data and log determinant of the Jacobian."""
+            tuple[Float[Array, "n_dim"], Float]: Output data and log determinant of the Jacobian."""
         return NotImplemented
 
     @abstractmethod
-    def inverse(self, x: Array) -> tuple[Array, Array]:
+    def inverse(self, x: Float[Array, "n_dim"]) -> tuple[Float[Array, "n_dim"], Float]:
         """
         Inverse pass of the model.
 
         Args:
-            x (Array): Input data.
+            x (Float[Array, "n_dim"]): Input data.
 
         Returns:
-            tuple[Array, Array]: Output data and log determinant of the Jacobian."""
+            tuple[Float[Array, "n_dim"], Float]: Output data and log determinant of the Jacobian."""
         return NotImplemented
 
     @abstractproperty

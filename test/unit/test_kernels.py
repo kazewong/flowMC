@@ -85,7 +85,11 @@ class TestHMC:
         HMC_obj = HMC(
             log_posterior,
             True,
-            {"step_size": 0.0000001, "n_leapfrog": 5, "condition_matrix": jnp.eye(n_dim)},
+            {
+                "step_size": 0.0000001,
+                "n_leapfrog": 5,
+                "condition_matrix": jnp.eye(n_dim),
+            },
         )
 
         n_chains = 100
@@ -94,7 +98,7 @@ class TestHMC:
         initial_position = (
             jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
         )
-        initial_PE = - jax.vmap(HMC_obj.potential)(initial_position, None)
+        initial_PE = -jax.vmap(HMC_obj.potential)(initial_position, None)
 
         result = HMC_obj.kernel_vmap(rng_key_set[1], initial_position, initial_PE, None)
 
@@ -118,7 +122,9 @@ class TestHMC:
 
         result = HMC_obj.sample(rng_key_set[1], 10000, initial_position, None)
 
-        assert jnp.isclose(jnp.mean(result[1]), 0, atol=3e-2) # sqrt(N) is the expected error, but we can get unlucky
+        assert jnp.isclose(
+            jnp.mean(result[1]), 0, atol=3e-2
+        )  # sqrt(N) is the expected error, but we can get unlucky
         assert jnp.isclose(jnp.var(result[1]), 1, atol=3e-2)
 
 
@@ -248,7 +254,7 @@ class TestGRW:
 class TestNF:
     def test_NF_kernel(self):
 
-        key1, rng, init_rng = jax.random.split(jax.random.PRNGKey(0), 3)
+        key1, rng, init_rng = jax.random.split(PRNGKeyArray(0), 3)
         data = jax.random.normal(key1, (100, 2))
 
         num_epochs = 5
@@ -272,7 +278,7 @@ class TestNF:
         rng, self.model, state, loss_values = train_flow(
             rng, model, data, state, num_epochs, batch_size, verbose=True
         )
-        key1, rng, init_rng = jax.random.split(jax.random.PRNGKey(1), 3)
+        key1, rng, init_rng = jax.random.split(PRNGKeyArray(1), 3)
 
         n_dim = 2
         n_chains = 1
