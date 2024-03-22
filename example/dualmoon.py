@@ -1,19 +1,21 @@
-from flowMC.sampler.MALA import MALA
 import jax
 import jax.numpy as jnp  # JAX NumPy
 from jax.scipy.special import logsumexp
 import numpy as np
 
 from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
-from flowMC.nfmodel.utils import *
 from flowMC.sampler.MALA import MALA
 from flowMC.sampler.Sampler import Sampler
 from flowMC.utils.PRNG_keys import initialize_rng_keys
 
+import corner
+import matplotlib.pyplot as plt
+
 
 def target_dualmoon(x, data):
     """
-    Term 2 and 3 separate the distribution and smear it along the first and second dimension
+    Term 2 and 3 separate the distribution and smear it
+    along the first and second dimension
     """
     print("compile count")
     term1 = 0.5 * ((jnp.linalg.norm(x - data) - 2) / 0.1) ** 2
@@ -79,9 +81,6 @@ print(
 chains = np.array(chains)
 nf_samples = np.array(nf_samples[1])
 loss_vals = np.array(loss_vals)
-
-import corner
-import matplotlib.pyplot as plt
 
 # Plot one chain to show the jump
 plt.figure(figsize=(6, 6))

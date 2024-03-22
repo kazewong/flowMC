@@ -268,7 +268,6 @@ class TestNF:
         optim = optax.adam(learning_rate, momentum)
         state = optim.init(eqx.filter(model, eqx.is_array))
 
-
         train_flow, train_epoch, train_step = make_training_loop(optim)
         rng, self.model, state, loss_values = train_flow(
             rng, model, data, state, num_epochs, batch_size, verbose=True
@@ -280,4 +279,4 @@ class TestNF:
         NF_obj = NFProposal(log_posterior, True, self.model)
 
         initial_position = jax.random.normal(init_rng, shape=(n_chains, n_dim)) * 1
-        samples = NF_obj.sample(rng, 100, initial_position, None)
+        NF_obj.sample(rng, 100, initial_position, None)

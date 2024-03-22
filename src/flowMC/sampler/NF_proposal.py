@@ -1,4 +1,3 @@
-from typing import Tuple
 import jax
 import jax.numpy as jnp
 from jax import random
@@ -8,7 +7,6 @@ from jaxtyping import Array, PRNGKeyArray, PyTree
 from typing import Callable
 from flowMC.sampler.Proposal_Base import ProposalBase
 from jaxtyping import Array, Float, Int, PRNGKeyArray
-import equinox as eqx
 from math import ceil
 
 
@@ -24,7 +22,7 @@ class NFProposal(ProposalBase):
         self.model = model
         self.n_sample_max = n_sample_max
         self.update_vmap = jax.vmap(self.update, in_axes=(None, (0)))
-        if self.jit == True:
+        if self.jit is True:
             self.update_vmap = jax.jit(self.update_vmap)
 
     def kernel(

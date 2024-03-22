@@ -1,0 +1,23 @@
+repos:
+  - repo: https://github.com/ambv/black
+    rev: 23.9.1
+    hooks:
+    - id: black
+  - repo: https://github.com/charliermarsh/ruff-pre-commit
+    rev: 'v0.0.290'
+    hooks:
+      - id: ruff
+        args: ["--fix"]
+  - repo: https://github.com/RobertCraigie/pyright-python
+    rev: v1.1.327
+    hooks:
+    - id: pyright
+      additional_dependencies: [beartype, einops, jax, jaxtyping, pytest, tensorflow, tf2onnx, typing_extensions]
+  - repo: https://github.com/nbQA-dev/nbQA
+    rev: 1.7.0
+    hooks:
+    - id: nbqa-black
+      additional_dependencies: [ipython==8.12, black]
+    - id: nbqa-ruff 
+      args: ["--ignore=I001"]
+      additional_dependencies: [ipython==8.12, ruff]

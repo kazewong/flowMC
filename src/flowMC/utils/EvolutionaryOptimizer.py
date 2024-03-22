@@ -3,6 +3,7 @@ import jax
 import jax.numpy as jnp
 import tqdm
 
+
 class EvolutionaryOptimizer:
 
     """
@@ -100,6 +101,9 @@ class EvolutionaryOptimizer:
             The best fitness.
         """
 
-        best_member = self.state.best_member* (self.bound[:, 1] - self.bound[:, 0]) + self.bound[:, 0]
+        best_member = (
+            self.state.best_member * (self.bound[:, 1] - self.bound[:, 0])
+            + self.bound[:, 0]
+        )
         best_fitness = self.state.best_fitness
         return best_member, best_fitness

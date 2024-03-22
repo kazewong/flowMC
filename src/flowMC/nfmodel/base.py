@@ -7,7 +7,7 @@ class NFModel(eqx.Module):
 
     """
     Base class for normalizing flow models.
-    
+
     This is an abstract template that should not be directly used.
     """
 
@@ -18,7 +18,7 @@ class NFModel(eqx.Module):
     def __call__(self, x: Array) -> Tuple[Array, Array]:
         """
         Forward pass of the model.
-        
+
         Args:
             x (Array): Input data.
 
@@ -26,11 +26,11 @@ class NFModel(eqx.Module):
             Tuple[Array, Array]: Output data and log determinant of the Jacobian.
         """
         return self.forward(x)
-    
+
     @abstractmethod
     def log_prob(self, x: Array) -> Array:
         return NotImplemented
-    
+
     @abstractmethod
     def sample(self, rng_key: jax.random.PRNGKey, n_samples: int) -> Array:
         return NotImplemented
@@ -39,10 +39,10 @@ class NFModel(eqx.Module):
     def forward(self, x: Array) -> Tuple[Array, Array]:
         """
         Forward pass of the model.
-        
+
         Args:
             x (Array): Input data.
-            
+
         Returns:
             Tuple[Array, Array]: Output data and log determinant of the Jacobian."""
         return NotImplemented
@@ -54,7 +54,7 @@ class NFModel(eqx.Module):
 
         Args:
             x (Array): Input data.
-            
+
         Returns:
             Tuple[Array, Array]: Output data and log determinant of the Jacobian."""
         return NotImplemented
@@ -64,16 +64,17 @@ class NFModel(eqx.Module):
         return NotImplemented
 
     def save_model(self, path: str):
-        eqx.tree_serialise_leaves(path+".eqx", self)
+        eqx.tree_serialise_leaves(path + ".eqx", self)
 
     def load_model(self, path: str) -> eqx.Module:
-        return eqx.tree_deserialise_leaves(path+".eqx", self)
+        return eqx.tree_deserialise_leaves(path + ".eqx", self)
+
 
 class Bijection(eqx.Module):
 
     """
     Base class for bijective transformations.
-    
+
     This is an abstract template that should not be directly used."""
 
     @abstractmethod
@@ -90,6 +91,7 @@ class Bijection(eqx.Module):
     @abstractmethod
     def inverse(self, x: Array) -> Tuple[Array, Array]:
         return NotImplemented
+
 
 class Distribution(eqx.Module):
 

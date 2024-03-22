@@ -1,5 +1,4 @@
 import jax
-import jax.numpy as jnp
 
 
 def initialize_rng_keys(n_chains, seed=42):
