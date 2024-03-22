@@ -10,7 +10,7 @@ from flowMC.nfmodel.base import Bijection, Distribution
 import jax
 import jax.numpy as jnp
 import equinox as eqx
-from jaxtyping import Array
+from jaxtyping import Array, PRNGKeyArray
 
 
 class MLP(eqx.Module):
@@ -18,7 +18,7 @@ class MLP(eqx.Module):
 
     Args:
         shape (Iterable[int]): Shape of the MLP. The first element is the input dimension, the last element is the output dimension.
-        key (jax.random.PRNGKey): Random key.
+        key (PRNGKeyArray): Random key.
 
     Attributes:
         layers (List): List of layers.
@@ -30,7 +30,7 @@ class MLP(eqx.Module):
     def __init__(
         self,
         shape: Iterable[int],
-        key: jax.random.PRNGKey,
+        key: PRNGKeyArray,
         scale: float = 1e-4,
         activation: Callable = jax.nn.relu,
         use_bias: bool = True,
@@ -199,7 +199,7 @@ class Gaussian(Distribution):
     def log_prob(self, x: Array) -> Array:
         return jax.scipy.stats.multivariate_normal.logpdf(x, self.mean, self.cov)
 
-    def sample(self, key: jax.random.PRNGKey, n_samples: int = 1) -> Array:
+    def sample(self, key: PRNGKeyArray, n_samples: int = 1) -> Array:
         return jax.random.multivariate_normal(key, self.mean, self.cov, (n_samples,))
 
 
@@ -218,7 +218,7 @@ class Composable(Distribution):
             log_prob += dist.log_prob(x[ranges[0] : ranges[1]])
         return log_prob
 
-    def sample(self, rng_key: jax.random.PRNGKey, n_samples: int) -> Array:
+    def sample(self, rng_key: PRNGKeyArray, n_samples: int) -> Array:
         samples = {}
         for dist, (key, _) in zip(self.distributions, self.partitions.items()):
             rng_key, sub_key = jax.random.split(rng_key)
