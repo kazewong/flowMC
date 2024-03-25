@@ -7,7 +7,7 @@ from jaxtyping import PyTree, Array, Float, Int, PRNGKeyArray
 
 @jax.tree_util.register_pytree_node_class
 class ProposalBase:
-    def __init__(self, logpdf: Callable, jit: bool, params: dict) -> Callable:
+    def __init__(self, logpdf: Callable, jit: bool, params: dict):
         """
         Initialize the sampler class
         """
@@ -21,38 +21,56 @@ class ProposalBase:
             in_axes=(None, (0, 0, 0, 0, None)),
             out_axes=(0, 0, 0, 0, None),
         )
-        if self.jit is True:
-            self.logpdf_vmap = jax.jit(self.logpdf_vmap)
-            self.kernel = jax.jit(self.kernel)
-            self.kernel_vmap = jax.jit(self.kernel_vmap)
-            self.update = jax.jit(self.update)
-            self.update_vmap = jax.jit(self.update_vmap)
+        # if self.jit is True:
+        #     self.logpdf_vmap = jax.jit(self.logpdf_vmap)
+        #     self.kernel = jax.jit(self.kernel)
+        #     self.kernel_vmap = jax.jit(self.kernel_vmap)
+        #     self.update = jax.jit(self.update)
+        #     self.update_vmap = jax.jit(self.update_vmap)
 
     def precompilation(self, n_chains, n_dims, n_step, data):
         if self.jit is True:
             print("jit is requested, precompiling kernels and update...")
+            key = jax.random.split(jax.random.PRNGKey(0), n_chains)
+
+            self.logpdf_vmap = jax.jit(self.logpdf_vmap).lower(jnp.ones((n_chains, n_dims)), data).compile()
+            self.kernel_vmap = jax.jit(self.kernel_vmap).lower(
+                key,
+                jnp.ones((n_chains, n_dims)),
+                jnp.ones((n_chains, 1)),
+                data,
+            ).compile()
+            self.update_vmap = jax.jit(self.update_vmap).lower(
+                1,
+                (
+                    key,
+                    jnp.ones((n_chains, n_step, n_dims)),
+                    jnp.ones((n_chains, n_step, 1)),
+                    jnp.zeros((n_chains, n_step, 1)),
+                    data,
+                ),
+            ).compile()
         else:
             print("jit is not requested, compiling only vmap functions...")
-
-        key = jax.random.split(jax.random.PRNGKey(0), n_chains)
-
-        self.logpdf_vmap(jnp.ones((n_chains, n_dims)), data)
-        self.kernel_vmap(
-            key,
-            jnp.ones((n_chains, n_dims)),
-            jnp.ones((n_chains, 1)),
-            data,
-        )
-        self.update_vmap(
-            1,
-            (
+            key = jax.random.split(jax.random.PRNGKey(0), n_chains)
+            self.logpdf_vmap = self.logpdf_vmap(jnp.ones((n_chains, n_dims)), data)
+            self.kernel_vmap(
                 key,
-                jnp.ones((n_chains, n_step, n_dims)),
-                jnp.ones((n_chains, n_step, 1)),
-                jnp.zeros((n_chains, n_step, 1)),
+                jnp.ones((n_chains, n_dims)),
+                jnp.ones((n_chains, 1)),
                 data,
-            ),
-        )
+            )
+            self.update_vmap(
+                1,
+                (
+                    key,
+                    jnp.ones((n_chains, n_step, n_dims)),
+                    jnp.ones((n_chains, n_step, 1)),
+                    jnp.zeros((n_chains, n_step, 1)),
+                    data,
+                ),
+            )
+
 
     @abstractmethod
     def kernel(
@@ -61,7 +79,6 @@ class ProposalBase:
         position: Float[Array, "nstep ndim"],
         log_prob: Float[Array, "nstep 1"],
         data: PyTree,
-        params: dict,
     ) -> tuple[
         Float[Array, "nstep ndim"], Float[Array, "nstep 1"], Int[Array, "n_step 1"]
     ]:
