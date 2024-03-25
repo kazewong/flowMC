@@ -18,7 +18,7 @@ n_chains = 10
 
 rng_key_set = initialize_rng_keys(n_chains, seed=42)
 initial_position = jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
-model = MaskedCouplingRQSpline(n_dim, 3, [64, 64], 8, PRNGKeyArray(21))
+model = MaskedCouplingRQSpline(n_dim, 3, [64, 64], 8, jax.random.PRNGKey(21))
 step_size = 1e-1
 local_sampler = MALA(log_posterior, True, {"step_size": step_size})
 

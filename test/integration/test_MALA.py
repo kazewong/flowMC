@@ -70,7 +70,7 @@ rng_key_set = initialize_rng_keys(n_chains, seed=42)
 
 initial_position = jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
 
-model = MaskedCouplingRQSpline(2, 4, [32, 32], 4, PRNGKeyArray(10))
+model = MaskedCouplingRQSpline(2, 4, [32, 32], 4, jax.random.PRNGKey(10))
 
 print("Initializing sampler class")
 
