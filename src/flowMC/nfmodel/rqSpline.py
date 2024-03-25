@@ -1,7 +1,7 @@
 from typing import Sequence, Tuple
 import jax
 import jax.numpy as jnp
-from jaxtyping import Array
+from jaxtyping import Array, PRNGKeyArray
 import equinox as eqx
 
 from flowMC.nfmodel.base import NFModel, Bijection, Distribution

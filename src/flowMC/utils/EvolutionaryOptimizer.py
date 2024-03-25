@@ -64,7 +64,7 @@ class EvolutionaryOptimizer:
         -------
         None
         """
-        rng = PRNGKeyArray(seed)
+        rng = jax.random.PRNGKey(seed)
         key, subkey = jax.random.split(rng)
         progress_bar = (
             tqdm.tqdm(range(n_loops), "Generation: ")
