@@ -99,7 +99,7 @@ class RealNVP(NFModel):
     MLP is needed to make sure the scaling between layers are more or less the same.
 
     Args:
-        n_layer: (int) The number of affine coupling layers.
+        n_layers: (int) The number of affine coupling layers.
         n_features: (int) The number of features in the input.
         n_hidden: (int) The number of hidden units in the MLP.
         dt: (Float) Scaling factor for the affine coupling layer.
@@ -128,7 +128,7 @@ class RealNVP(NFModel):
         return jax.lax.stop_gradient(self._data_cov)
 
     def __init__(
-        self, n_features: int, n_layer: int, n_hidden: int, key: PRNGKeyArray, **kwargs
+        self, n_features: int, n_layers: int, n_hidden: int, key: PRNGKeyArray, **kwargs
     ):
 
         if kwargs.get("base_dist") is not None:
@@ -150,7 +150,7 @@ class RealNVP(NFModel):
 
         self._n_features = n_features
         affine_coupling = []
-        for i in range(n_layer):
+        for i in range(n_layers):
             key, scale_subkey, shift_subkey = jax.random.split(key, 3)
             mask = np.ones(n_features)
             mask[int(n_features / 2) :] = 0
