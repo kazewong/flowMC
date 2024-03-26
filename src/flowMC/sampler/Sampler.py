@@ -69,7 +69,7 @@ class Sampler:
     n_epochs: int = 30
     learning_rate: float = 0.001
     momentum: float = 0.9
-    n_max_examples: int = 100000
+    n_max_examples: int = 10000
     n_flow_sample: int = 10000
 
     # Logging hyperparameters
@@ -168,7 +168,7 @@ class Sampler:
         # Note that auto-tune function needs to have the same number of steps
         # as the actual sampling loop to avoid recompilation.
 
-        self.local_sampler_tuning(initial_position, data)
+        # self.local_sampler_tuning(initial_position, data)
         last_step = initial_position
         if self.use_global is True:
             last_step = self.global_sampler_tuning(last_step, data)
@@ -204,6 +204,7 @@ class Sampler:
         self.rng_key, rng_keys_mcmc = jax.random.split(self.rng_key)
         rng_keys_mcmc = jax.random.split(rng_keys_mcmc, self.n_chains)
         (
+            rng_keys_mcmc,
             positions,
             log_prob,
             local_acceptance,
@@ -233,6 +234,7 @@ class Sampler:
         )
 
         if self.use_global is True:
+            self.rng_key, rng_keys_nf = jax.random.split(self.rng_key)
             if training is True:
                 positions = self.summary["training"]["chains"][
                     :, :: self.train_thinning
@@ -263,7 +265,6 @@ class Sampler:
                     lambda m: m._data_cov, self.nf_model, self.variables["cov"]
                 )
 
-                self.rng_key, rng_keys_nf = jax.random.split(self.rng_key)
 
                 (
                     rng_keys_nf,

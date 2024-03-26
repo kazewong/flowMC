@@ -133,6 +133,7 @@ class ProposalBase:
         data: PyTree,
         verbose: bool = False,
     ) -> tuple[
+        PRNGKeyArray,
         Float[Array, "n_chains n_steps  n_dim"],
         Float[Array, "n_chains n_steps 1"],
         Int[Array, "n_chains n_steps 1"],

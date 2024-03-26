@@ -33,9 +33,9 @@ nf_sampler = Sampler(
     n_global_steps=50,
     n_epochs=30,
     learning_rate=1e-2,
-    batch_size=1000,
+    batch_size=10000,
     n_chains=n_chains,
 )
 
-# nf_sampler.sample(initial_position, data)
-# chains, log_prob, local_accs, global_accs = nf_sampler.get_sampler_state().values()
+nf_sampler.sample(initial_position, data)
+chains, log_prob, local_accs, global_accs = nf_sampler.get_sampler_state().values()
