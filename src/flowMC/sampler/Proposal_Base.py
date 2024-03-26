@@ -8,7 +8,10 @@ from jaxtyping import PyTree, Array, Float, Int, PRNGKeyArray
 @jax.tree_util.register_pytree_node_class
 class ProposalBase:
     def __init__(
-        self, logpdf: Callable[[Float[Array, "n_dim"], PyTree], Float], jit: bool, params: dict
+        self,
+        logpdf: Callable[[Float[Array, " n_dim"], PyTree], Float],
+        jit: bool,
+        params: dict,
     ):
         """
         Initialize the sampler class
@@ -89,11 +92,11 @@ class ProposalBase:
     def kernel(
         self,
         rng_key: PRNGKeyArray,
-        position: Float[Array, "nstep ndim"],
+        position: Float[Array, "nstep  n_dim"],
         log_prob: Float[Array, "nstep 1"],
         data: PyTree,
     ) -> tuple[
-        Float[Array, "nstep ndim"], Float[Array, "nstep 1"], Int[Array, "n_step 1"]
+        Float[Array, "nstep  n_dim"], Float[Array, "nstep 1"], Int[Array, "n_step 1"]
     ]:
         """
         Kernel for one step in the proposal cycle.
@@ -105,14 +108,14 @@ class ProposalBase:
         i: Float,
         state: tuple[
             PRNGKeyArray,
-            Float[Array, "nstep ndim"],
+            Float[Array, "nstep  n_dim"],
             Float[Array, "nstep 1"],
             Int[Array, "n_step 1"],
             PyTree,
         ],
     ) -> tuple[
         PRNGKeyArray,
-        Float[Array, "nstep ndim"],
+        Float[Array, "nstep  n_dim"],
         Float[Array, "nstep 1"],
         Int[Array, "n_step 1"],
         PyTree,
@@ -126,11 +129,11 @@ class ProposalBase:
         self,
         rng_key: PRNGKeyArray,
         n_steps: int,
-        initial_position: Float[Array, "n_chains ndim"],
+        initial_position: Float[Array, "n_chains  n_dim"],
         data: PyTree,
         verbose: bool = False,
     ) -> tuple[
-        Float[Array, "n_chains n_steps ndim"],
+        Float[Array, "n_chains n_steps  n_dim"],
         Float[Array, "n_chains n_steps 1"],
         Int[Array, "n_chains n_steps 1"],
     ]:
