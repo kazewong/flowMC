@@ -65,8 +65,8 @@ class NFModel(eqx.Module):
     def save_model(self, path: str):
         eqx.tree_serialise_leaves(path + ".eqx", self)
 
-    def load_model(self, path: str) -> eqx.Module:
-        return eqx.tree_deserialise_leaves(path + ".eqx", self)
+    def load_model(self, path: str):
+        self = eqx.tree_deserialise_leaves(path + ".eqx", self)
 
 
 class Bijection(eqx.Module):

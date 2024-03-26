@@ -9,7 +9,6 @@ from flowMC.sampler.Proposal_Base import ProposalBase
 from flowMC.nfmodel.base import NFModel
 from tqdm import tqdm
 import equinox as eqx
-import numpy as np
 
 
 class Sampler:
@@ -61,6 +60,7 @@ class Sampler:
     n_loop_production: int = 3
     train_thinning: int = 1
     output_thinning: int = 1
+    local_autotune: bool = False
 
     # Normalizing flow hyperparameters
     _global_sampler: NFProposal
@@ -168,7 +168,7 @@ class Sampler:
         # Note that auto-tune function needs to have the same number of steps
         # as the actual sampling loop to avoid recompilation.
 
-        # self.local_sampler_tuning(initial_position, data)
+        self.local_sampler_tuning(initial_position, data)
         last_step = initial_position
         if self.use_global is True:
             last_step = self.global_sampler_tuning(last_step, data)
@@ -322,7 +322,7 @@ class Sampler:
         return last_step
 
     def local_sampler_tuning(
-        self, initial_position: jnp.array, data: jnp.array, max_iter: int = 100
+        self, initial_position: Float[Array, "n_chain n_dim"], data: dict, max_iter: int = 100
     ):
         """
         Tuning the local sampler. This runs a number of iterations of the local sampler,
@@ -335,24 +335,24 @@ class Sampler:
             initial_position (Device Array): Initial position for the local sampler.
             max_iter (int): Number of iterations to run the local sampler.
         """
-        if self.local_autotune is not None:
-            print("Autotune found, start tuning sampler_params")
-            kernel_vmap = self.local_sampler.kernel_vmap
-            self.local_sampler.params = self.local_autotune(
-                kernel_vmap,
-                self.rng_keys_mcmc,
-                initial_position,
-                self.likelihood_vec(initial_position),
-                data,
-                self.local_sampler.params,
-                max_iter,
-            )
+        if self.local_autotune:
+            print("Tuning local sampler")
+            # kernel_vmap = self.local_sampler.kernel_vmap
+            # self.local_sampler.params = self.local_autotune(
+            #     kernel_vmap,
+            #     self.rng_keys_mcmc,
+            #     initial_position,
+            #     self.likelihood_vec(initial_position),
+            #     data,
+            #     self.local_sampler.params,
+            #     max_iter,
+            # )
         else:
             print("No autotune found, use input sampler_params")
 
     def global_sampler_tuning(
-        self, initial_position: jnp.ndarray, data: jnp.array
-    ) -> jnp.array:
+        self, initial_position: Float[Array, "n_chain n_dim"], data: dict
+    ) -> Float[Array, "n_chains n_dim"]:
         """
         Tuning the global sampler. This runs both the local sampler and the global sampler,
         and train the normalizing flow on the run.
@@ -374,8 +374,8 @@ class Sampler:
         return last_step
 
     def production_run(
-        self, initial_position: jnp.ndarray, data: jnp.array
-    ) -> jnp.array:
+        self, initial_position: Float[Array, "n_chain n_dim"], data: dict
+    ) -> Float[Array, "n_chains n_dim"]:
         """
         Sampling procedure that produce the final set of samples.
         The main difference between this and the global tuning step is
@@ -413,7 +413,7 @@ class Sampler:
         else:
             return self.summary["production"]
 
-    def sample_flow(self, n_samples: int) -> jnp.ndarray:
+    def sample_flow(self, rng_key: PRNGKeyArray, n_samples: int) -> Float[Array, "n_samples n_dim"]:
         """
         Sample from the normalizing flow.
 
@@ -424,10 +424,10 @@ class Sampler:
             Device Array: Samples generated using the normalizing flow.
         """
 
-        samples = self.nf_model.sample(self.rng_keys_nf, n_samples)
+        samples = self.nf_model.sample(rng_key, n_samples)
         return samples
 
-    def evalulate_flow(self, samples: jnp.ndarray) -> jnp.ndarray:
+    def evalulate_flow(self, samples: Float[Array, "n_samples n_dim"]) -> Float[Array, "n_samples"]:
         """
         Evaluate the log probability of the normalizing flow.
 
@@ -456,7 +456,7 @@ class Sampler:
         Args:
             path (str): Path to save the normalizing flow.
         """
-        self.nf_model = self.nf_model.load_model(path)
+        self.nf_model.load_model(path)
 
     def reset(self):
         """
@@ -498,7 +498,7 @@ class Sampler:
             global_accs = self.summary["production"]["global_accs"]
 
         hist = [
-            np.histogram(
+            jnp.histogram(
                 global_accs[
                     :,
                     i
@@ -509,8 +509,8 @@ class Sampler:
             )
             for i in range(n_loop)
         ]
-        axis = np.array([hist[i][1][:-1] for i in range(n_loop)]).T
-        hist = np.array([hist[i][0] for i in range(n_loop)]).T
+        axis = jnp.array([hist[i][1][:-1] for i in range(n_loop)]).T
+        hist = jnp.array([hist[i][0] for i in range(n_loop)]).T
         return axis, hist
 
     def get_local_acceptance_distribution(
@@ -531,7 +531,7 @@ class Sampler:
             local_accs = self.summary["production"]["local_accs"]
 
         hist = [
-            np.histogram(
+            jnp.histogram(
                 local_accs[
                     :,
                     i
@@ -542,8 +542,8 @@ class Sampler:
             )
             for i in range(n_loop)
         ]
-        axis = np.array([hist[i][1][:-1] for i in range(n_loop)]).T
-        hist = np.array([hist[i][0] for i in range(n_loop)]).T
+        axis = jnp.array([hist[i][1][:-1] for i in range(n_loop)]).T
+        hist = jnp.array([hist[i][0] for i in range(n_loop)]).T
         return axis, hist
 
     def get_log_prob_distribution(
@@ -564,7 +564,7 @@ class Sampler:
             log_prob = self.summary["production"]["log_prob"]
 
         hist = [
-            np.histogram(
+            jnp.histogram(
                 log_prob[
                     :,
                     i
@@ -575,8 +575,8 @@ class Sampler:
             )
             for i in range(n_loop)
         ]
-        axis = np.array([hist[i][1][:-1] for i in range(n_loop)]).T
-        hist = np.array([hist[i][0] for i in range(n_loop)]).T
+        axis = jnp.array([hist[i][1][:-1] for i in range(n_loop)]).T
+        hist = jnp.array([hist[i][0] for i in range(n_loop)]).T
         return axis, hist
 
     def save_summary(self, path: str):
