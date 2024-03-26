@@ -122,6 +122,7 @@ class MALA(ProposalBase):
         data: PyTree,
         verbose: bool = False,
     ) -> tuple[
+        PRNGKeyArray,
         Float[Array, "n_chains n_steps ndim"],
         Float[Array, "n_chains n_steps 1"],
         Int[Array, "n_chains n_steps 1"],
