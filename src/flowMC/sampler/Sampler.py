@@ -11,6 +11,7 @@ from tqdm import tqdm
 import equinox as eqx
 import numpy as np
 
+
 class Sampler:
     """
     Sampler class that host configuration parameters, NF model, and local sampler
@@ -92,7 +93,6 @@ class Sampler:
         self.local_sampler = local_sampler
         self.model = nf_model
 
-
         # Set and override any given hyperparameters
         class_keys = list(self.__class__.__dict__.keys())
         for key, value in kwargs.items():
@@ -113,13 +113,12 @@ class Sampler:
                 data=data,
             )
 
-        if self.global_sampler is None:
-            self.global_sampler = NFProposal(
-                self.local_sampler.logpdf,
-                jit=self.local_sampler.jit,
-                model=nf_model,
-                n_flow_sample=self.n_flow_sample,
-            )
+        self.global_sampler = NFProposal(
+            self.local_sampler.logpdf,
+            jit=self.local_sampler.jit,
+            model=nf_model,
+            n_flow_sample=self.n_flow_sample,
+        )
 
         self.likelihood_vec = self.local_sampler.logpdf_vmap
 
