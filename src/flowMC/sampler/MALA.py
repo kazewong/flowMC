@@ -5,8 +5,7 @@ from jax.scipy.stats import multivariate_normal
 from tqdm import tqdm
 from flowMC.sampler.Proposal_Base import ProposalBase
 from functools import partialmethod
-from jaxtyping import PyTree, Array, Float, Int, PRNGKeyArray
-
+from jaxtyping import PyTree, Array, Float, Int, PRNGKeyArray, Bool
 
 class MALA(ProposalBase):
     """
@@ -18,13 +17,20 @@ class MALA(ProposalBase):
         params: dictionary of parameters for the sampler
     """
 
-    def __init__(self, logpdf: Callable, jit: bool, params: dict, use_autotune=False):
+    def __init__(self, logpdf: Callable, jit: Bool, params: dict, use_autotune=False):
         super().__init__(logpdf, jit, params)
-        self.params = params
-        self.logpdf = logpdf
-        self.use_autotune = use_autotune
+        self.params: PyTree = params
+        self.logpdf: Callable = logpdf
+        self.use_autotune: Bool = use_autotune
 
-    def body(self, carry, this_key):
+    def body(
+        self,
+        carry: tuple[Float[Array, "n_dim"], float, dict],
+        this_key: PRNGKeyArray,
+    ) -> tuple[
+        tuple[Float[Array, "n_dim"], float, dict],
+        tuple[Float[Array, "n_dim"], Float[Array, "1"], Float[Array, "n_dim"]],
+    ]:
         print("Compiling MALA body")
         this_position, dt, data = carry
         dt2 = dt * dt
@@ -58,7 +64,7 @@ class MALA(ProposalBase):
 
         key1, key2 = jax.random.split(rng_key)
 
-        dt = self.params["step_size"]
+        dt: Float = self.params["step_size"]
         dt2 = dt * dt
 
         _, (proposal, logprob, d_logprob) = jax.lax.scan(
@@ -74,16 +80,14 @@ class MALA(ProposalBase):
         )
 
         log_uniform = jnp.log(jax.random.uniform(key2))
-        do_accept = log_uniform < ratio
+        do_accept: Bool[Array, "n_dim"] = log_uniform < ratio
 
         position = jnp.where(do_accept, proposal[0], position)
         log_prob = jnp.where(do_accept, logprob[1], logprob[0])
 
         return position, log_prob, do_accept
 
-    def update(
-        self, i, state
-    ) -> tuple[
+    def update(self, i, state) -> tuple[
         PRNGKeyArray,
         Float[Array, "nstep ndim"],
         Float[Array, "nstep 1"],
@@ -157,7 +161,7 @@ class MALA(ProposalBase):
             max_iter (int): maximal number of iterations to tune the step size
         """
 
-        tqdm.__init__ = partialmethod(tqdm.__init__, disable=True)
+        tqdm.__init__ = partialmethod(tqdm.__init__, disable=True) # type: ignore
 
         counter = 0
         position, log_prob, do_accept = self.kernel_vmap(
@@ -179,5 +183,5 @@ class MALA(ProposalBase):
                 rng_key, initial_position, log_prob, data
             )
             acceptance_rate = jnp.mean(do_accept)
-        tqdm.__init__ = partialmethod(tqdm.__init__, disable=False)
+        tqdm.__init__ = partialmethod(tqdm.__init__, disable=False) # type: ignore
         return params

@@ -21,7 +21,7 @@ class GaussianRandomWalk(ProposalBase):
         logpdf: Callable,
         jit: bool,
         params: dict,
-    ) -> Callable:
+    ):
         super().__init__(logpdf, jit, params)
         self.params = params
         self.logpdf = logpdf
