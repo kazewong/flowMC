@@ -1,7 +1,7 @@
 from typing import Sequence, Tuple
 import jax
 import jax.numpy as jnp
-from jaxtyping import Array, PRNGKeyArray
+from jaxtyping import Array, PRNGKeyArray, Float
 import equinox as eqx
 
 from flowMC.nfmodel.base import NFModel, Bijection, Distribution
@@ -352,8 +352,8 @@ class MaskedCouplingRQSpline(NFModel):
     base_dist: Distribution
     layers: list[eqx.Module]
     _n_features: int
-    _data_mean: Array
-    _data_cov: Array
+    _data_mean: Float[Array, " n_dim"]
+    _data_cov: Float[Array, " n_dim n_dim"]
 
     @property
     def n_features(self):
@@ -371,27 +371,33 @@ class MaskedCouplingRQSpline(NFModel):
         self,
         n_features: int,
         n_layers: int,
-        hidden_size: Sequence[int],
+        hidden_size: list[int],
         num_bins: int,
         key: PRNGKeyArray,
-        spline_range: Sequence[float] = (-10.0, 10.0),
+        spline_range: tuple[float, float] = (-10.0, 10.0),
         **kwargs
     ):
 
         if kwargs.get("base_dist") is not None:
-            self.base_dist = kwargs.get("base_dist")
+            dist = kwargs.get("base_dist")
+            assert isinstance(dist, Distribution)
+            self.base_dist = dist
         else:
             self.base_dist = Gaussian(
                 jnp.zeros(n_features), jnp.eye(n_features), learnable=False
             )
 
         if kwargs.get("data_mean") is not None:
-            self._data_mean = kwargs.get("data_mean")
+            data_mean = kwargs.get("data_mean")
+            assert isinstance(data_mean, Array)
+            self._data_mean = data_mean
         else:
             self._data_mean = jnp.zeros(n_features)
 
         if kwargs.get("data_cov") is not None:
-            self._data_cov = kwargs.get("data_cov")
+            data_cov = kwargs.get("data_cov")
+            assert isinstance(data_cov, Array)
+            self._data_cov = data_cov
         else:
             self._data_cov = jnp.eye(n_features)
 
