@@ -6,7 +6,6 @@ import numpy as np
 from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
 from flowMC.sampler.MALA import MALA
 from flowMC.sampler.Sampler import Sampler
-from flowMC.utils.PRNG_keys import initialize_rng_keys
 
 import corner
 import matplotlib.pyplot as plt
@@ -18,7 +17,7 @@ def target_dualmoon(x, data):
     along the first and second dimension
     """
     print("compile count")
-    term1 = 0.5 * ((jnp.linalg.norm(x - data) - 2) / 0.1) ** 2
+    term1 = 0.5 * ((jnp.linalg.norm(x - data['data']) - 2) / 0.1) ** 2
     term2 = -0.5 * ((x[:1] + jnp.array([-3.0, 3.0])) / 0.8) ** 2
     term3 = -0.5 * ((x[1:2] + jnp.array([-3.0, 3.0])) / 0.6) ** 2
     return -(term1 - logsumexp(term2) - logsumexp(term3))
@@ -35,12 +34,13 @@ momentum = 0.9
 num_epochs = 30
 batch_size = 10000
 
-data = jnp.zeros(n_dim)
+data = {'data':jnp.zeros(n_dim)}
 
-rng_key_set = initialize_rng_keys(n_chains, 42)
-model = MaskedCouplingRQSpline(n_dim, 4, [32, 32], 8, PRNGKeyArray(10))
 
-initial_position = jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
+model = MaskedCouplingRQSpline(n_dim, 4, [32, 32], 8, subkey)
+
+rng_key, subkey = jax.random.split(rng_key)
+initial_position = jax.random.normal(subkey, shape=(n_chains, n_dim)) * 1
 
 MALA_Sampler = MALA(target_dualmoon, True, {"step_size": 0.1})
 
@@ -48,8 +48,8 @@ print("Initializing sampler class")
 
 nf_sampler = Sampler(
     n_dim,
-    rng_key_set,
-    jnp.zeros(5),
+    rng_key,
+    data,
     MALA_Sampler,
     model,
     n_loop_training=n_loop_training,
@@ -67,7 +67,8 @@ nf_sampler = Sampler(
 nf_sampler.sample(initial_position, data)
 summary = nf_sampler.get_sampler_state(training=True)
 chains, log_prob, local_accs, global_accs, loss_vals = summary.values()
-nf_samples = nf_sampler.sample_flow(10000)
+rng_key, subkey = jax.random.split(rng_key)
+nf_samples = nf_sampler.sample_flow(subkey, 10000)
 
 print(
     "chains shape: ",
