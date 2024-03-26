@@ -7,11 +7,11 @@ from flowMC.utils.PRNG_keys import initialize_rng_keys
 from flowMC.nfmodel.utils import *
 
 
-def log_posterior(x, data):
-    return -0.5 * jnp.sum((x - data) ** 2)
+def log_posterior(x, data: dict):
+    return -0.5 * jnp.sum((x - data['data']) ** 2)
 
 
-data = jnp.arange(5)
+data = {'data':jnp.arange(5)}
 
 n_dim = 5
 n_chains = 10
@@ -25,7 +25,7 @@ local_sampler = MALA(log_posterior, True, {"step_size": step_size})
 nf_sampler = Sampler(
     n_dim,
     rng_key_set,
-    jnp.arange(n_dim),
+    data,
     local_sampler,
     model,
     n_local_steps=50,
