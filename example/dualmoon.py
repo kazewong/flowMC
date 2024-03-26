@@ -36,7 +36,8 @@ batch_size = 10000
 
 data = {'data':jnp.zeros(n_dim)}
 
-
+rng_key = jax.random.PRNGKey(42)
+rng_key, subkey = jax.random.split(rng_key)
 model = MaskedCouplingRQSpline(n_dim, 4, [32, 32], 8, subkey)
 
 rng_key, subkey = jax.random.split(rng_key)
