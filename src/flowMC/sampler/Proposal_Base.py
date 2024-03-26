@@ -48,7 +48,7 @@ class ProposalBase:
                 .lower(
                     key,
                     jnp.ones((n_chains, n_dims)),
-                    jnp.ones((n_chains, 1)),
+                    jnp.ones((n_chains, )),
                     data,
                 )
                 .compile()
@@ -60,8 +60,8 @@ class ProposalBase:
                     (
                         key,
                         jnp.ones((n_chains, n_step, n_dims)),
-                        jnp.ones((n_chains, n_step, 1)),
-                        jnp.zeros((n_chains, n_step, 1)),
+                        jnp.ones((n_chains, n_step, )),
+                        jnp.zeros((n_chains, n_step, )),
                         data,
                     ),
                 )
@@ -74,7 +74,7 @@ class ProposalBase:
             self.kernel_vmap(
                 key,
                 jnp.ones((n_chains, n_dims)),
-                jnp.ones((n_chains, 1)),
+                jnp.ones((n_chains, )),
                 data,
             )
             self.update_vmap(
@@ -82,8 +82,8 @@ class ProposalBase:
                 (
                     key,
                     jnp.ones((n_chains, n_step, n_dims)),
-                    jnp.ones((n_chains, n_step, 1)),
-                    jnp.zeros((n_chains, n_step, 1)),
+                    jnp.ones((n_chains, n_step, )),
+                    jnp.zeros((n_chains, n_step, )),
                     data,
                 ),
             )

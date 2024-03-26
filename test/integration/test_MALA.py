@@ -9,7 +9,6 @@ def dual_moon_pe(x, data):
     """
     Term 2 and 3 separate the distribution and smear it along the first and second dimension
     """
-    print("compile count")
     term1 = 0.5 * ((jnp.linalg.norm(x - data) - 2) / 0.1) ** 2
     term2 = -0.5 * ((x[:1] + jnp.array([-3.0, 3.0])) / 0.8) ** 2
     term3 = -0.5 * ((x[1:2] + jnp.array([-3.0, 3.0])) / 0.6) ** 2
