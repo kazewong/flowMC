@@ -1,13 +1,15 @@
 import jax
 import jax.numpy as jnp  # JAX NumPy
-from tqdm import trange
+from tqdm import trange, tqdm
 import optax
 import equinox as eqx
 from typing import Callable, Tuple
-from jaxtyping import Array, PRNGKeyArray
+from jaxtyping import Array, PRNGKeyArray, Float
 
 
-def make_training_loop(optim: optax.GradientTransformation) -> Callable:
+def make_training_loop(
+    optim: optax.GradientTransformation,
+) -> tuple[Callable, Callable, Callable]:
     """
     Create a function that trains an NF model.
 
@@ -24,7 +26,9 @@ def make_training_loop(optim: optax.GradientTransformation) -> Callable:
         return -jnp.mean(model.log_prob(x))
 
     @eqx.filter_jit
-    def train_step(model, x, opt_state):
+    def train_step(
+        model: eqx.Module, x: Float[Array, "n_batch n_dim"], opt_state: optax.OptState
+    ) -> Tuple[Float, eqx.Module, optax.OptState]:
         """Train for a single step.
 
         Args:
@@ -42,7 +46,13 @@ def make_training_loop(optim: optax.GradientTransformation) -> Callable:
         model = eqx.apply_updates(model, updates)
         return loss, model, opt_state
 
-    def train_epoch(rng, model, state, train_ds, batch_size):
+    def train_epoch(
+        rng: PRNGKeyArray,
+        model: eqx.Module,
+        state: optax.OptState,
+        train_ds: Float[Array, "n_example n_dim"],
+        batch_size: Float,
+    )-> Tuple[Float, eqx.Module, optax.OptState]:
         """Train for a single epoch."""
         train_ds_size = len(train_ds)
         steps_per_epoch = train_ds_size // batch_size
@@ -67,7 +77,7 @@ def make_training_loop(optim: optax.GradientTransformation) -> Callable:
         num_epochs: int,
         batch_size: int,
         verbose: bool = True,
-    ) -> Tuple[PRNGKeyArray, eqx.Module, Array]:
+    ) -> Tuple[PRNGKeyArray, eqx.Module, optax.OptState, Array]:
         """Train a normalizing flow model.
 
         Args:
@@ -100,6 +110,7 @@ def make_training_loop(optim: optax.GradientTransformation) -> Callable:
                 best_model = model
                 best_loss = loss_values[epoch]
             if verbose:
+                assert isinstance(pbar, tqdm)
                 if num_epochs > 10:
                     if epoch % int(num_epochs / 10) == 0:
                         pbar.set_description(f"Training NF, current loss: {value:.3f}")
