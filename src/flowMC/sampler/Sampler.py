@@ -71,7 +71,7 @@ class Sampler:
         self,
         n_dim: int,
         rng_key_set: Tuple,
-        data: jnp.ndarray,
+        data: dict,
         local_sampler: ProposalBase,
         nf_model: NFModel,
         **kwargs,

@@ -60,5 +60,5 @@ def test_rqSpline():
     rng, best_model, state, loss_values = train_flow(
         rng, model, data, state, num_epochs, batch_size, verbose=True
     )
-    rng_key_nf = PRNGKeyArray(124098)
+    rng_key_nf = jax.random.PRNGKey(124098)
     model.sample(rng_key_nf, 10000)
