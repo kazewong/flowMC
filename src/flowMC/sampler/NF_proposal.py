@@ -14,11 +14,11 @@ class NFProposal(ProposalBase):
     model: NFModel
 
     def __init__(
-        self, logpdf: Callable, jit: bool, model: NFModel, n_sample_max: int = 10000
+        self, logpdf: Callable, jit: bool, model: NFModel, n_flow_sample: int = 10000
     ):
         super().__init__(logpdf, jit, {})
         self.model = model
-        self.n_sample_max = n_sample_max
+        self.n_flow_sample = n_flow_sample
         self.update_vmap = jax.vmap(self.update, in_axes=(None, (0)))
         if self.jit is True:
             self.update_vmap = jax.jit(self.update_vmap)
@@ -179,9 +179,9 @@ class NFProposal(ProposalBase):
         n_chains = initial_position.shape[0]
         n_dim = initial_position.shape[-1]
         total_size = initial_position.shape[0] * n_steps
-        if total_size > self.n_sample_max:
+        if total_size > self.n_flow_sample:
             rng_key = rng_key
-            n_batch = ceil(total_size / self.n_sample_max)
+            n_batch = ceil(total_size / self.n_flow_sample)
             n_sample = total_size // n_batch
             proposal_position = jnp.zeros(
                 (n_batch, n_sample, initial_position.shape[-1])
@@ -218,5 +218,5 @@ class NFProposal(ProposalBase):
     def tree_flatten(self):
         children, aux_data = super().tree_flatten()
         aux_data["model"] = self.model
-        aux_data["n_sample_max"] = self.n_sample_max
+        aux_data["n_sample_max"] = self.n_flow_sample
         return (children, aux_data)

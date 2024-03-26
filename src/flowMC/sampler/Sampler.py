@@ -1,7 +1,7 @@
 import pickle
 from typing import Tuple
 import jax.numpy as jnp
-from jaxtyping import Array, Int, Float
+from jaxtyping import Array, Int, Float, PRNGKeyArray
 from flowMC.nfmodel.utils import make_training_loop
 from flowMC.sampler.NF_proposal import NFProposal
 import optax
@@ -10,30 +10,6 @@ from flowMC.nfmodel.base import NFModel
 from tqdm import tqdm
 import equinox as eqx
 import numpy as np
-
-default_hyperparameters = {
-    "n_loop_training": 3,
-    "n_loop_production": 3,
-    "n_local_steps": 50,
-    "n_global_steps": 50,
-    "n_chains": 20,
-    "n_epochs": 30,
-    "learning_rate": 0.001,
-    "max_samples": 100000,
-    "momentum": 0.9,
-    "batch_size": 10000,
-    "use_global": True,
-    "global_sampler": None,
-    "logging": True,
-    "keep_quantile": 0,
-    "local_autotune": None,
-    "train_thinning": 1,
-    "output_thinning": 1,
-    "n_sample_max": 10000,
-    "precompile": False,
-    "verbose": False,
-    "outdir": "./outdir/",
-}
 
 class Sampler:
     """
@@ -47,7 +23,7 @@ class Sampler:
         "n_chains": "(int) Number of chains",
         "n_epochs": "(int) Number of epochs to train the NF per training loop",
         "learning_rate": "(float) Learning rate used in the training of the NF",
-        "max_samples": "(int) Maximum number of samples fed to training the NF model",
+        "n_max_examples": "(int) Maximum number of samples fed to training the NF model",
         "momentum": "(float) Momentum used in the training of the NF model with the Adam optimizer",
         "batch_size": "(int) Size of batches used to train the NF",
         "use_global": "(bool) Whether to use an NF proposal as global sampler",
@@ -63,6 +39,38 @@ class Sampler:
         "outdir": "(str) Location to which to save plots, samples and hyperparameter settings. Note: should ideally start with `./` and also end with `/`"
     """
 
+    # Essential parameters
+    n_dim: int
+    rng_key: PRNGKeyArray
+    data: dict
+    local_sampler: ProposalBase
+    model: NFModel
+
+    # Sampling hyperparameters
+    n_chains: int = 20
+    n_local_steps: int = 50
+    n_global_steps: int = 50
+    n_loop_training: int = 3
+    n_loop_production: int = 3
+    train_thinning: int = 1
+    output_thinning: int = 1
+
+    # Normalizing flow hyperparameters
+    _global_sampler: NFProposal
+    use_global: bool = True
+    batch_size: int = 10000
+    n_epochs: int = 30
+    learning_rate: float = 0.001
+    momentum: float = 0.9
+    n_max_examples: int = 100000
+    n_flow_sample: int = 10000
+
+    # Logging hyperparameters
+    precompile: bool = False
+    verbose: bool = False
+    logging: bool = True
+    outdir: str = "./outdir/"
+
     @property
     def nf_model(self):
         return self.global_sampler.model
@@ -70,29 +78,27 @@ class Sampler:
     def __init__(
         self,
         n_dim: int,
-        rng_key_set: Tuple,
+        rng_key: PRNGKeyArray,
         data: dict,
         local_sampler: ProposalBase,
         nf_model: NFModel,
         **kwargs,
     ):
-        rng_key_init, rng_keys_mcmc, rng_keys_nf, init_rng_keys_nf = rng_key_set
-
         # Copying input into the model
 
-        self.rng_keys_nf = rng_keys_nf
-        self.rng_keys_mcmc = rng_keys_mcmc
         self.n_dim = n_dim
+        self.rng_key = rng_key
+        self.data = data
+        self.local_sampler = local_sampler
+        self.model = nf_model
 
 
         # Set and override any given hyperparameters
-        self.hyperparameters = default_hyperparameters
-        hyperparameter_names = list(default_hyperparameters.keys())
+        class_keys = list(self.__class__.__dict__.keys())
         for key, value in kwargs.items():
-            if key in hyperparameter_names:
-                self.hyperparameters[key] = value
-        for key, value in self.hyperparameters.items():
-            setattr(self, key, value)
+            if key in class_keys:
+                if not key.startswith("__"):
+                    setattr(self, key, value)
 
         self.variables = {"mean": None, "var": None}
 
@@ -101,11 +107,19 @@ class Sampler:
         self.local_sampler = local_sampler
         if self.precompile:
             self.local_sampler.precompilation(
-                n_chains=self.n_chains, n_dims=n_dim, n_step=self.n_local_steps, data=data
+                n_chains=self.n_chains,
+                n_dims=n_dim,
+                n_step=self.n_local_steps,
+                data=data,
             )
 
         if self.global_sampler is None:
-            self.global_sampler = NFProposal(self.local_sampler.logpdf, jit=self.local_sampler.jit, model=nf_model, n_sample_max=self.n_sample_max)
+            self.global_sampler = NFProposal(
+                self.local_sampler.logpdf,
+                jit=self.local_sampler.jit,
+                model=nf_model,
+                n_flow_sample=self.n_flow_sample,
+            )
 
         self.likelihood_vec = self.local_sampler.logpdf_vmap
 
@@ -130,7 +144,6 @@ class Sampler:
         self.summary = {}
         self.summary["training"] = training
         self.summary["production"] = production
-
 
     def sample(self, initial_position: Array, data: dict):
         """
@@ -226,21 +239,21 @@ class Sampler:
                 else:
                     cut_chains = positions
                 chain_size = cut_chains.shape[0] * cut_chains.shape[1]
-                if chain_size > self.max_samples:
+                if chain_size > self.n_max_examples:
                     flat_chain = cut_chains[
-                        :, -int(self.max_samples / self.n_chains) :
+                        :, -int(self.n_max_examples / self.n_chains) :
                     ].reshape(-1, self.n_dim)
                 else:
                     flat_chain = cut_chains.reshape(-1, self.n_dim)
 
-                if flat_chain.shape[0] < self.max_samples:
+                if flat_chain.shape[0] < self.n_max_examples:
                     # This is to pad the training data to avoid recompilation.
                     flat_chain = jnp.repeat(
                         flat_chain,
-                        (self.max_samples // flat_chain.shape[0]) + 1,
+                        (self.n_max_examples // flat_chain.shape[0]) + 1,
                         axis=0,
                     )
-                    flat_chain = flat_chain[: self.max_samples]
+                    flat_chain = flat_chain[: self.n_max_examples]
 
                 self.variables["mean"] = jnp.mean(flat_chain, axis=0)
                 self.variables["cov"] = jnp.cov(flat_chain.T)
@@ -281,8 +294,8 @@ class Sampler:
                 self.n_global_steps,
                 positions[:, -1],
                 data,
-                verbose = self.verbose,
-                mode = summary_mode
+                verbose=self.verbose,
+                mode=summary_mode,
             )
 
             self.summary[summary_mode]["chains"] = jnp.append(
