@@ -1,7 +1,6 @@
-from typing import Sequence, Tuple
 import jax
 import jax.numpy as jnp
-from jaxtyping import Array
+from jaxtyping import Array, PRNGKeyArray, Float
 import equinox as eqx
 
 from flowMC.nfmodel.base import NFModel, Bijection, Distribution
@@ -21,7 +20,7 @@ def _normalize_bin_sizes(
 
 @partial(jax.vmap, in_axes=(0, None))
 def _normalize_knot_slopes(
-    unnormalized_knot_slopes: Array, min_knot_slope: float
+    unnormalized_knot_slopes: Array, min_knot_slope: Float
 ) -> Array:
     """Make knot slopes be no less than `min_knot_slope`."""
     # The offset is such that the normalized knot slope will be equal to 1
@@ -34,7 +33,7 @@ def _normalize_knot_slopes(
 @partial(jax.vmap, in_axes=(0, 0, 0, 0))
 def _rational_quadratic_spline_fwd(
     x: Array, x_pos: Array, y_pos: Array, knot_slopes: Array
-) -> Tuple[Array, Array]:
+) -> tuple[Array, Array]:
     """Applies a rational-quadratic spline to a scalar.
 
     Args:
@@ -110,7 +109,9 @@ def _rational_quadratic_spline_fwd(
 
     # If x is outside the spline range, we default to a linear transformation.
     y = jnp.where(below_range, (x - x_pos[0]) * knot_slopes[0] + y_pos[0], y)
-    y = jnp.where(above_range, (x - x_pos[-1]) * knot_slopes[-1] + y_pos[-1], y)
+    y = jnp.where(
+        above_range, (x - x_pos[-1]) * knot_slopes[-1] + y_pos[-1], y
+    )  # type: ignore
     logdet = jnp.where(below_range, jnp.log(knot_slopes[0]), logdet)
     logdet = jnp.where(above_range, jnp.log(knot_slopes[-1]), logdet)
     return y, logdet
@@ -146,7 +147,7 @@ def _safe_quadratic_root(a: Array, b: Array, c: Array) -> Array:
 @partial(jax.vmap, in_axes=(0, 0, 0, 0))
 def _rational_quadratic_spline_inv(
     y: Array, x_pos: Array, y_pos: Array, knot_slopes: Array
-) -> Tuple[Array, Array]:
+) -> tuple[Array, Array]:
     """Applies the inverse of a rational-quadratic spline to a scalar.
 
     Args:
@@ -217,20 +218,21 @@ def _rational_quadratic_spline_inv(
 
     # If y is outside the spline range, we default to a linear transformation.
     x = jnp.where(below_range, (y - y_pos[0]) / knot_slopes[0] + x_pos[0], x)
-    x = jnp.where(above_range, (y - y_pos[-1]) / knot_slopes[-1] + x_pos[-1], x)
+    x = jnp.where(
+        above_range, (y - y_pos[-1]) / knot_slopes[-1] + x_pos[-1], x
+    )  # type: ignore
     logdet = jnp.where(below_range, -jnp.log(knot_slopes[0]), logdet)
     logdet = jnp.where(above_range, -jnp.log(knot_slopes[-1]), logdet)
     return x, logdet
 
 
 class RQSpline(Bijection):
-
     _range_min: float
     _range_max: float
     _num_bins: int
     _min_bin_size: float
     _min_knot_slope: float
-    conditioner: eqx.Module
+    conditioner: MLP
 
     """A rational-quadratic spline bijection.
     
@@ -279,13 +281,12 @@ class RQSpline(Bijection):
 
     def __init__(
         self,
-        conditioner: eqx.Module,
+        conditioner: MLP,
         range_min: float,
         range_max: float,
         min_bin_size: float = 1e-4,
         min_knot_slope: float = 1e-4,
     ):
-
         self._range_min = range_min
         self._range_max = range_max
         self._min_bin_size = min_bin_size
@@ -294,7 +295,11 @@ class RQSpline(Bijection):
 
         self.conditioner = conditioner
 
-    def get_params(self, x: Array) -> Array:
+    def get_params(
+        self, x: Float[Array, " n_condition"]
+    ) -> tuple[
+        Float[Array, " n_param"], Float[Array, " n_param"], Float[Array, " n_param"]
+    ]:
         params = self.conditioner(x).reshape(-1, self._num_bins * 3 + 1)
         unnormalized_bin_widths = params[:, : self._num_bins]
         unnormalized_bin_heights = params[:, self._num_bins : 2 * self._num_bins]
@@ -320,14 +325,14 @@ class RQSpline(Bijection):
         )
         return x_pos, y_pos, knot_slopes
 
-    def __call__(self, x: Array, condition_x: Array) -> Tuple[Array, Array]:
+    def __call__(self, x: Array, condition_x: Array) -> tuple[Array, Array]:
         return self.forward(x, condition_x)
 
-    def forward(self, x: Array, condition_x: Array) -> Tuple[Array, Array]:
+    def forward(self, x: Array, condition_x: Array) -> tuple[Array, Array]:
         x_pos, y_pos, knot_slopes = self.get_params(condition_x)
         return _rational_quadratic_spline_fwd(x, x_pos, y_pos, knot_slopes)
 
-    def inverse(self, x: Array, condition_x: Array) -> Tuple[Array, Array]:
+    def inverse(self, x: Array, condition_x: Array) -> tuple[Array, Array]:
         x_pos, y_pos, knot_slopes = self.get_params(condition_x)
         return _rational_quadratic_spline_inv(x, x_pos, y_pos, knot_slopes)
 
@@ -340,7 +345,7 @@ class MaskedCouplingRQSpline(NFModel):
         num_layers (int): Number of layers in the conditioner.
         hidden_size (Sequence[int]): Hidden size of the conditioner.
         num_bins (int): Number of bins in the spline.
-        key (jax.random.PRNGKey): Random key for initialization.
+        key (PRNGKeyArray): Random key for initialization.
         spline_range (Sequence[float]): Range of the spline. Defaults to (-10.0, 10.0).
 
     Properties:
@@ -350,10 +355,10 @@ class MaskedCouplingRQSpline(NFModel):
     """
 
     base_dist: Distribution
-    layers: list[eqx.Module]
+    layers: list[Bijection]
     _n_features: int
-    _data_mean: Array
-    _data_cov: Array
+    _data_mean: Float[Array, " n_dim"]
+    _data_cov: Float[Array, " n_dim n_dim"]
 
     @property
     def n_features(self):
@@ -371,27 +376,32 @@ class MaskedCouplingRQSpline(NFModel):
         self,
         n_features: int,
         n_layers: int,
-        hidden_size: Sequence[int],
+        hidden_size: list[int],
         num_bins: int,
-        key: jax.random.PRNGKey,
-        spline_range: Sequence[float] = (-10.0, 10.0),
+        key: PRNGKeyArray,
+        spline_range: tuple[float, float] = (-10.0, 10.0),
         **kwargs
     ):
-
         if kwargs.get("base_dist") is not None:
-            self.base_dist = kwargs.get("base_dist")
+            dist = kwargs.get("base_dist")
+            assert isinstance(dist, Distribution)
+            self.base_dist = dist
         else:
             self.base_dist = Gaussian(
                 jnp.zeros(n_features), jnp.eye(n_features), learnable=False
             )
 
         if kwargs.get("data_mean") is not None:
-            self._data_mean = kwargs.get("data_mean")
+            data_mean = kwargs.get("data_mean")
+            assert isinstance(data_mean, Array)
+            self._data_mean = data_mean
         else:
             self._data_mean = jnp.zeros(n_features)
 
         if kwargs.get("data_cov") is not None:
-            self._data_cov = kwargs.get("data_cov")
+            data_cov = kwargs.get("data_cov")
+            assert isinstance(data_cov, Array)
+            self._data_cov = data_cov
         else:
             self._data_cov = jnp.eye(n_features)
 
@@ -421,10 +431,14 @@ class MaskedCouplingRQSpline(NFModel):
             mask = jnp.logical_not(mask)
         self.layers = layers
 
-    def __call__(self, x: Array) -> Tuple[Array, Array]:
+    def __call__(
+        self, x: Float[Array, " n_dim"]
+    ) -> tuple[Float[Array, " n_dim"], Float]:
         return self.forward(x)
 
-    def forward(self, x: Array) -> Tuple[Array, Array]:
+    def forward(
+        self, x: Float[Array, " n_dim"]
+    ) -> tuple[Float[Array, " n_dim"], Float]:
         log_det = 0.0
         for layer in self.layers:
             x, log_det_i = layer(x)
@@ -432,7 +446,9 @@ class MaskedCouplingRQSpline(NFModel):
         return x, log_det
 
     @partial(jax.vmap, in_axes=(None, 0))
-    def inverse(self, x: Array) -> Tuple[Array, Array]:
+    def inverse(
+        self, x: Float[Array, " n_dim"]
+    ) -> tuple[Float[Array, " n_dim"], Float]:
         """From latent space to data space"""
         log_det = 0.0
         for layer in reversed(self.layers):
@@ -441,7 +457,9 @@ class MaskedCouplingRQSpline(NFModel):
         return x, log_det
 
     @eqx.filter_jit
-    def sample(self, rng_key: jax.random.PRNGKey, n_samples: int) -> Array:
+    def sample(
+        self, rng_key: PRNGKeyArray, n_samples: int
+    ) -> Float[Array, "n_samples n_dim"]:
         samples = self.base_dist.sample(rng_key, n_samples)
         samples = self.inverse(samples)[0]
         samples = samples * jnp.sqrt(jnp.diag(self.data_cov)) + self.data_mean
@@ -449,7 +467,7 @@ class MaskedCouplingRQSpline(NFModel):
 
     @eqx.filter_jit
     @partial(jax.vmap, in_axes=(None, 0))
-    def log_prob(self, x: Array) -> Array:
+    def log_prob(self, x: Float[Array, "n_sample n_dim"]) -> Float[Array, " n_sample"]:
         """From data space to latent space"""
         x = (x - self.data_mean) / jnp.sqrt(jnp.diag(self.data_cov))
         y, log_det = self.__call__(x)

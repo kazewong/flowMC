@@ -38,7 +38,7 @@ batch_size = 10000
 data = jnp.zeros(n_dim)
 
 rng_key_set = initialize_rng_keys(n_chains, 42)
-model = MaskedCouplingRQSpline(n_dim, 4, [32, 32], 8, jax.random.PRNGKey(10))
+model = MaskedCouplingRQSpline(n_dim, 4, [32, 32], 8, PRNGKeyArray(10))
 
 initial_position = jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
 

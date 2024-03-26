@@ -7,7 +7,12 @@ from jaxtyping import PyTree, Array, Float, Int, PRNGKeyArray
 
 @jax.tree_util.register_pytree_node_class
 class ProposalBase:
-    def __init__(self, logpdf: Callable, jit: bool, params: dict) -> Callable:
+    def __init__(
+        self,
+        logpdf: Callable[[Float[Array, " n_dim"], PyTree], Float],
+        jit: bool,
+        params: dict,
+    ):
         """
         Initialize the sampler class
         """
@@ -31,39 +36,67 @@ class ProposalBase:
     def precompilation(self, n_chains, n_dims, n_step, data):
         if self.jit is True:
             print("jit is requested, precompiling kernels and update...")
+            key = jax.random.split(jax.random.PRNGKey(0), n_chains)
+
+            self.logpdf_vmap = (
+                jax.jit(self.logpdf_vmap)
+                .lower(jnp.ones((n_chains, n_dims)), data)
+                .compile()
+            )
+            self.kernel_vmap = (
+                jax.jit(self.kernel_vmap)
+                .lower(
+                    key,
+                    jnp.ones((n_chains, n_dims)),
+                    jnp.ones((n_chains, )),
+                    data,
+                )
+                .compile()
+            )
+            self.update_vmap = (
+                jax.jit(self.update_vmap)
+                .lower(
+                    1,
+                    (
+                        key,
+                        jnp.ones((n_chains, n_step, n_dims)),
+                        jnp.ones((n_chains, n_step, )),
+                        jnp.zeros((n_chains, n_step, )),
+                        data,
+                    ),
+                )
+                .compile()
+            )
         else:
             print("jit is not requested, compiling only vmap functions...")
-
-        key = jax.random.split(jax.random.PRNGKey(0), n_chains)
-
-        self.logpdf_vmap(jnp.ones((n_chains, n_dims)), data)
-        self.kernel_vmap(
-            key,
-            jnp.ones((n_chains, n_dims)),
-            jnp.ones((n_chains, 1)),
-            data,
-        )
-        self.update_vmap(
-            1,
-            (
+            key = jax.random.split(jax.random.PRNGKey(0), n_chains)
+            self.logpdf_vmap = self.logpdf_vmap(jnp.ones((n_chains, n_dims)), data)
+            self.kernel_vmap(
                 key,
-                jnp.ones((n_chains, n_step, n_dims)),
-                jnp.ones((n_chains, n_step, 1)),
-                jnp.zeros((n_chains, n_step, 1)),
+                jnp.ones((n_chains, n_dims)),
+                jnp.ones((n_chains, )),
                 data,
-            ),
-        )
+            )
+            self.update_vmap(
+                1,
+                (
+                    key,
+                    jnp.ones((n_chains, n_step, n_dims)),
+                    jnp.ones((n_chains, n_step, )),
+                    jnp.zeros((n_chains, n_step, )),
+                    data,
+                ),
+            )
 
     @abstractmethod
     def kernel(
         self,
         rng_key: PRNGKeyArray,
-        position: Float[Array, "nstep ndim"],
+        position: Float[Array, "nstep  n_dim"],
         log_prob: Float[Array, "nstep 1"],
         data: PyTree,
-        params: dict,
     ) -> tuple[
-        Float[Array, "nstep ndim"], Float[Array, "nstep 1"], Int[Array, "n_step 1"]
+        Float[Array, "nstep  n_dim"], Float[Array, "nstep 1"], Int[Array, "n_step 1"]
     ]:
         """
         Kernel for one step in the proposal cycle.
@@ -71,10 +104,18 @@ class ProposalBase:
 
     @abstractmethod
     def update(
-        self, i, state
+        self,
+        i: Float,
+        state: tuple[
+            PRNGKeyArray,
+            Float[Array, "nstep  n_dim"],
+            Float[Array, "nstep 1"],
+            Int[Array, "n_step 1"],
+            PyTree,
+        ],
     ) -> tuple[
         PRNGKeyArray,
-        Float[Array, "nstep ndim"],
+        Float[Array, "nstep  n_dim"],
         Float[Array, "nstep 1"],
         Int[Array, "n_step 1"],
         PyTree,
@@ -88,11 +129,11 @@ class ProposalBase:
         self,
         rng_key: PRNGKeyArray,
         n_steps: int,
-        initial_position: Float[Array, "n_chains ndim"],
+        initial_position: Float[Array, "n_chains  n_dim"],
         data: PyTree,
         verbose: bool = False,
     ) -> tuple[
-        Float[Array, "n_chains n_steps ndim"],
+        Float[Array, "n_chains n_steps  n_dim"],
         Float[Array, "n_chains n_steps 1"],
         Int[Array, "n_chains n_steps 1"],
     ]:

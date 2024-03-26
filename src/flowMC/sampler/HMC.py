@@ -17,11 +17,20 @@ class HMC(ProposalBase):
         params: dictionary of parameters for the sampler
     """
 
-    def __init__(self, logpdf: Callable, jit: bool, params: dict) -> Callable:
+    def __init__(
+        self,
+        logpdf: Callable[[Float[Array, " n_dim"], PyTree], Float],
+        jit: bool,
+        params: dict,
+    ):
         super().__init__(logpdf, jit, params)
 
-        self.potential = lambda x, data: -logpdf(x, data)
-        self.grad_potential = jax.grad(self.potential)
+        self.potential: Callable[
+            [Float[Array, " n_dim"], PyTree], Float
+        ] = lambda x, data: -logpdf(x, data)
+        self.grad_potential: Callable[
+            [Float[Array, " n_dim"], PyTree], Float[Array, " n_dim"]
+        ] = jax.grad(self.potential)
 
         self.params = params
         if "condition_matrix" in params:
@@ -42,21 +51,22 @@ class HMC(ProposalBase):
             self.n_leapfrog = 10
             print("n_leapfrog not specified, using default value 10")
 
-        coefs = jnp.ones((self.n_leapfrog+2, 2))
+        coefs = jnp.ones((self.n_leapfrog + 2, 2))
         coefs = coefs.at[0].set(jnp.array([0, 0.5]))
         coefs = coefs.at[-1].set(jnp.array([1, 0.5]))
         self.leapfrog_coefs = coefs
 
-        self.kinetic = lambda p, metric: 0.5 * (p**2 * metric).sum()
+        self.kinetic: Callable[
+            [Float[Array, " n_dim"], Float[Array, " n_dim n_dim"]], Float
+        ] = (lambda p, metric: 0.5 * (p**2 * metric).sum())
         self.grad_kinetic = jax.grad(self.kinetic)
-
 
     def get_initial_hamiltonian(
         self,
-        rng_key: jax.random.PRNGKey,
-        position: jnp.array,
-        data: jnp.array,
-        params: dict,
+        rng_key: PRNGKeyArray,
+        position: Float[Array, " n_dim"],
+        data: PyTree,
+        params: PyTree,
     ):
         """
         Compute the value of the Hamiltonian from positions with initial momentum draw
@@ -67,65 +77,76 @@ class HMC(ProposalBase):
             jax.random.normal(rng_key, shape=position.shape)
             * params["condition_matrix"] ** -0.5
         )
-        return self.potential(position, data) + self.kinetic(momentum, params["condition_matrix"])
+        return self.potential(position, data) + self.kinetic(
+            momentum, params["condition_matrix"]
+        )
 
     def leapfrog_kernel(self, carry, extras):
         position, momentum, data, metric, index = carry
-        position = position + self.params["step_size"] * self.leapfrog_coefs[index][0] * self.grad_kinetic(
-            momentum, metric
-        )
-        momentum = momentum - self.params["step_size"] * self.leapfrog_coefs[index][1] * self.grad_potential(
-            position, data
-        )
+        position = position + self.params["step_size"] * self.leapfrog_coefs[index][
+            0
+        ] * self.grad_kinetic(momentum, metric)
+        momentum = momentum - self.params["step_size"] * self.leapfrog_coefs[index][
+            1
+        ] * self.grad_potential(position, data)
         index = index + 1
         return (position, momentum, data, metric, index), extras
 
-    def leapfrog_step(self, position, momentum, data, metric):
+    def leapfrog_step(
+        self,
+        position: Float[Array, " n_dim"],
+        momentum: Float[Array, " n_dim"],
+        data: PyTree,
+        metric: Float[Array, " n_dim n_dim"],
+    ) -> tuple[Float[Array, " n_dim"], Float[Array, " n_dim"]]:
         (position, momentum, data, metric, index), _ = jax.lax.scan(
             self.leapfrog_kernel,
             (position, momentum, data, metric, 0),
-            jnp.arange(self.n_leapfrog+2),
+            jnp.arange(self.n_leapfrog + 2),
         )
         return position, momentum
 
     def kernel(
         self,
         rng_key: PRNGKeyArray,
-        position: Float[Array, "ndim"],
+        position: Float[Array, " n_dim"],
         log_prob: Float[Array, "1"],
         data: PyTree,
-    ) -> tuple[Float[Array, "ndim"], Float[Array, "1"], Int[Array, "1"]]:
+    ) -> tuple[Float[Array, " n_dim"], Float[Array, "1"], Int[Array, "1"]]:
         """
         Note that since the potential function is the negative log likelihood,
         hamiltonian is going down, but the likelihood value should go up.
 
         Args:
             rng_key (n_chains, 2): random key
-            position (n_chains, n_dim): current position
+            position (n_chains,  n_dim): current position
             PE (n_chains, ): Potential energy of the current position
         """
         key1, key2 = jax.random.split(rng_key)
 
-        momentum = (
+        momentum: Float[Array, " n_dim"] = (
             jax.random.normal(key1, shape=position.shape)
             * self.params["condition_matrix"] ** -0.5
         )
         momentum = jnp.dot(
             jax.random.normal(key1, shape=position.shape),
-            jnp.linalg.cholesky(jnp.linalg.inv(self.params["condition_matrix"])).T)
-        H = - log_prob + self.kinetic(momentum, self.params["condition_matrix"])
+            jnp.linalg.cholesky(jnp.linalg.inv(self.params["condition_matrix"])).T,
+        )
+        H = -log_prob + self.kinetic(momentum, self.params["condition_matrix"])
         proposed_position, proposed_momentum = self.leapfrog_step(
             position, momentum, data, self.params["condition_matrix"]
         )
         proposed_PE = self.potential(proposed_position, data)
-        proposed_ham = proposed_PE + self.kinetic(proposed_momentum, self.params["condition_matrix"])
+        proposed_ham = proposed_PE + self.kinetic(
+            proposed_momentum, self.params["condition_matrix"]
+        )
         log_acc = H - proposed_ham
         log_uniform = jnp.log(jax.random.uniform(key2))
 
         do_accept = log_uniform < log_acc
 
         position = jnp.where(do_accept, proposed_position, position)
-        log_prob = jnp.where(do_accept, -proposed_PE, log_prob)
+        log_prob = jnp.where(do_accept, -proposed_PE, log_prob)  # type: ignore
 
         return position, log_prob, do_accept
 
@@ -133,7 +154,7 @@ class HMC(ProposalBase):
         self, i, state
     ) -> tuple[
         PRNGKeyArray,
-        Float[Array, "nstep ndim"],
+        Float[Array, "nstep  n_dim"],
         Float[Array, "nstep 1"],
         Int[Array, "n_step 1"],
         PyTree,
@@ -152,11 +173,12 @@ class HMC(ProposalBase):
         self,
         rng_key: PRNGKeyArray,
         n_steps: int,
-        initial_position: Float[Array, "n_chains ndim"],
+        initial_position: Float[Array, "n_chains  n_dim"],
         data: PyTree,
         verbose: bool = False,
     ) -> tuple[
-        Float[Array, "n_chains n_steps ndim"],
+        PRNGKeyArray,
+        Float[Array, "n_chains n_steps  n_dim"],
         Float[Array, "n_chains n_steps 1"],
         Int[Array, "n_chains n_steps 1"],
     ]:

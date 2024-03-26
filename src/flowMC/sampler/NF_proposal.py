@@ -3,16 +3,14 @@ import jax.numpy as jnp
 from jax import random
 from tqdm import tqdm
 from flowMC.nfmodel.base import NFModel
-from jaxtyping import Array, PRNGKeyArray, PyTree
 from typing import Callable
 from flowMC.sampler.Proposal_Base import ProposalBase
-from jaxtyping import Array, Float, Int, PRNGKeyArray
+from jaxtyping import Array, Float, Int, PRNGKeyArray, PyTree
 from math import ceil
 
 
 @jax.tree_util.register_pytree_node_class
 class NFProposal(ProposalBase):
-
     model: NFModel
 
     def __init__(
@@ -28,13 +26,15 @@ class NFProposal(ProposalBase):
     def kernel(
         self,
         rng_key: PRNGKeyArray,
-        initial_position: Float[Array, "ndim"],
-        proposal_position: Float[Array, "ndim"],
+        initial_position: Float[Array, " n_dim"],
+        proposal_position: Float[Array, " n_dim"],
         log_prob_initial: Float[Array, "1"],
         log_prob_proposal: Float[Array, "1"],
         log_prob_nf_initial: Float[Array, "1"],
         log_prob_nf_proposal: Float[Array, "1"],
-    ) -> tuple[Float[Array, "ndim"], Float[Array, "1"], Int[Array, "1"]]:
+    ) -> tuple[
+        Float[Array, " n_dim"], Float[Array, "1"], Float[Array, "1"], Int[Array, "1"]
+    ]:
         rng_key, subkey = random.split(rng_key)
 
         ratio = (log_prob_proposal - log_prob_initial) - (
@@ -48,13 +48,27 @@ class NFProposal(ProposalBase):
         return position, log_prob, log_prob_nf, do_accept
 
     def update(
-        self, i, state
+        self,
+        i: int,
+        state: tuple[
+            PRNGKeyArray,
+            Float[Array, "nstep  n_dim"],
+            Float[Array, "nstep  n_dim"],
+            Float[Array, "nstep 1"],
+            Float[Array, "nstep 1"],
+            Float[Array, "nstep 1"],
+            Float[Array, "nstep 1"],
+            Int[Array, "nstep 1"],
+        ],
     ) -> tuple[
         PRNGKeyArray,
-        Float[Array, "nstep ndim"],
+        Float[Array, "nstep  n_dim"],
+        Float[Array, "nstep  n_dim"],
+        Float[Array, "nstep 1"],
+        Float[Array, "nstep 1"],
+        Float[Array, "nstep 1"],
         Float[Array, "nstep 1"],
         Int[Array, "n_step 1"],
-        PyTree,
     ]:
         (
             key,
@@ -95,12 +109,13 @@ class NFProposal(ProposalBase):
         self,
         rng_key: PRNGKeyArray,
         n_steps: int,
-        initial_position: Float[Array, "n_chains ndim"],
+        initial_position: Float[Array, "n_chains  n_dim"],
         data: PyTree,
         verbose: bool = False,
         mode: str = "training",
     ) -> tuple[
-        Float[Array, "n_chains n_steps ndim"],
+        PRNGKeyArray,
+        Float[Array, "n_chains n_steps  n_dim"],
         Float[Array, "n_chains n_steps 1"],
         Int[Array, "n_chains n_steps 1"],
     ]:
@@ -157,7 +172,7 @@ class NFProposal(ProposalBase):
     def sample_flow(
         self,
         rng_key: PRNGKeyArray,
-        initial_position: Float[Array, "n_chains ndim"],
+        initial_position: Float[Array, "n_chains  n_dim"],
         data,
         n_steps: int,
     ):
