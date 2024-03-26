@@ -18,7 +18,7 @@ class GaussianRandomWalk(ProposalBase):
 
     def __init__(
         self,
-        logpdf: Callable,
+        logpdf: Callable[[Float[Array, "n_dim"], PyTree], Float],
         jit: bool,
         params: dict,
     ):
@@ -50,9 +50,10 @@ class GaussianRandomWalk(ProposalBase):
         """
 
         key1, key2 = jax.random.split(rng_key)
-        move_proposal = (
+        move_proposal: Float[Array, "n_dim"] = (
             jax.random.normal(key1, shape=position.shape) * self.params["step_size"]
         )
+
         proposal = position + move_proposal
         proposal_log_prob = self.logpdf(proposal, data)
 
@@ -63,9 +64,7 @@ class GaussianRandomWalk(ProposalBase):
         log_prob = jnp.where(do_accept, proposal_log_prob, log_prob)
         return position, log_prob, do_accept
 
-    def update(
-        self, i, state
-    ) -> tuple[
+    def update(self, i, state) -> tuple[
         PRNGKeyArray,
         Float[Array, "nstep ndim"],
         Float[Array, "nstep 1"],

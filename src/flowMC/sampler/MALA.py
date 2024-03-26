@@ -17,7 +17,7 @@ class MALA(ProposalBase):
         params: dictionary of parameters for the sampler
     """
 
-    def __init__(self, logpdf: Callable, jit: Bool, params: dict, use_autotune=False):
+    def __init__(self, logpdf:  Callable[[Float[Array, "n_dim"], PyTree], Float], jit: Bool, params: dict, use_autotune=False):
         super().__init__(logpdf, jit, params)
         self.params: PyTree = params
         self.logpdf: Callable = logpdf
