@@ -23,7 +23,7 @@ dt = 1 / n_layers
 data = make_moons(n_samples=20000, noise=0.05)
 data = jnp.array(data[0])
 
-key1, rng, init_rng = jax.random.split(PRNGKeyArray(0), 3)
+key1, rng, init_rng = jax.random.split(jax.random.PRNGKey(0), 3)
 
 model = MaskedCouplingRQSpline(
     2,
@@ -40,4 +40,4 @@ train_flow, _, _ = make_training_loop(optim)
 
 key, model, loss = train_flow(rng, model, data, num_epochs, batch_size, verbose=True)
 
-nf_samples = model.sample(PRNGKeyArray(124098), 5000)
+nf_samples = model.sample(jax.random.PRNGKey(124098), 5000)

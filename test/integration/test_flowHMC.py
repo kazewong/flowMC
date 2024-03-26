@@ -1,6 +1,5 @@
 from flowMC.sampler.MALA import MALA
 from flowMC.sampler.flowHMC import flowHMC
-from flowMC.utils.PRNG_keys import initialize_rng_keys
 import jax
 import jax.numpy as jnp
 from jaxtyping import Float, Array
@@ -28,10 +27,12 @@ n_leapfrog = 3
 
 data = {'data':jnp.arange(n_dim)}
 
-rng_key_set = initialize_rng_keys(n_chains, seed=42)
+rng_key = jax.random.PRNGKey(42)
+rng_key, subkey = jax.random.split(rng_key)
+initial_position = jax.random.normal(subkey, shape=(n_chains, n_dim)) * 1
 
-initial_position = jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
-model = MaskedCouplingRQSpline(n_dim, 4, [32, 32], 4, jax.random.PRNGKey(10))
+rng_key, subkey = jax.random.split(rng_key)
+model = MaskedCouplingRQSpline(n_dim, 4, [32, 32], 4, subkey)
 
 local_sampler = MALA(log_posterior, True, {"step_size": step_size})
 
@@ -48,7 +49,7 @@ flowHMC_sampler = flowHMC(
 )
 
 n_steps = 50
-rng_key, *subkeys = jax.random.split(jax.random.PRNGKey(0), 3)
+rng_key, *subkeys = jax.random.split(rng_key, 3)
 
 n_chains = initial_position.shape[0]
 n_dim = initial_position.shape[-1]
@@ -62,9 +63,10 @@ initial_PE = flowHMC_sampler.logpdf_vmap(initial_position, data)
 
 momentum = jax.random.normal(subkeys[0], shape=initial_position.shape)
 
+rng_key, subkey = jax.random.split(rng_key)
 nf_sampler = Sampler(
     n_dim,
-    rng_key_set,
+    subkey,
     data,
     local_sampler,
     model,

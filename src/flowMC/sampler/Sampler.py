@@ -1,7 +1,7 @@
 import pickle
-from typing import Tuple
+import jax
 import jax.numpy as jnp
-from jaxtyping import Array, Int, Float
+from jaxtyping import Array, Int, Float, PRNGKeyArray
 from flowMC.nfmodel.utils import make_training_loop
 from flowMC.sampler.NF_proposal import NFProposal
 import optax
@@ -9,103 +9,122 @@ from flowMC.sampler.Proposal_Base import ProposalBase
 from flowMC.nfmodel.base import NFModel
 from tqdm import tqdm
 import equinox as eqx
-import numpy as np
 
-default_hyperparameters = {
-    "n_loop_training": 3,
-    "n_loop_production": 3,
-    "n_local_steps": 50,
-    "n_global_steps": 50,
-    "n_chains": 20,
-    "n_epochs": 30,
-    "learning_rate": 0.001,
-    "max_samples": 100000,
-    "momentum": 0.9,
-    "batch_size": 10000,
-    "use_global": True,
-    "global_sampler": None,
-    "logging": True,
-    "keep_quantile": 0,
-    "local_autotune": None,
-    "train_thinning": 1,
-    "output_thinning": 1,
-    "n_sample_max": 10000,
-    "precompile": False,
-    "verbose": False,
-    "outdir": "./outdir/",
-}
 
 class Sampler:
     """
     Sampler class that host configuration parameters, NF model, and local sampler
 
     Args:
-        "n_loop_training": "(int): Number of training loops.",
-        "n_loop_production": "(int): Number of production loops.",
-        "n_local_steps": "(int) Number of local steps per loop.",
-        "n_global_steps": "(int) Number of local steps per loop.",
-        "n_chains": "(int) Number of chains",
-        "n_epochs": "(int) Number of epochs to train the NF per training loop",
-        "learning_rate": "(float) Learning rate used in the training of the NF",
-        "max_samples": "(int) Maximum number of samples fed to training the NF model",
-        "momentum": "(float) Momentum used in the training of the NF model with the Adam optimizer",
-        "batch_size": "(int) Size of batches used to train the NF",
-        "use_global": "(bool) Whether to use an NF proposal as global sampler",
-        "global_sampler": "(NFProposal) Global sampler",
-        "logging": "(bool) Whether to log the training process",
-        "keep_quantile": "Quantile of chains to keep when training the normalizing flow model",
-        "local_autotune": "(Callable) Auto-tune function for the local sampler",
-        "train_thinning": "(int) Thinning parameter for the data used to train the normalizing flow",
-        "output_thinning": "(int) Thinning parameter with which to save the data ",
-        "n_sample_max": "(int) Maximum number of samples fed to training the NF model",
-        "precompile": "(bool) Whether to precompile",
-        "verbose": "(bool) Show steps of algorithm in detail",
-        "outdir": "(str) Location to which to save plots, samples and hyperparameter settings. Note: should ideally start with `./` and also end with `/`"
+        n_dim (int): Dimension of the problem.
+        rng_key (PRNGKeyArray): Jax PRNGKey.
+        data (dict): Data to be passed to the logpdf function.
+        local_sampler (ProposalBase): Local sampler.
+        nf_model (NFModel): Normalizing flow model.
+
+    Keyword Args:
+        n_chains (int): Number of chains.
+        n_local_steps (int): Number of local steps.
+        n_global_steps (int): Number of global steps.
+        n_loop_training (int): Number of training loops.
+        n_loop_production (int): Number of production loops.
+        train_thinning (int): Thinning parameter for training.
+        output_thinning (int): Thinning parameter for sampling.
+
+        use_global (bool): Whether to use the global sampler.
+        batch_size (int): Batch size for training.
+        n_epochs (int): Number of epochs per training loop
+        learning_rate (float): Learning rate of the optimizer.
+        momentum (float): Momentum of the optimizer.
+        n_max_examples (int): Maximum number of examples per training step.
+        n_flow_sample (int): Number of samples to generate from the normalizing flow.
+
+        precompile (bool): Whether to precompile the local sampler.
+        verbose (bool): Whether to print verbose output.
+        logging (bool): Whether to log the output.
+        outdir (str): Output directory.
     """
+
+    # Essential parameters
+    n_dim: int
+    rng_key: PRNGKeyArray
+    data: dict
+    local_sampler: ProposalBase
+    model: NFModel
+
+    # Sampling hyperparameters
+    n_chains: int = 20
+    n_local_steps: int = 50
+    n_global_steps: int = 50
+    n_loop_training: int = 3
+    n_loop_production: int = 3
+    train_thinning: int = 1
+    output_thinning: int = 1
+    local_autotune: bool = False
+
+    # Normalizing flow hyperparameters
+    _global_sampler: NFProposal
+    use_global: bool = True
+    batch_size: int = 10000
+    n_epochs: int = 30
+    learning_rate: float = 0.001
+    momentum: float = 0.9
+    n_max_examples: int = 10000
+    n_flow_sample: int = 10000
+
+    # Logging hyperparameters
+    precompile: bool = False
+    verbose: bool = False
+    logging: bool = True
+    outdir: str = "./outdir/"
 
     @property
     def nf_model(self):
-        return self.global_sampler.model
+        return self._global_sampler.model
 
     def __init__(
         self,
         n_dim: int,
-        rng_key_set: Tuple,
+        rng_key: PRNGKeyArray,
         data: dict,
         local_sampler: ProposalBase,
         nf_model: NFModel,
         **kwargs,
     ):
-        rng_key_init, rng_keys_mcmc, rng_keys_nf, init_rng_keys_nf = rng_key_set
-
         # Copying input into the model
 
-        self.rng_keys_nf = rng_keys_nf
-        self.rng_keys_mcmc = rng_keys_mcmc
         self.n_dim = n_dim
-
+        self.rng_key = rng_key
+        self.data = data
+        self.local_sampler = local_sampler
+        self.model = nf_model
 
         # Set and override any given hyperparameters
-        self.hyperparameters = default_hyperparameters
-        hyperparameter_names = list(default_hyperparameters.keys())
+        class_keys = list(self.__class__.__dict__.keys())
         for key, value in kwargs.items():
-            if key in hyperparameter_names:
-                self.hyperparameters[key] = value
-        for key, value in self.hyperparameters.items():
-            setattr(self, key, value)
+            if key in class_keys:
+                if not key.startswith("__"):
+                    setattr(self, key, value)
 
-        self.variables = {"mean": None, "var": None}
+        self.variables: dict[str, Float] = {"mean": jnp.nan, "var": jnp.nan}
 
         # Initialized local and global samplers
 
         self.local_sampler = local_sampler
         if self.precompile:
             self.local_sampler.precompilation(
-                n_chains=self.n_chains, n_dims=n_dim, n_step=self.n_local_steps, data=data
+                n_chains=self.n_chains,
+                n_dims=n_dim,
+                n_step=self.n_local_steps,
+                data=data,
             )
 
-        if self.global_sampler is None:
-            self.global_sampler = NFProposal(self.local_sampler.logpdf, jit=self.local_sampler.jit, model=nf_model, n_sample_max=self.n_sample_max)
+        self._global_sampler = NFProposal(
+            self.local_sampler.logpdf,
+            jit=self.local_sampler.jit,
+            model=nf_model,
+            n_flow_sample=self.n_flow_sample,
+        )
 
         self.likelihood_vec = self.local_sampler.logpdf_vmap
 
@@ -131,8 +150,7 @@ class Sampler:
         self.summary["training"] = training
         self.summary["production"] = production
 
-
-    def sample(self, initial_position: Array, data: dict):
+    def sample(self, initial_position: Float[Array, "n_chains n_dim"], data: dict):
         """
         Sample from the posterior using the local sampler.
 
@@ -158,8 +176,11 @@ class Sampler:
         last_step = self.production_run(last_step, data)
 
     def sampling_loop(
-        self, initial_position: jnp.array, data: jnp.array, training=False
-    ) -> jnp.array:
+        self,
+        initial_position: Float[Array, "n_chains n_dim"],
+        data: dict,
+        training=False,
+    ) -> Float[Array, "n_chains n_dim"]:
         """
         One sampling loop that iterate through the local sampler
         and potentially the global sampler.
@@ -180,13 +201,15 @@ class Sampler:
         else:
             summary_mode = "production"
 
+        self.rng_key, rng_keys_mcmc = jax.random.split(self.rng_key)
+        rng_keys_mcmc = jax.random.split(rng_keys_mcmc, self.n_chains)
         (
-            self.rng_keys_mcmc,
+            rng_keys_mcmc,
             positions,
             log_prob,
             local_acceptance,
         ) = self.local_sampler.sample(
-            self.rng_keys_mcmc,
+            rng_keys_mcmc,
             self.n_local_steps,
             initial_position,
             data,
@@ -211,53 +234,45 @@ class Sampler:
         )
 
         if self.use_global is True:
+            self.rng_key, rng_keys_nf = jax.random.split(self.rng_key)
             if training is True:
                 positions = self.summary["training"]["chains"][
                     :, :: self.train_thinning
                 ]
-                log_prob_output = self.summary["training"]["log_prob"][
-                    :, :: self.train_thinning
-                ]
-
-                if self.keep_quantile > 0:
-                    max_log_prob = jnp.max(log_prob_output, axis=1)
-                    cut = jnp.quantile(max_log_prob, self.keep_quantile)
-                    cut_chains = positions[max_log_prob > cut]
-                else:
-                    cut_chains = positions
-                chain_size = cut_chains.shape[0] * cut_chains.shape[1]
-                if chain_size > self.max_samples:
-                    flat_chain = cut_chains[
-                        :, -int(self.max_samples / self.n_chains) :
+                chain_size = positions.shape[0] * positions.shape[1]
+                if chain_size > self.n_max_examples:
+                    flat_chain = positions[
+                        :, -int(self.n_max_examples / self.n_chains) :
                     ].reshape(-1, self.n_dim)
                 else:
-                    flat_chain = cut_chains.reshape(-1, self.n_dim)
+                    flat_chain = positions.reshape(-1, self.n_dim)
 
-                if flat_chain.shape[0] < self.max_samples:
+                if flat_chain.shape[0] < self.n_max_examples:
                     # This is to pad the training data to avoid recompilation.
                     flat_chain = jnp.repeat(
                         flat_chain,
-                        (self.max_samples // flat_chain.shape[0]) + 1,
+                        (self.n_max_examples // flat_chain.shape[0]) + 1,
                         axis=0,
                     )
-                    flat_chain = flat_chain[: self.max_samples]
+                    flat_chain = flat_chain[: self.n_max_examples]
 
                 self.variables["mean"] = jnp.mean(flat_chain, axis=0)
                 self.variables["cov"] = jnp.cov(flat_chain.T)
-                self.global_sampler.model = eqx.tree_at(
+                self._global_sampler.model = eqx.tree_at(
                     lambda m: m._data_mean, self.nf_model, self.variables["mean"]
                 )
-                self.global_sampler.model = eqx.tree_at(
+                self._global_sampler.model = eqx.tree_at(
                     lambda m: m._data_cov, self.nf_model, self.variables["cov"]
                 )
 
+
                 (
-                    self.rng_keys_nf,
-                    self.global_sampler.model,
+                    rng_keys_nf,
+                    self._global_sampler.model,
                     self.optim_state,
                     loss_values,
                 ) = self.nf_training_loop(
-                    self.rng_keys_nf,
+                    rng_keys_nf,
                     self.nf_model,
                     flat_chain,
                     self.optim_state,
@@ -272,17 +287,17 @@ class Sampler:
                 )
 
             (
-                self.rng_keys_nf,
+                rng_keys_nf,
                 nf_chain,
                 log_prob,
                 global_acceptance,
-            ) = self.global_sampler.sample(
-                self.rng_keys_nf,
+            ) = self._global_sampler.sample(
+                rng_keys_nf,
                 self.n_global_steps,
                 positions[:, -1],
                 data,
-                verbose = self.verbose,
-                mode = summary_mode
+                verbose=self.verbose,
+                mode=summary_mode,
             )
 
             self.summary[summary_mode]["chains"] = jnp.append(
@@ -307,7 +322,7 @@ class Sampler:
         return last_step
 
     def local_sampler_tuning(
-        self, initial_position: jnp.array, data: jnp.array, max_iter: int = 100
+        self, initial_position: Float[Array, "n_chain n_dim"], data: dict, max_iter: int = 100
     ):
         """
         Tuning the local sampler. This runs a number of iterations of the local sampler,
@@ -320,24 +335,24 @@ class Sampler:
             initial_position (Device Array): Initial position for the local sampler.
             max_iter (int): Number of iterations to run the local sampler.
         """
-        if self.local_autotune is not None:
-            print("Autotune found, start tuning sampler_params")
-            kernel_vmap = self.local_sampler.kernel_vmap
-            self.local_sampler.params = self.local_autotune(
-                kernel_vmap,
-                self.rng_keys_mcmc,
-                initial_position,
-                self.likelihood_vec(initial_position),
-                data,
-                self.local_sampler.params,
-                max_iter,
-            )
+        if self.local_autotune:
+            print("Tuning local sampler")
+            # kernel_vmap = self.local_sampler.kernel_vmap
+            # self.local_sampler.params = self.local_autotune(
+            #     kernel_vmap,
+            #     self.rng_keys_mcmc,
+            #     initial_position,
+            #     self.likelihood_vec(initial_position),
+            #     data,
+            #     self.local_sampler.params,
+            #     max_iter,
+            # )
         else:
             print("No autotune found, use input sampler_params")
 
     def global_sampler_tuning(
-        self, initial_position: jnp.ndarray, data: jnp.array
-    ) -> jnp.array:
+        self, initial_position: Float[Array, "n_chain n_dim"], data: dict
+    ) -> Float[Array, "n_chains n_dim"]:
         """
         Tuning the global sampler. This runs both the local sampler and the global sampler,
         and train the normalizing flow on the run.
@@ -359,8 +374,8 @@ class Sampler:
         return last_step
 
     def production_run(
-        self, initial_position: jnp.ndarray, data: jnp.array
-    ) -> jnp.array:
+        self, initial_position: Float[Array, "n_chain n_dim"], data: dict
+    ) -> Float[Array, "n_chains n_dim"]:
         """
         Sampling procedure that produce the final set of samples.
         The main difference between this and the global tuning step is
@@ -398,7 +413,7 @@ class Sampler:
         else:
             return self.summary["production"]
 
-    def sample_flow(self, n_samples: int) -> jnp.ndarray:
+    def sample_flow(self, rng_key: PRNGKeyArray, n_samples: int) -> Float[Array, "n_samples n_dim"]:
         """
         Sample from the normalizing flow.
 
@@ -409,10 +424,10 @@ class Sampler:
             Device Array: Samples generated using the normalizing flow.
         """
 
-        samples = self.nf_model.sample(self.rng_keys_nf, n_samples)
+        samples = self.nf_model.sample(rng_key, n_samples)
         return samples
 
-    def evalulate_flow(self, samples: jnp.ndarray) -> jnp.ndarray:
+    def evalulate_flow(self, samples: Float[Array, "n_samples n_dim"]) -> Float[Array, "n_samples"]:
         """
         Evaluate the log probability of the normalizing flow.
 
@@ -441,7 +456,7 @@ class Sampler:
         Args:
             path (str): Path to save the normalizing flow.
         """
-        self.nf_model = self.nf_model.load_model(path)
+        self.nf_model.load_model(path)
 
     def reset(self):
         """
@@ -483,7 +498,7 @@ class Sampler:
             global_accs = self.summary["production"]["global_accs"]
 
         hist = [
-            np.histogram(
+            jnp.histogram(
                 global_accs[
                     :,
                     i
@@ -494,8 +509,8 @@ class Sampler:
             )
             for i in range(n_loop)
         ]
-        axis = np.array([hist[i][1][:-1] for i in range(n_loop)]).T
-        hist = np.array([hist[i][0] for i in range(n_loop)]).T
+        axis = jnp.array([hist[i][1][:-1] for i in range(n_loop)]).T
+        hist = jnp.array([hist[i][0] for i in range(n_loop)]).T
         return axis, hist
 
     def get_local_acceptance_distribution(
@@ -516,7 +531,7 @@ class Sampler:
             local_accs = self.summary["production"]["local_accs"]
 
         hist = [
-            np.histogram(
+            jnp.histogram(
                 local_accs[
                     :,
                     i
@@ -527,8 +542,8 @@ class Sampler:
             )
             for i in range(n_loop)
         ]
-        axis = np.array([hist[i][1][:-1] for i in range(n_loop)]).T
-        hist = np.array([hist[i][0] for i in range(n_loop)]).T
+        axis = jnp.array([hist[i][1][:-1] for i in range(n_loop)]).T
+        hist = jnp.array([hist[i][0] for i in range(n_loop)]).T
         return axis, hist
 
     def get_log_prob_distribution(
@@ -549,7 +564,7 @@ class Sampler:
             log_prob = self.summary["production"]["log_prob"]
 
         hist = [
-            np.histogram(
+            jnp.histogram(
                 log_prob[
                     :,
                     i
@@ -560,8 +575,8 @@ class Sampler:
             )
             for i in range(n_loop)
         ]
-        axis = np.array([hist[i][1][:-1] for i in range(n_loop)]).T
-        hist = np.array([hist[i][0] for i in range(n_loop)]).T
+        axis = jnp.array([hist[i][1][:-1] for i in range(n_loop)]).T
+        hist = jnp.array([hist[i][0] for i in range(n_loop)]).T
         return axis, hist
 
     def save_summary(self, path: str):

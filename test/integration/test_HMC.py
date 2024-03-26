@@ -1,5 +1,4 @@
 from flowMC.sampler.HMC import HMC
-from flowMC.utils.PRNG_keys import initialize_rng_keys
 import jax
 import jax.numpy as jnp
 from jax.scipy.special import logsumexp
@@ -24,9 +23,9 @@ n_leapfrog = 10
 
 data = {'data':jnp.arange(5)}
 
-rng_key_set = initialize_rng_keys(n_chains, seed=42)
-
-initial_position = jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
+rng_key = jax.random.PRNGKey(42)
+rng_key, subkey = jax.random.split(rng_key)
+initial_position = jax.random.normal(subkey, shape=(n_chains, n_dim)) * 1
 
 HMC_sampler = HMC(
     dual_moon_pe,
@@ -44,8 +43,10 @@ initial_PE = HMC_sampler.logpdf_vmap(initial_position, data)
 initial_position = jnp.repeat(initial_position[:, None], n_local_steps, 1)
 initial_PE = jnp.repeat(initial_PE[:, None], n_local_steps, 1)
 
+rng_key, subkey = jax.random.split(rng_key)
+subkey = jax.random.split(subkey, n_chains)
 state = (
-    rng_key_set[1],
+    subkey,
     initial_position,
     initial_PE,
     jnp.zeros((n_chains, n_local_steps, 1)),
@@ -54,7 +55,9 @@ state = (
 
 HMC_sampler.update_vmap(1, state)
 
-state = HMC_sampler.sample(rng_key_set[1], n_local_steps, initial_position[:, 0], data)
+rng_key, subkey = jax.random.split(rng_key)
+subkey = jax.random.split(subkey, n_chains)
+state = HMC_sampler.sample(subkey, n_local_steps, initial_position[:, 0], data)
 
 
 from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
@@ -68,17 +71,19 @@ step_size = 0.1
 n_loop_training = 2
 n_loop_production = 2
 
-rng_key_set = initialize_rng_keys(n_chains, seed=42)
 
-initial_position = jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
+rng_key = jax.random.PRNGKey(43)
+rng_key, subkey = jax.random.split(rng_key)
+initial_position = jax.random.normal(subkey, shape=(n_chains, n_dim)) * 1
 
-model = MaskedCouplingRQSpline(2, 4, [32, 32], 4, jax.random.PRNGKey(10))
+rng_key, subkey = jax.random.split(rng_key)
+model = MaskedCouplingRQSpline(2, 4, [32, 32], 4, subkey)
 
 print("Initializing sampler class")
 
 nf_sampler = Sampler(
     n_dim,
-    rng_key_set,
+    rng_key,
     data,
     HMC_sampler,
     model,

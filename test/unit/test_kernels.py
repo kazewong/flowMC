@@ -2,7 +2,6 @@ from flowMC.sampler.HMC import HMC
 from flowMC.sampler.MALA import MALA
 from flowMC.sampler.Gaussian_random_walk import GaussianRandomWalk
 from flowMC.sampler.NF_proposal import NFProposal
-from flowMC.utils.PRNG_keys import initialize_rng_keys
 import jax
 import jax.numpy as jnp
 from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
@@ -24,21 +23,17 @@ class TestHMC:
             {"step_size": 1, "n_leapfrog": 5, "condition_matrix": jnp.eye(n_dim)},
         )
 
-        rng_key_set = initialize_rng_keys(n_chains, seed=42)
+        rng_key = jax.random.PRNGKey(42)
+        rng_key, subkey = jax.random.split(rng_key)
 
-        initial_position = (
-            jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
-        )
+        initial_position = jax.random.normal(subkey, shape=(n_chains, n_dim)) * 1
         initial_PE = jax.vmap(HMC_obj.potential)(initial_position, None)
 
         # Test whether the HMC kernel is deterministic
 
-        result1 = HMC_obj.kernel(
-            rng_key_set[0], initial_position[0], initial_PE[0], None
-        )
-        result2 = HMC_obj.kernel(
-            rng_key_set[0], initial_position[0], initial_PE[0], None
-        )
+        rng_key, subkey = jax.random.split(rng_key)
+        result1 = HMC_obj.kernel(subkey, initial_position[0], initial_PE[0], None)
+        result2 = HMC_obj.kernel(subkey, initial_position[0], initial_PE[0], None)
 
         assert jnp.allclose(result1[0], result2[0])
         assert result1[1] == result2[1]
@@ -54,15 +49,14 @@ class TestHMC:
             {"step_size": 1, "n_leapfrog": 5, "condition_matrix": jnp.eye(n_dim)},
         )
 
-        rng_key_set = initialize_rng_keys(n_chains, seed=42)
-        initial_position = (
-            jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
-        )
+        rng_key = jax.random.PRNGKey(42)
+        rng_key, subkey = jax.random.split(rng_key)
+        initial_position = jax.random.normal(subkey, shape=(n_chains, n_dim)) * 1
         initial_PE = jax.vmap(HMC_obj.potential, in_axes=(0, None))(
             initial_position, None
         )
-
-        key1, key2 = jax.random.split(rng_key_set[0])
+        rng_key, subkey = jax.random.split(rng_key)
+        key1, key2 = jax.random.split(subkey)
 
         initial_momentum = (
             jax.random.normal(key1, shape=initial_position.shape)
@@ -93,14 +87,15 @@ class TestHMC:
         )
 
         n_chains = 100
-        rng_key_set = initialize_rng_keys(n_chains, seed=42)
+        rng_key = jax.random.PRNGKey(42)
+        rng_key, subkey = jax.random.split(rng_key)
 
-        initial_position = (
-            jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
-        )
+        initial_position = jax.random.normal(subkey, shape=(n_chains, n_dim)) * 1
         initial_PE = -jax.vmap(HMC_obj.potential)(initial_position, None)
 
-        result = HMC_obj.kernel_vmap(rng_key_set[1], initial_position, initial_PE, None)
+        rng_key, subkey = jax.random.split(rng_key)
+        subkey = jax.random.split(subkey, n_chains)
+        result = HMC_obj.kernel_vmap(subkey, initial_position, initial_PE, None)
 
         assert result[2].all()
 
@@ -113,14 +108,15 @@ class TestHMC:
             {"step_size": 0.1, "n_leapfrog": 5, "condition_matrix": jnp.eye(n_dim)},
         )
 
-        rng_key_set = initialize_rng_keys(n_chains, seed=42)
+        rng_key = jax.random.PRNGKey(42)
+        rng_key, subkey = jax.random.split(rng_key)
 
-        initial_position = (
-            jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
-        )
+        initial_position = jax.random.normal(subkey, shape=(n_chains, n_dim)) * 1
         HMC_obj.precompilation(n_chains, n_dim, 10000, None)
 
-        result = HMC_obj.sample(rng_key_set[1], 10000, initial_position, None)
+        rng_key, subkey = jax.random.split(rng_key)
+        subkey = jax.random.split(subkey, n_chains)
+        result = HMC_obj.sample(subkey, 10000, initial_position, None)
 
         assert jnp.isclose(
             jnp.mean(result[1]), 0, atol=3e-2
@@ -134,19 +130,15 @@ class TestMALA:
         n_chains = 1
         MALA_obj = MALA(log_posterior, True, {"step_size": 1})
 
-        rng_key_set = initialize_rng_keys(n_chains, seed=42)
+        rng_key = jax.random.PRNGKey(42)
+        rng_key, subkey = jax.random.split(rng_key)
 
-        initial_position = (
-            jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
-        )
+        initial_position = jax.random.normal(subkey, shape=(n_chains, n_dim)) * 1
         initial_logp = log_posterior(initial_position, None)
 
-        result1 = MALA_obj.kernel(
-            rng_key_set[0], initial_position[0], initial_logp, None
-        )
-        result2 = MALA_obj.kernel(
-            rng_key_set[0], initial_position[0], initial_logp, None
-        )
+        rng_key, subkey = jax.random.split(rng_key)
+        result1 = MALA_obj.kernel(subkey, initial_position[0], initial_logp, None)
+        result2 = MALA_obj.kernel(subkey, initial_position[0], initial_logp, None)
 
         assert jnp.allclose(result1[0], result2[0])
         assert result1[1] == result2[1]
@@ -159,15 +151,16 @@ class TestMALA:
 
         n_chains = 100
         n_dim = 2
-        rng_key_set = initialize_rng_keys(n_chains, seed=42)
+        rng_key = jax.random.PRNGKey(42)
+        rng_key, subkey = jax.random.split(rng_key)
 
-        initial_position = (
-            jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
-        )
+        initial_position = jax.random.normal(subkey, shape=(n_chains, n_dim)) * 1
         initial_logp = jax.vmap(log_posterior)(initial_position, None)
 
+        rng_key, subkey = jax.random.split(rng_key)
+        subkey = jax.random.split(subkey, n_chains)
         result = MALA_obj.kernel_vmap(
-            rng_key_set[1], initial_position, initial_logp, None
+            subkey, initial_position, initial_logp, None
         )
 
         assert result[2].all()
@@ -177,14 +170,15 @@ class TestMALA:
         n_chains = 1
         MALA_obj = MALA(log_posterior, True, {"step_size": 1})
 
-        rng_key_set = initialize_rng_keys(n_chains, seed=42)
+        rng_key = jax.random.PRNGKey(42)
+        rng_key, subkey = jax.random.split(rng_key)
 
-        initial_position = (
-            jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
-        )
+        initial_position = jax.random.normal(subkey, shape=(n_chains, n_dim)) * 1
         MALA_obj.precompilation(n_chains, n_dim, 30000, None)
 
-        result = MALA_obj.sample(rng_key_set[1], 30000, initial_position, None)
+        rng_key, subkey = jax.random.split(rng_key)
+        subkey = jax.random.split(subkey, n_chains)
+        result = MALA_obj.sample(subkey, 30000, initial_position, None)
 
         assert jnp.isclose(jnp.mean(result[1]), 0, atol=1e-2)
         assert jnp.isclose(jnp.var(result[1]), 1, atol=1e-2)
@@ -195,19 +189,15 @@ class TestGRW:
         n_dim = 2
         n_chains = 1
         GRW_obj = GaussianRandomWalk(log_posterior, True, {"step_size": 1})
-        rng_key_set = initialize_rng_keys(n_chains, seed=42)
+        rng_key = jax.random.PRNGKey(42)
+        rng_key, subkey = jax.random.split(rng_key)
 
-        initial_position = (
-            jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
-        )
+        initial_position = jax.random.normal(subkey, shape=(n_chains, n_dim)) * 1
         initial_logp = log_posterior(initial_position)
 
-        result1 = GRW_obj.kernel(
-            rng_key_set[0], initial_position[0], initial_logp, None
-        )
-        result2 = GRW_obj.kernel(
-            rng_key_set[0], initial_position[0], initial_logp, None
-        )
+        rng_key, subkey = jax.random.split(rng_key)
+        result1 = GRW_obj.kernel(subkey, initial_position[0], initial_logp, None)
+        result2 = GRW_obj.kernel(subkey, initial_position[0], initial_logp, None)
 
         assert jnp.allclose(result1[0], result2[0])
         assert result1[1] == result2[1]
@@ -220,15 +210,16 @@ class TestGRW:
         GRW_obj = GaussianRandomWalk(log_posterior, True, {"step_size": 0.00001})
 
         n_chains = 100
-        rng_key_set = initialize_rng_keys(n_chains, seed=42)
+        rng_key = jax.random.PRNGKey(42)
+        rng_key, subkey = jax.random.split(rng_key)
 
-        initial_position = (
-            jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
-        )
+        initial_position = jax.random.normal(subkey, shape=(n_chains, n_dim)) * 1
         initial_logp = jax.vmap(log_posterior)(initial_position)
 
+        rng_key, subkey = jax.random.split(rng_key)
+        subkey = jax.random.split(subkey, n_chains)
         result = GRW_obj.kernel_vmap(
-            rng_key_set[1], initial_position, initial_logp, None
+            subkey, initial_position, initial_logp, None
         )
 
         assert result[2].all()
@@ -238,14 +229,15 @@ class TestGRW:
         n_chains = 1
         GRW_obj = GaussianRandomWalk(log_posterior, True, {"step_size": 1})
 
-        rng_key_set = initialize_rng_keys(n_chains, seed=42)
+        rng_key = jax.random.PRNGKey(42)
+        rng_key, subkey = jax.random.split(rng_key)
 
-        initial_position = (
-            jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
-        )
+        initial_position = jax.random.normal(subkey, shape=(n_chains, n_dim)) * 1
         GRW_obj.precompilation(n_chains, n_dim, 30000, None)
 
-        result = GRW_obj.sample(rng_key_set[1], 30000, initial_position, None)
+        rng_key, subkey = jax.random.split(rng_key)
+        subkey = jax.random.split(subkey, n_chains)
+        result = GRW_obj.sample(subkey, 30000, initial_position, None)
 
         assert jnp.isclose(jnp.mean(result[1]), 0, atol=3e-2)
         assert jnp.isclose(jnp.var(result[1]), 1, atol=3e-2)

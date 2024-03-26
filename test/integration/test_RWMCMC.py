@@ -1,5 +1,4 @@
 from flowMC.sampler.Gaussian_random_walk import GaussianRandomWalk
-from flowMC.utils.PRNG_keys import initialize_rng_keys
 import jax
 import jax.numpy as jnp
 from jax.scipy.special import logsumexp
@@ -25,9 +24,9 @@ n_leapfrog = 10
 
 data = {"data": jnp.arange(5)}
 
-rng_key_set = initialize_rng_keys(n_chains, seed=42)
-
-initial_position = jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
+rng_key = jax.random.PRNGKey(42)
+rng_key, subkey = jax.random.split(rng_key)
+initial_position = jax.random.normal(subkey, shape=(n_chains, n_dim)) * 1
 
 RWMCMC_sampler = GaussianRandomWalk(dual_moon_pe, True, {"step_size": step_size})
 
@@ -38,8 +37,11 @@ initial_logp = jnp.repeat(
     1,
 )
 
+rng_key, subkey = jax.random.split(rng_key)
+subkey = jax.random.split(subkey, n_chains)
+
 state = (
-    rng_key_set[1],
+    subkey,
     initial_position,
     initial_logp,
     jnp.zeros(
@@ -53,8 +55,10 @@ state = (
 
 RWMCMC_sampler.update_vmap(1, state)
 
+rng_key, subkey = jax.random.split(rng_key)
+subkey = jax.random.split(subkey, n_chains)
 state = RWMCMC_sampler.sample(
-    rng_key_set[1], n_local_steps, initial_position[:, 0], data
+    subkey, n_local_steps, initial_position[:, 0], data
 )
 
 
@@ -69,17 +73,19 @@ step_size = 0.1
 n_loop_training = 2
 n_loop_production = 2
 
-rng_key_set = initialize_rng_keys(n_chains, seed=42)
+rng_key = jax.random.PRNGKey(43)
+rng_key, subkey = jax.random.split(rng_key)
 
-initial_position = jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
+initial_position = jax.random.normal(subkey, shape=(n_chains, n_dim)) * 1
 
-model = MaskedCouplingRQSpline(2, 4, [32, 32], 4, jax.random.PRNGKey(10))
+rng_key, subkey = jax.random.split(rng_key)
+model = MaskedCouplingRQSpline(2, 4, [32, 32], 4, subkey)
 
 print("Initializing sampler class")
 
 nf_sampler = Sampler(
     n_dim,
-    rng_key_set,
+    rng_key,
     data,
     RWMCMC_sampler,
     model,
