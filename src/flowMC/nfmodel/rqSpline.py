@@ -110,7 +110,7 @@ def _rational_quadratic_spline_fwd(
     # If x is outside the spline range, we default to a linear transformation.
     y = jnp.where(below_range, (x - x_pos[0]) * knot_slopes[0] + y_pos[0], y)
     y = jnp.where(
-        above_range, (x - x_pos[-1]) * knot_slopes[-1] + y_pos[-1], y   # type: ignore
+        above_range, (x - x_pos[-1]) * knot_slopes[-1] + y_pos[-1], y  # type: ignore
     )
     logdet = jnp.where(below_range, jnp.log(knot_slopes[0]), logdet)
     logdet = jnp.where(above_range, jnp.log(knot_slopes[-1]), logdet)
@@ -219,7 +219,7 @@ def _rational_quadratic_spline_inv(
     # If y is outside the spline range, we default to a linear transformation.
     x = jnp.where(below_range, (y - y_pos[0]) / knot_slopes[0] + x_pos[0], x)
     x = jnp.where(
-        above_range, (y - y_pos[-1]) / knot_slopes[-1] + x_pos[-1], x # type: ignore
+        above_range, (y - y_pos[-1]) / knot_slopes[-1] + x_pos[-1], x  # type: ignore
     )
     logdet = jnp.where(below_range, -jnp.log(knot_slopes[0]), logdet)
     logdet = jnp.where(above_range, -jnp.log(knot_slopes[-1]), logdet)
@@ -420,7 +420,7 @@ class MaskedCouplingRQSpline(NFModel):
             layer2 = MaskedCouplingLayer(
                 RQSpline(mlp, spline_range[0], spline_range[1]), mask
             )
-            return eqx.nn.Sequential([layer1, layer2]) # type: ignore
+            return eqx.nn.Sequential([layer1, layer2])  # type: ignore
 
         keys = jax.random.split(key, n_layers)
         self.layers = eqx.filter_vmap(make_layer)(jnp.arange(n_layers), keys)
@@ -435,14 +435,14 @@ class MaskedCouplingRQSpline(NFModel):
     ) -> tuple[Float[Array, " n_dim"], Float]:
         log_det = 0.0
         dynamics, statics = eqx.partition(self.layers, eqx.is_array)
-        
+
         def f(carry, data):
             x, log_det = carry
             layers = eqx.combine(data, statics)
             x, log_det_i = layers[0](x)
             log_det += log_det_i
             x, log_det_i = layers[1](x)
-            return (x, log_det+log_det_i), None
+            return (x, log_det + log_det_i), None
 
         (x, log_det), _ = jax.lax.scan(f, (x, log_det), dynamics)
         return x, log_det
@@ -454,14 +454,14 @@ class MaskedCouplingRQSpline(NFModel):
         """From latent space to data space"""
         log_det = 0.0
         dynamics, statics = eqx.partition(self.layers, eqx.is_array)
-        
+
         def f(carry, data):
             x, log_det = carry
             layers = eqx.combine(data, statics)
             x, log_det_i = layers[0].inverse(x)
             log_det += log_det_i
             x, log_det_i = layers[1].inverse(x)
-            return (x, log_det+log_det_i), None
+            return (x, log_det + log_det_i), None
 
         (x, log_det), _ = jax.lax.scan(f, (x, log_det), dynamics, reverse=True)
         return x, log_det
