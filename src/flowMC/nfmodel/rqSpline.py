@@ -406,30 +406,24 @@ class MaskedCouplingRQSpline(NFModel):
             self._data_cov = jnp.eye(n_features)
 
         self._n_features = n_features
-        conditioner = []
-        for i in range(n_layers):
-            key, conditioner_key = jax.random.split(key)
-            conditioner.append(
-                MLP(
-                    [n_features] + hidden_size + [n_features * (num_bins * 3 + 1)],
-                    conditioner_key,
-                    scale=1e-2,
-                    activation=jax.nn.tanh,
-                )
-            )
 
-        mask = (jnp.arange(0, n_features) % 2).astype(bool)
-        mask_all = (jnp.zeros(n_features)).astype(bool)
-        layers = []
-        for i in range(n_layers):
-            layers.append(MaskedCouplingLayer(ScalarAffine(0.0, 0.0), mask_all))
-            layers.append(
-                MaskedCouplingLayer(
-                    RQSpline(conditioner[i], spline_range[0], spline_range[1]), mask
-                )
+        def make_layer(i: int, key: PRNGKeyArray):
+            mlp = MLP(
+                [n_features] + hidden_size + [n_features * (num_bins * 3 + 1)],
+                key,
+                scale=1e-2,
+                activation=jax.nn.tanh,
             )
-            mask = jnp.logical_not(mask)
-        self.layers = layers
+            mask = ((jnp.arange(0, n_features) + i) % 2).astype(bool)
+            mask_all = (jnp.zeros(n_features)).astype(bool)
+            layer1 = MaskedCouplingLayer(ScalarAffine(0.0, 0.0), mask_all)
+            layer2 = MaskedCouplingLayer(
+                RQSpline(mlp, spline_range[0], spline_range[1]), mask
+            )
+            return eqx.nn.Sequential([eqx.nn.Lambda(layer1), eqx.nn.Lambda(layer2)])
+
+        keys = jax.random.split(key, n_layers)
+        self.layers = eqx.filter_vmap(make_layer)(jnp.arange(n_layers), keys)
 
     def __call__(
         self, x: Float[Array, " n_dim"]
@@ -440,9 +434,17 @@ class MaskedCouplingRQSpline(NFModel):
         self, x: Float[Array, " n_dim"]
     ) -> tuple[Float[Array, " n_dim"], Float]:
         log_det = 0.0
-        for layer in self.layers:
-            x, log_det_i = layer(x)
+        dynamics, statics = eqx.partition(self.layers, eqx.is_array)
+        
+        def f(carry, data):
+            x, log_det = carry
+            layers = eqx.combine(data, statics)
+            x, log_det_i = layers[0](x)
             log_det += log_det_i
+            x, log_det_i = layers[1](x)
+            return (x, log_det+log_det_i), None
+
+        (x, log_det), _ = jax.lax.scan(f, (x, log_det), dynamics)
         return x, log_det
 
     @partial(jax.vmap, in_axes=(None, 0))
@@ -451,6 +453,16 @@ class MaskedCouplingRQSpline(NFModel):
     ) -> tuple[Float[Array, " n_dim"], Float]:
         """From latent space to data space"""
         log_det = 0.0
+        dynamics, statics = eqx.partition(self.layers, eqx.is_array)
+        
+        def f(carry, data):
+            x, log_det = carry
+            layer = eqx.combine(data, statics)
+            x, log_det_i = layer(x)
+            return (x, log_det+log_det_i), None
+
+        (x, log_det), _ = jax.lax.scan(f, (x, log_det), dynamics)
+
         for layer in reversed(self.layers):
             x, log_det_i = layer.inverse(x)
             log_det += log_det_i
