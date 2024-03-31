@@ -132,7 +132,7 @@ class RealNVP(NFModel):
     ):
 
         if kwargs.get("base_dist") is not None:
-            self.base_dist = kwargs.get("base_dist") # type: ignore
+            self.base_dist = kwargs.get("base_dist")  # type: ignore
         else:
             self.base_dist = Gaussian(
                 jnp.zeros(n_features), jnp.eye(n_features), learnable=False
@@ -149,46 +149,48 @@ class RealNVP(NFModel):
             self._data_cov = jnp.eye(n_features)
 
         self._n_features = n_features
-        affine_coupling = []
-        for i in range(n_layers):
+
+        def make_layer(i: int, key: PRNGKeyArray):
             key, scale_subkey, shift_subkey = jax.random.split(key, 3)
-            mask = np.ones(n_features)
-            mask[int(n_features / 2) :] = 0
-            if i % 2 == 0:
-                mask = 1 - mask
-            mask = jnp.array(mask)
+            mask = jnp.ones(n_features)
+            mask = mask.at[: int(n_features / 2)].set(0)
+            mask = jax.lax.cond(i%2==0, lambda x: 1 - x, lambda x: x, mask)
             scale_MLP = MLP([n_features, n_hidden, n_features], key=scale_subkey)
             shift_MLP = MLP([n_features, n_hidden, n_features], key=shift_subkey)
-            affine_coupling.append(
-                MaskedCouplingLayer(MLPAffine(scale_MLP, shift_MLP), mask)
-            )
-        self.affine_coupling = affine_coupling
-        if kwargs.get("data_mean") is not None:
-            self._data_mean = kwargs.get("data_mean")
-        else:
-            self._data_mean = jnp.zeros(n_features)
-        if kwargs.get("data_cov") is not None:
-            self._data_cov = kwargs.get("data_cov")
-        else:
-            self._data_cov = jnp.eye(n_features)
+            return MaskedCouplingLayer(MLPAffine(scale_MLP, shift_MLP), mask)
+
+        keys = jax.random.split(key, n_layers)
+        self.affine_coupling = eqx.filter_vmap(make_layer)(jnp.arange(n_layers), keys)
 
     def __call__(self, x: Array) -> Tuple[Array, Float]:
         return self.forward(x)
 
     def forward(self, x: Array) -> Tuple[Array, Float]:
         log_det = 0.0
-        for i in range(len(self.affine_coupling)):
-            x, log_det_i = self.affine_coupling[i](x)
-            log_det += log_det_i
+        dynamics, statics = eqx.partition(self.affine_coupling, eqx.is_array)
+
+        def f(carry, data):
+            x, log_det = carry
+            layers = eqx.combine(data, statics)
+            x, log_det_i = layers(x)
+            return (x, log_det + log_det_i), None
+
+        (x, log_det), _ = jax.lax.scan(f, (x, log_det), dynamics)
         return x, log_det
 
     @partial(jax.vmap, in_axes=(None, 0))
     def inverse(self, x: Array) -> Tuple[Array, Float]:
         """From latent space to data space"""
         log_det = 0.0
-        for layer in reversed(self.affine_coupling):
-            x, log_det_i = layer.inverse(x)
-            log_det += log_det_i
+        dynamics, statics = eqx.partition(self.affine_coupling, eqx.is_array)
+
+        def f(carry, data):
+            x, log_det = carry
+            layers = eqx.combine(data, statics)
+            x, log_det_i = layers.inverse(x)
+            return (x, log_det + log_det_i), None
+
+        (x, log_det), _ = jax.lax.scan(f, (x, log_det), dynamics, reverse=True)
         return x, log_det
 
     @eqx.filter_jit

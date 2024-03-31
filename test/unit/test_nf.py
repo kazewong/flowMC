@@ -24,7 +24,7 @@ def test_realnvp():
     n_features = 3
     n_hidden = 4
     n_layers = 2
-    x = jnp.array([[1, 2, 3], [4, 5, 6]])
+    x = jnp.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
 
     rng_key, rng_subkey = jax.random.split(jax.random.PRNGKey(0), 2)
     model = RealNVP(n_features, n_layers, n_hidden, rng_key)
@@ -61,8 +61,6 @@ def test_rqspline():
     model = MaskedCouplingRQSpline(
         n_features, n_layers, hidden_layes, n_bins, jax.random.PRNGKey(10)
     )
-
-    jnp.array([[1, 2, 3], [4, 5, 6]])
 
     rng_key = jax.random.PRNGKey(0)
     samples = model.sample(rng_key, 2)

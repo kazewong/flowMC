@@ -1,6 +1,6 @@
 from abc import abstractmethod, abstractproperty
 import equinox as eqx
-import jax
+from typing import overload, Optional
 from jaxtyping import Array, PRNGKeyArray, Float
 class NFModel(eqx.Module):
 
@@ -35,7 +35,7 @@ class NFModel(eqx.Module):
         return NotImplemented
 
     @abstractmethod
-    def forward(self, x: Float[Array, "n_dim"]) -> tuple[Float[Array, "n_dim"], Float]:
+    def forward(self, x: Float[Array, "n_dim"], key: Optional[PRNGKeyArray] = None) -> tuple[Float[Array, "n_dim"], Float]:
         """
         Forward pass of the model.
 
@@ -80,7 +80,7 @@ class Bijection(eqx.Module):
     def __init__(self):
         return NotImplemented
 
-    def __call__(self, x: Array) -> tuple[Array, Array]:
+    def __call__(self, x: Array, key: Optional[PRNGKeyArray] = None) -> tuple[Array, Array]:
         return self.forward(x)
 
     @abstractmethod
@@ -104,7 +104,7 @@ class Distribution(eqx.Module):
     def __init__(self):
         return NotImplemented
 
-    def __call__(self, x: Array) -> Array:
+    def __call__(self, x: Array, key: Optional[PRNGKeyArray] = None) -> Array:
         return self.log_prob(x)
 
     @abstractmethod
