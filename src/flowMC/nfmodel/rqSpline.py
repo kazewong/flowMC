@@ -420,7 +420,7 @@ class MaskedCouplingRQSpline(NFModel):
             layer2 = MaskedCouplingLayer(
                 RQSpline(mlp, spline_range[0], spline_range[1]), mask
             )
-            return eqx.nn.Sequential([eqx.nn.Lambda(layer1), eqx.nn.Lambda(layer2)])
+            return eqx.nn.Sequential([layer1, layer2]) # type: ignore
 
         keys = jax.random.split(key, n_layers)
         self.layers = eqx.filter_vmap(make_layer)(jnp.arange(n_layers), keys)
@@ -457,15 +457,13 @@ class MaskedCouplingRQSpline(NFModel):
         
         def f(carry, data):
             x, log_det = carry
-            layer = eqx.combine(data, statics)
-            x, log_det_i = layer(x)
+            layers = eqx.combine(data, statics)
+            x, log_det_i = layers[0].inverse(x)
+            log_det += log_det_i
+            x, log_det_i = layers[1].inverse(x)
             return (x, log_det+log_det_i), None
 
-        (x, log_det), _ = jax.lax.scan(f, (x, log_det), dynamics)
-
-        for layer in reversed(self.layers):
-            x, log_det_i = layer.inverse(x)
-            log_det += log_det_i
+        (x, log_det), _ = jax.lax.scan(f, (x, log_det), dynamics, reverse=True)
         return x, log_det
 
     @eqx.filter_jit
