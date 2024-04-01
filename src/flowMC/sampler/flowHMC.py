@@ -10,6 +10,10 @@ from math import ceil
 from jax import random
 from tqdm import tqdm
 
+###################################
+# This is not in production yet
+###################################
+
 
 # Note that the inverse metric needs float64 precision
 jax.config.update("jax_enable_x64", True)
@@ -19,20 +23,22 @@ jax.config.update("jax_enable_x64", True)
 class flowHMC(HMC, NFProposal):
     model: NFModel
 
+    condition_matrix: Float[Array, "n_dim n_dim"]
+
     def __init__(
         self,
         logpdf: Callable,
         jit: bool,
         model: NFModel,
         n_sample_max: int = 10000,
-        params: dict = {},
+        condition_matrix: Float[Array, "n_dim n_dim"] | Float = 1,
     ):
-        super().__init__(logpdf, jit, params)
+        super().__init__(logpdf, jit, condition_matrix=condition_matrix, model=model, n_sample_max=n_sample_max)
         self.kinetic = lambda p, M: 0.5 * (p @ M @ p)
         self.grad_kinetic = jax.grad(self.kinetic)
         self.model = model
         self.n_sample_max = n_sample_max
-        self.production_covariance = params['condition_matrix'] #None if params['condition_matrix'] is None else params['condition_matrix']
+        self.production_covariance = condition_matrix
         self.update_vmap = jax.vmap(self.update, in_axes=(None, (0, 0, 0, 0, 0, 0, None)), out_axes=(0, 0, 0, 0, 0, 0, None))
         if self.jit is True:
             self.update_vmap = jax.jit(self.update_vmap)

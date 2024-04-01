@@ -29,7 +29,7 @@ class HMC(ProposalBase):
         step_size: Float = 0.1,
         n_leapfrog: Int = 10,
     ):
-        super().__init__(logpdf, jit, )
+        super().__init__(logpdf, jit, condition_matrix=condition_matrix, step_size=step_size, n_leapfrog=n_leapfrog)
 
         self.potential: Callable[
             [Float[Array, " n_dim"], PyTree], Float
