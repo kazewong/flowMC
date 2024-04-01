@@ -30,11 +30,9 @@ initial_position = jax.random.normal(subkey, shape=(n_chains, n_dim)) * 1
 HMC_sampler = HMC(
     dual_moon_pe,
     True,
-    {
-        "step_size": step_size,
-        "n_leapfrog": n_leapfrog,
-        "condition_matrix": jnp.eye(n_dim),
-    },
+    step_size=step_size,
+    n_leapfrog=n_leapfrog,
+    condition_matrix=jnp.eye(n_dim),
 )
 
 initial_PE = HMC_sampler.logpdf_vmap(initial_position, data)

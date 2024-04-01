@@ -17,13 +17,19 @@ class HMC(ProposalBase):
         params: dictionary of parameters for the sampler
     """
 
+    condition_matrix: Float[Array, " n_dim n_dim"]
+    step_size: Float
+    n_leapfrog: Int
+
     def __init__(
         self,
         logpdf: Callable[[Float[Array, " n_dim"], PyTree], Float],
         jit: bool,
-        params: dict,
+        condition_matrix: Float[Array, " n_dim n_dim"] | Float = 1,
+        step_size: Float = 0.1,
+        n_leapfrog: Int = 10,
     ):
-        super().__init__(logpdf, jit, params)
+        super().__init__(logpdf, jit, )
 
         self.potential: Callable[
             [Float[Array, " n_dim"], PyTree], Float
@@ -32,24 +38,9 @@ class HMC(ProposalBase):
             [Float[Array, " n_dim"], PyTree], Float[Array, " n_dim"]
         ] = jax.grad(self.potential)
 
-        self.params = params
-        if "condition_matrix" in params:
-            self.condition_matrix = params["condition_matrix"]
-        else:
-            print("condition_matrix not specified, using identity matrix")
-            self.condition_matrix = 1
-
-        if "step_size" in params:
-            self.step_size = params["step_size"]
-        else:
-            print("step_size not specified, using default value 0.1")
-            self.step_size = 0.1
-
-        if "n_leapfrog" in params:
-            self.n_leapfrog = params["n_leapfrog"]
-        else:
-            self.n_leapfrog = 10
-            print("n_leapfrog not specified, using default value 10")
+        self.condition_matrix = condition_matrix
+        self.step_size = step_size
+        self.n_leapfrog = n_leapfrog
 
         coefs = jnp.ones((self.n_leapfrog + 2, 2))
         coefs = coefs.at[0].set(jnp.array([0, 0.5]))
@@ -66,7 +57,6 @@ class HMC(ProposalBase):
         rng_key: PRNGKeyArray,
         position: Float[Array, " n_dim"],
         data: PyTree,
-        params: PyTree,
     ):
         """
         Compute the value of the Hamiltonian from positions with initial momentum draw
@@ -75,18 +65,18 @@ class HMC(ProposalBase):
 
         momentum = (
             jax.random.normal(rng_key, shape=position.shape)
-            * params["condition_matrix"] ** -0.5
+            * self.condition_matrix ** -0.5
         )
         return self.potential(position, data) + self.kinetic(
-            momentum, params["condition_matrix"]
+            momentum, self.condition_matrix
         )
 
     def leapfrog_kernel(self, carry, extras):
         position, momentum, data, metric, index = carry
-        position = position + self.params["step_size"] * self.leapfrog_coefs[index][
+        position = position + self.step_size * self.leapfrog_coefs[index][
             0
         ] * self.grad_kinetic(momentum, metric)
-        momentum = momentum - self.params["step_size"] * self.leapfrog_coefs[index][
+        momentum = momentum - self.step_size * self.leapfrog_coefs[index][
             1
         ] * self.grad_potential(position, data)
         index = index + 1
@@ -126,19 +116,19 @@ class HMC(ProposalBase):
 
         momentum: Float[Array, " n_dim"] = (
             jax.random.normal(key1, shape=position.shape)
-            * self.params["condition_matrix"] ** -0.5
+            * self.condition_matrix ** -0.5
         )
         momentum = jnp.dot(
             jax.random.normal(key1, shape=position.shape),
-            jnp.linalg.cholesky(jnp.linalg.inv(self.params["condition_matrix"])).T,
+            jnp.linalg.cholesky(jnp.linalg.inv(self.condition_matrix)).T,
         )
-        H = -log_prob + self.kinetic(momentum, self.params["condition_matrix"])
+        H = -log_prob + self.kinetic(momentum, self.condition_matrix)
         proposed_position, proposed_momentum = self.leapfrog_step(
-            position, momentum, data, self.params["condition_matrix"]
+            position, momentum, data, self.condition_matrix
         )
         proposed_PE = self.potential(proposed_position, data)
         proposed_ham = proposed_PE + self.kinetic(
-            proposed_momentum, self.params["condition_matrix"]
+            proposed_momentum, self.condition_matrix
         )
         log_acc = H - proposed_ham
         log_uniform = jnp.log(jax.random.uniform(key2))

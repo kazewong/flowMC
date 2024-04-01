@@ -16,14 +16,16 @@ class GaussianRandomWalk(ProposalBase):
         params: dictionary of parameters for the sampler
     """
 
+    step_size: Float
+
     def __init__(
         self,
         logpdf: Callable[[Float[Array, "n_dim"], PyTree], Float],
         jit: bool,
-        params: dict,
+        step_size: Float,
     ):
-        super().__init__(logpdf, jit, params)
-        self.params = params
+        super().__init__(logpdf, jit, step_size=step_size)
+        self.step_size = step_size
         self.logpdf = logpdf
 
     def kernel(
@@ -51,7 +53,7 @@ class GaussianRandomWalk(ProposalBase):
 
         key1, key2 = jax.random.split(rng_key)
         move_proposal: Float[Array, "n_dim"] = (
-            jax.random.normal(key1, shape=position.shape) * self.params["step_size"]
+            jax.random.normal(key1, shape=position.shape) * self.step_size
         )
 
         proposal = position + move_proposal
