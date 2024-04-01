@@ -20,7 +20,9 @@ class TestHMC:
         HMC_obj = HMC(
             log_posterior,
             True,
-            {"step_size": 1, "n_leapfrog": 5, "condition_matrix": jnp.eye(n_dim)},
+            step_size=1,
+            n_leapfrog=5,
+            condition_matrix=jnp.eye(n_dim),
         )
 
         rng_key = jax.random.PRNGKey(42)
@@ -46,7 +48,9 @@ class TestHMC:
         HMC_obj = HMC(
             log_posterior,
             True,
-            {"step_size": 1, "n_leapfrog": 5, "condition_matrix": jnp.eye(n_dim)},
+            step_size=1,
+            n_leapfrog=5,
+            condition_matrix=jnp.eye(n_dim),
         )
 
         rng_key = jax.random.PRNGKey(42)
@@ -79,11 +83,9 @@ class TestHMC:
         HMC_obj = HMC(
             log_posterior,
             True,
-            {
-                "step_size": 0.0000001,
-                "n_leapfrog": 5,
-                "condition_matrix": jnp.eye(n_dim),
-            },
+            step_size=0.00001,
+            n_leapfrog=5,
+            condition_matrix=jnp.eye(n_dim),
         )
 
         n_chains = 100
@@ -105,7 +107,9 @@ class TestHMC:
         HMC_obj = HMC(
             log_posterior,
             True,
-            {"step_size": 0.1, "n_leapfrog": 5, "condition_matrix": jnp.eye(n_dim)},
+            step_size=0.1,
+            n_leapfrog=5,
+            condition_matrix=jnp.eye(n_dim),
         )
 
         rng_key = jax.random.PRNGKey(42)
@@ -128,7 +132,7 @@ class TestMALA:
     def test_MALA_deterministic(self):
         n_dim = 2
         n_chains = 1
-        MALA_obj = MALA(log_posterior, True, {"step_size": 1})
+        MALA_obj = MALA(log_posterior, True, step_size=1)
 
         rng_key = jax.random.PRNGKey(42)
         rng_key, subkey = jax.random.split(rng_key)
@@ -147,7 +151,7 @@ class TestMALA:
     def test_MALA_acceptance_rate(self):
         # Test acceptance rate goes to one when the step size is small
 
-        MALA_obj = MALA(log_posterior, True, {"step_size": 0.00001})
+        MALA_obj = MALA(log_posterior, True, step_size=0.00001)
 
         n_chains = 100
         n_dim = 2
@@ -159,16 +163,14 @@ class TestMALA:
 
         rng_key, subkey = jax.random.split(rng_key)
         subkey = jax.random.split(subkey, n_chains)
-        result = MALA_obj.kernel_vmap(
-            subkey, initial_position, initial_logp, None
-        )
+        result = MALA_obj.kernel_vmap(subkey, initial_position, initial_logp, None)
 
         assert result[2].all()
 
     def test_MALA_close_gaussian(self):
         n_dim = 2
         n_chains = 1
-        MALA_obj = MALA(log_posterior, True, {"step_size": 1})
+        MALA_obj = MALA(log_posterior, True, step_size=1)
 
         rng_key = jax.random.PRNGKey(42)
         rng_key, subkey = jax.random.split(rng_key)
@@ -188,7 +190,7 @@ class TestGRW:
     def test_Gaussian_random_walk_deterministic(self):
         n_dim = 2
         n_chains = 1
-        GRW_obj = GaussianRandomWalk(log_posterior, True, {"step_size": 1})
+        GRW_obj = GaussianRandomWalk(log_posterior, True, step_size=1)
         rng_key = jax.random.PRNGKey(42)
         rng_key, subkey = jax.random.split(rng_key)
 
@@ -207,7 +209,7 @@ class TestGRW:
         # Test acceptance rate goes to one when the step size is small
 
         n_dim = 2
-        GRW_obj = GaussianRandomWalk(log_posterior, True, {"step_size": 0.00001})
+        GRW_obj = GaussianRandomWalk(log_posterior, True, step_size=0.00001)
 
         n_chains = 100
         rng_key = jax.random.PRNGKey(42)
@@ -218,16 +220,14 @@ class TestGRW:
 
         rng_key, subkey = jax.random.split(rng_key)
         subkey = jax.random.split(subkey, n_chains)
-        result = GRW_obj.kernel_vmap(
-            subkey, initial_position, initial_logp, None
-        )
+        result = GRW_obj.kernel_vmap(subkey, initial_position, initial_logp, None)
 
         assert result[2].all()
 
     def test_Gaussian_random_walk_close_gaussian(self):
         n_dim = 2
         n_chains = 1
-        GRW_obj = GaussianRandomWalk(log_posterior, True, {"step_size": 1})
+        GRW_obj = GaussianRandomWalk(log_posterior, True, step_size=1)
 
         rng_key = jax.random.PRNGKey(42)
         rng_key, subkey = jax.random.split(rng_key)

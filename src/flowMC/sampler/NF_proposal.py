@@ -16,7 +16,7 @@ class NFProposal(ProposalBase):
     def __init__(
         self, logpdf: Callable, jit: bool, model: NFModel, n_flow_sample: int = 10000
     ):
-        super().__init__(logpdf, jit, {})
+        super().__init__(logpdf, jit)
         self.model = model
         self.n_flow_sample = n_flow_sample
         self.update_vmap = jax.vmap(self.update, in_axes=(None, (0)))

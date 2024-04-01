@@ -125,7 +125,7 @@ class RealNVP(NFModel):
 
     @property
     def data_cov(self):
-        return jax.lax.stop_gradient(self._data_cov)
+        return jax.lax.stop_gradient(jnp.atleast_2d(self._data_cov))
 
     def __init__(
         self, n_features: int, n_layers: int, n_hidden: int, key: PRNGKeyArray, **kwargs
