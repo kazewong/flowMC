@@ -168,6 +168,8 @@ class Sampler:
         # Note that auto-tune function needs to have the same number of steps
         # as the actual sampling loop to avoid recompilation.
 
+
+        initial_position = jnp.atleast_2d(initial_position)
         self.local_sampler_tuning(initial_position, data)
         last_step = initial_position
         if self.use_global is True:
