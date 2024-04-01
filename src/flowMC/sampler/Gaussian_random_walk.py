@@ -18,10 +18,10 @@ class GaussianRandomWalk(ProposalBase):
 
     def __init__(
         self,
-        logpdf: Callable,
+        logpdf: Callable[[Float[Array, "n_dim"], PyTree], Float],
         jit: bool,
         params: dict,
-    ) -> Callable:
+    ):
         super().__init__(logpdf, jit, params)
         self.params = params
         self.logpdf = logpdf
@@ -29,32 +29,33 @@ class GaussianRandomWalk(ProposalBase):
     def kernel(
         self,
         rng_key: PRNGKeyArray,
-        position: Float[Array, "ndim"],
+        position: Float[Array, "n_dim"],
         log_prob: Float[Array, "1"],
         data: PyTree,
-    ) -> tuple[Float[Array, "ndim"], Float[Array, "1"], Int[Array, "1"]]:
+    ) -> tuple[Float[Array, "n_dim"], Float[Array, "1"], Int[Array, "1"]]:
         """
         Random walk gaussian kernel.
         This is a kernel that only evolve a single chain.
 
         Args:
             rng_key (PRNGKeyArray): Jax PRNGKey
-            position (Float[Array, "ndim"]): current position of the chain
+            position (Float[Array, "n_dim"]): current position of the chain
             log_prob (Float[Array, "1"]): current log-probability of the chain
             data (PyTree): data to be passed to the logpdf function
 
         Returns:
-            position (Float[Array, "ndim"]): new position of the chain
+            position (Float[Array, "n_dim"]): new position of the chain
             log_prob (Float[Array, "1"]): new log-probability of the chain
             do_accept (Int[Array, "1"]): whether the new position is accepted
         """
 
         key1, key2 = jax.random.split(rng_key)
-        move_proposal = (
+        move_proposal: Float[Array, "n_dim"] = (
             jax.random.normal(key1, shape=position.shape) * self.params["step_size"]
         )
+
         proposal = position + move_proposal
-        proposal_log_prob = self.logpdf(proposal, data)
+        proposal_log_prob: Float[Array, "n_dim"] = self.logpdf(proposal, data)
 
         log_uniform = jnp.log(jax.random.uniform(key2))
         do_accept = log_uniform < proposal_log_prob - log_prob
@@ -63,11 +64,9 @@ class GaussianRandomWalk(ProposalBase):
         log_prob = jnp.where(do_accept, proposal_log_prob, log_prob)
         return position, log_prob, do_accept
 
-    def update(
-        self, i, state
-    ) -> tuple[
+    def update(self, i, state) -> tuple[
         PRNGKeyArray,
-        Float[Array, "nstep ndim"],
+        Float[Array, "nstep n_dim"],
         Float[Array, "nstep 1"],
         Int[Array, "n_step 1"],
         PyTree,
@@ -86,11 +85,12 @@ class GaussianRandomWalk(ProposalBase):
         self,
         rng_key: PRNGKeyArray,
         n_steps: int,
-        initial_position: Float[Array, "n_chains ndim"],
+        initial_position: Float[Array, "n_chains n_dim"],
         data: PyTree,
         verbose: bool = False,
     ) -> tuple[
-        Float[Array, "n_chains n_steps ndim"],
+        PRNGKeyArray,
+        Float[Array, "n_chains n_steps n_dim"],
         Float[Array, "n_chains n_steps 1"],
         Int[Array, "n_chains n_steps 1"],
     ]:

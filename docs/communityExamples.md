@@ -7,4 +7,6 @@ If you find flowMC useful, please consider contributing your example to this pag
 
 ## Examples
 
-[jim - A JAX-based gravitational-wave inference toolkit](https://github.com/kazewong/jim)
+- [jim - A JAX-based gravitational-wave inference toolkit](https://github.com/kazewong/jim)
+- [Bayeux - Stitching together models and samplers](https://github.com/jax-ml/bayeux)
+  - [Colab example](https://colab.research.google.com/drive/1-PhneVVik5GUq6w2HlKOsqvus13ZLaBH?usp=sharing)

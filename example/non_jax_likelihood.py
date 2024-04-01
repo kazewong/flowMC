@@ -46,7 +46,7 @@ batch_size = 1000
 data = jnp.zeros(n_dim)
 
 rng_key_set = initialize_rng_keys(n_chains, 42)
-model = MaskedCouplingRQSpline(n_dim, 4, [32, 32], 8, jax.random.PRNGKey(10))
+model = MaskedCouplingRQSpline(n_dim, 4, [32, 32], 8, PRNGKeyArray(10))
 
 initial_position = jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
 
@@ -119,7 +119,7 @@ plt.plot(global_accs.mean(0))
 plt.xlabel("iteration")
 plt.tight_layout()
 plt.show(block=False)
-plt.savefig('temp_nonjaxlikelihood.png')
+plt.savefig("temp_nonjaxlikelihood.png")
 
 # Plot all chains
 figure = corner.corner(
@@ -128,11 +128,11 @@ figure = corner.corner(
 figure.set_size_inches(7, 7)
 figure.suptitle("Visualize samples")
 plt.show(block=False)
-plt.savefig('temp_nonjaxlikelihood_1.png')
+plt.savefig("temp_nonjaxlikelihood_1.png")
 
 # Plot Nf samples
 figure = corner.corner(nf_samples, labels=["$x_1$", "$x_2$", "$x_3$", "$x_4$", "$x_5$"])
 figure.set_size_inches(7, 7)
 figure.suptitle("Visualize NF samples")
 plt.show(block=False)
-plt.savefig('temp_nonjaxlikelihood_2.png')
+plt.savefig("temp_nonjaxlikelihood_2.png")

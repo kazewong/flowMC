@@ -15,7 +15,7 @@ def test_affine_coupling_forward_and_inverse():
 
     y_forward, log_det_forward = jax.vmap(layer.forward)(x)
     x_recon, log_det_inverse = jax.vmap(layer.inverse)(y_forward)
-    
+
     assert jnp.allclose(x, jnp.round(x_recon, decimals=5))
     assert jnp.allclose(log_det_forward, -log_det_inverse)
 
@@ -23,11 +23,11 @@ def test_affine_coupling_forward_and_inverse():
 def test_realnvp():
     n_features = 3
     n_hidden = 4
-    n_layer = 2
-    x = jnp.array([[1, 2, 3], [4, 5, 6]])
+    n_layers = 2
+    x = jnp.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
 
     rng_key, rng_subkey = jax.random.split(jax.random.PRNGKey(0), 2)
-    model = RealNVP(n_features, n_layer, n_hidden, rng_key)
+    model = RealNVP(n_features, n_layers, n_hidden, rng_key)
 
     y, log_det = jax.vmap(model)(x)
 
@@ -54,13 +54,13 @@ def test_realnvp():
 def test_rqspline():
     n_features = 3
     hidden_layes = [10, 10]
-    n_layer = 2
+    n_layers = 2
     n_bins = 8
 
     rng_key, rng_subkey = jax.random.split(jax.random.PRNGKey(0), 2)
-    model = MaskedCouplingRQSpline(n_features, n_layer, hidden_layes, n_bins , jax.random.PRNGKey(10))
-
-    x = jnp.array([[1, 2, 3], [4, 5, 6]])
+    model = MaskedCouplingRQSpline(
+        n_features, n_layers, hidden_layes, n_bins, jax.random.PRNGKey(10)
+    )
 
     rng_key = jax.random.PRNGKey(0)
     samples = model.sample(rng_key, 2)
@@ -70,4 +70,3 @@ def test_rqspline():
     log_prob = model.log_prob(samples)
 
     assert log_prob.shape == (2,)
-

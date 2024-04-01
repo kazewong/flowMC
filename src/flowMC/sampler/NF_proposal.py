@@ -1,42 +1,40 @@
-from typing import Tuple
 import jax
 import jax.numpy as jnp
 from jax import random
 from tqdm import tqdm
 from flowMC.nfmodel.base import NFModel
-from jaxtyping import Array, PRNGKeyArray, PyTree
 from typing import Callable
 from flowMC.sampler.Proposal_Base import ProposalBase
-from jaxtyping import Array, Float, Int, PRNGKeyArray
-import equinox as eqx
+from jaxtyping import Array, Float, Int, PRNGKeyArray, PyTree
 from math import ceil
 
 
 @jax.tree_util.register_pytree_node_class
 class NFProposal(ProposalBase):
-
     model: NFModel
 
     def __init__(
-        self, logpdf: Callable, jit: bool, model: NFModel, n_sample_max: int = 10000
+        self, logpdf: Callable, jit: bool, model: NFModel, n_flow_sample: int = 10000
     ):
         super().__init__(logpdf, jit, {})
         self.model = model
-        self.n_sample_max = n_sample_max
+        self.n_flow_sample = n_flow_sample
         self.update_vmap = jax.vmap(self.update, in_axes=(None, (0)))
-        if self.jit == True:
+        if self.jit is True:
             self.update_vmap = jax.jit(self.update_vmap)
 
     def kernel(
         self,
         rng_key: PRNGKeyArray,
-        initial_position: Float[Array, "ndim"],
-        proposal_position: Float[Array, "ndim"],
+        initial_position: Float[Array, " n_dim"],
+        proposal_position: Float[Array, " n_dim"],
         log_prob_initial: Float[Array, "1"],
         log_prob_proposal: Float[Array, "1"],
         log_prob_nf_initial: Float[Array, "1"],
         log_prob_nf_proposal: Float[Array, "1"],
-    ) -> tuple[Float[Array, "ndim"], Float[Array, "1"], Int[Array, "1"]]:
+    ) -> tuple[
+        Float[Array, " n_dim"], Float[Array, "1"], Float[Array, "1"], Int[Array, "1"]
+    ]:
         rng_key, subkey = random.split(rng_key)
 
         ratio = (log_prob_proposal - log_prob_initial) - (
@@ -50,13 +48,27 @@ class NFProposal(ProposalBase):
         return position, log_prob, log_prob_nf, do_accept
 
     def update(
-        self, i, state
+        self,
+        i: int,
+        state: tuple[
+            PRNGKeyArray,
+            Float[Array, "nstep  n_dim"],
+            Float[Array, "nstep  n_dim"],
+            Float[Array, "nstep 1"],
+            Float[Array, "nstep 1"],
+            Float[Array, "nstep 1"],
+            Float[Array, "nstep 1"],
+            Int[Array, "nstep 1"],
+        ],
     ) -> tuple[
         PRNGKeyArray,
-        Float[Array, "nstep ndim"],
+        Float[Array, "nstep  n_dim"],
+        Float[Array, "nstep  n_dim"],
+        Float[Array, "nstep 1"],
+        Float[Array, "nstep 1"],
+        Float[Array, "nstep 1"],
         Float[Array, "nstep 1"],
         Int[Array, "n_step 1"],
-        PyTree,
     ]:
         (
             key,
@@ -97,12 +109,13 @@ class NFProposal(ProposalBase):
         self,
         rng_key: PRNGKeyArray,
         n_steps: int,
-        initial_position: Float[Array, "n_chains ndim"],
+        initial_position: Float[Array, "n_chains  n_dim"],
         data: PyTree,
         verbose: bool = False,
         mode: str = "training",
     ) -> tuple[
-        Float[Array, "n_chains n_steps ndim"],
+        PRNGKeyArray,
+        Float[Array, "n_chains n_steps  n_dim"],
         Float[Array, "n_chains n_steps 1"],
         Int[Array, "n_chains n_steps 1"],
     ]:
@@ -159,16 +172,16 @@ class NFProposal(ProposalBase):
     def sample_flow(
         self,
         rng_key: PRNGKeyArray,
-        initial_position: Float[Array, "n_chains ndim"],
+        initial_position: Float[Array, "n_chains  n_dim"],
         data,
         n_steps: int,
     ):
         n_chains = initial_position.shape[0]
         n_dim = initial_position.shape[-1]
         total_size = initial_position.shape[0] * n_steps
-        if total_size > self.n_sample_max:
+        if total_size > self.n_flow_sample:
             rng_key = rng_key
-            n_batch = ceil(total_size / self.n_sample_max)
+            n_batch = ceil(total_size / self.n_flow_sample)
             n_sample = total_size // n_batch
             proposal_position = jnp.zeros(
                 (n_batch, n_sample, initial_position.shape[-1])
@@ -205,5 +218,5 @@ class NFProposal(ProposalBase):
     def tree_flatten(self):
         children, aux_data = super().tree_flatten()
         aux_data["model"] = self.model
-        aux_data["n_sample_max"] = self.n_sample_max
+        aux_data["n_sample_max"] = self.n_flow_sample
         return (children, aux_data)
