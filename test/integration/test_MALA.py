@@ -28,7 +28,7 @@ rng_key = jax.random.PRNGKey(42)
 rng_key, subkey = jax.random.split(rng_key)
 initial_position = jax.random.normal(subkey, shape=(n_chains, n_dim)) * 1
 
-MALA_Sampler = MALA(dual_moon_pe, True, {"step_size": step_size})
+MALA_Sampler = MALA(dual_moon_pe, True, step_size=step_size)
 
 initial_position = jnp.repeat(initial_position[:, None], n_local_steps, 1)
 initial_logp = jnp.repeat(

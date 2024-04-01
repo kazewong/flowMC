@@ -12,7 +12,7 @@ def log_posterior(x, data: dict):
 
 data = {'data':jnp.arange(5)}
 
-n_dim = 5
+n_dim = 1
 n_chains = 10
 
 rng_key = jax.random.PRNGKey(42)
@@ -21,7 +21,7 @@ initial_position = jax.random.normal(subkey, shape=(n_chains, n_dim)) * 1
 rng_key, subkey = jax.random.split(rng_key)
 model = MaskedCouplingRQSpline(n_dim, 3, [64, 64], 8, subkey)
 step_size = 1e-1
-local_sampler = MALA(log_posterior, True, {"step_size": step_size})
+local_sampler = MALA(log_posterior, True, step_size=step_size)
 
 nf_sampler = Sampler(
     n_dim,

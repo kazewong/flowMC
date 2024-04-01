@@ -11,14 +11,13 @@ class ProposalBase:
         self,
         logpdf: Callable[[Float[Array, " n_dim"], PyTree], Float],
         jit: bool,
-        params: dict,
+        **kwargs,
     ):
         """
         Initialize the sampler class
         """
         self.logpdf = logpdf
         self.jit = jit
-        self.params = params
         self.logpdf_vmap = jax.vmap(logpdf, in_axes=(0, None))
         self.kernel_vmap = jax.vmap(self.kernel, in_axes=(0, 0, 0, None))
         self.update_vmap = jax.vmap(
@@ -26,6 +25,7 @@ class ProposalBase:
             in_axes=(None, (0, 0, 0, 0, None)),
             out_axes=(0, 0, 0, 0, None),
         )
+        self.kwargs = kwargs
         if self.jit is True:
             self.logpdf_vmap = jax.jit(self.logpdf_vmap)
             self.kernel = jax.jit(self.kernel)
@@ -145,7 +145,7 @@ class ProposalBase:
     def tree_flatten(self):
         children = ()
 
-        aux_data = {"logpdf": self.logpdf, "jit": self.jit, "params": self.params}
+        aux_data = {"logpdf": self.logpdf, "jit": self.jit, "kwargs": self.kwargs}
         return (children, aux_data)
 
     @classmethod

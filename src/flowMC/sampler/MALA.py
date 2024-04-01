@@ -19,15 +19,17 @@ class MALA(ProposalBase):
         params: dictionary of parameters for the sampler
     """
 
+    step_size: Float
+
     def __init__(
         self,
         logpdf: Callable[[Float[Array, " n_dim"], PyTree], Float],
         jit: Bool,
-        params: dict,
+        step_size: Float,
         use_autotune=False,
     ):
-        super().__init__(logpdf, jit, params)
-        self.params: PyTree = params
+        super().__init__(logpdf, jit, step_size=step_size, use_autotune=use_autotune)
+        self.step_size = step_size
         self.logpdf: Callable = logpdf
         self.use_autotune: Bool = use_autotune
 
@@ -72,7 +74,7 @@ class MALA(ProposalBase):
 
         key1, key2 = jax.random.split(rng_key)
 
-        dt: Float = self.params["step_size"]
+        dt: Float = self.step_size
         dt2 = dt * dt
 
         _, (proposal, logprob, d_logprob) = jax.lax.scan(
@@ -187,9 +189,9 @@ class MALA(ProposalBase):
                 )
                 break
             if acceptance_rate <= 0.3:
-                params["step_size"] *= 0.8
+                self.step_size *= 0.8
             elif acceptance_rate >= 0.5:
-                params["step_size"] *= 1.25
+                self.step_size *= 1.25
             counter += 1
             position, log_prob, do_accept = self.kernel_vmap(
                 rng_key, initial_position, log_prob, data
