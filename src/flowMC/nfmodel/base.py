@@ -1,11 +1,14 @@
 from abc import abstractmethod, abstractproperty
 import equinox as eqx
-from typing import overload, Optional
+from typing import overload, Optional, TypeVar
 from jaxtyping import Array, PRNGKeyArray, Float
 import optax
 from tqdm import trange, tqdm
 import jax.numpy as jnp
 import jax
+
+SelfNFModel = TypeVar("SelfNFModel", bound="NFModel")
+
 
 class NFModel(eqx.Module):
     """
@@ -17,7 +20,7 @@ class NFModel(eqx.Module):
     @abstractmethod
     def __init__(self):
         raise NotImplementedError
-    
+
     def __call__(self, x: Float[Array, "n_dim"]) -> tuple[Float[Array, "n_dim"], Float]:
         """
         Forward pass of the model.
@@ -76,40 +79,110 @@ class NFModel(eqx.Module):
     def load_model(self, path: str):
         self = eqx.tree_deserialise_leaves(path + ".eqx", self)
 
-    # def train(
-    #     self,
-    #     rng: PRNGKeyArray,
-    #     data: Float[Array, "n_example n_dim"],
-    #     n_epochs: int,
-    #     batch_size: int,
-    #     verbose: bool = True,
-    # ) -> tuple[PRNGKeyArray, Float[Array, " n_batch"]]:
-    #     loss_values = jnp.zeros(n_epochs)
-    #     if verbose:
-    #         pbar = trange(n_epochs, desc="Training NF", miniters=int(n_epochs / 10))
-    #     else:
-    #         pbar = range(n_epochs)
-    #     best_model = self
-    #     best_loss = 1e9
-    #     for epoch in pbar:
-    #         # Use a separate PRNG key to permute image data during shuffling
-    #         rng, input_rng = jax.random.split(rng)
-    #         # Run an optimization step over a training batch
-    #         value, model, state = train_epoch(input_rng, model, state, data, batch_size)
-    #         loss_values = loss_values.at[epoch].set(value)
-    #         if loss_values[epoch] < best_loss:
-    #             self = model
-    #             best_loss = loss_values[epoch]
-    #         if verbose:
-    #             assert isinstance(pbar, tqdm)
-    #             if n_epochs > 10:
-    #                 if epoch % int(n_epochs / 10) == 0:
-    #                     pbar.set_description(f"Training NF, current loss: {value:.3f}")
-    #             else:
-    #                 if epoch == n_epochs:
-    #                     pbar.set_description(f"Training NF, current loss: {value:.3f}")
+    @eqx.filter_value_and_grad
+    def loss_fn(self, x):
+        return -jnp.mean(self.log_prob(x))
 
-    #     return rng, loss_values
+    @eqx.filter_jit
+    def train_step(
+        self: SelfNFModel,
+        x: Float[Array, "n_batch n_dim"],
+        optim: optax.GradientTransformation,
+        state: optax.OptState,
+    ) -> tuple[Float, SelfNFModel, optax.OptState]:
+        """Train for a single step.
+
+        Args:
+            model (eqx.Model): NF model to train.
+            x (Array): Training data.
+            opt_state (optax.OptState): Optimizer state.
+
+        Returns:
+            loss (Array): Loss value.
+            model (eqx.Model): Updated model.
+            opt_state (optax.OptState): Updated optimizer state.
+        """
+        loss, grads = self.loss_fn(x)
+        updates, state = optim.update(grads, state)
+        model = eqx.apply_updates(self, updates)
+        return loss, model, state
+
+    def train_epoch(
+        self: SelfNFModel,
+        rng: PRNGKeyArray,
+        optim: optax.GradientTransformation,
+        state: optax.OptState,
+        data: Float[Array, "n_example n_dim"],
+        batch_size: Float,
+    ) -> tuple[Float, SelfNFModel, optax.OptState]:
+        """Train for a single epoch."""
+        model = self
+        train_ds_size = len(data)
+        steps_per_epoch = train_ds_size // batch_size
+        if steps_per_epoch > 0:
+            perms = jax.random.permutation(rng, train_ds_size)
+
+            perms = perms[: steps_per_epoch * batch_size]  # skip incomplete batch
+            perms = perms.reshape((steps_per_epoch, batch_size))
+            for perm in perms:
+                batch = data[perm, ...]
+                value, model, state = self.train_step(batch, optim, state)
+        else:
+            value, model, state = self.train_step(data, optim, state)
+
+        return value, model, state
+
+    def train(
+        self: SelfNFModel,
+        rng: PRNGKeyArray,
+        data: Array,
+        optim: optax.GradientTransformation,
+        state: optax.OptState,
+        num_epochs: int,
+        batch_size: int,
+        verbose: bool = True,
+    ) -> tuple[PRNGKeyArray, SelfNFModel, optax.OptState, Array]:
+        """Train a normalizing flow model.
+
+        Args:
+            rng (PRNGKeyArray): JAX PRNGKey.
+            model (eqx.Module): NF model to train.
+            data (Array): Training data.
+            num_epochs (int): Number of epochs to train for.
+            batch_size (int): Batch size.
+            verbose (bool): Whether to print progress.
+
+        Returns:
+            rng (PRNGKeyArray): Updated JAX PRNGKey.
+            model (eqx.Model): Updated NF model.
+            loss_values (Array): Loss values.
+        """
+        loss_values = jnp.zeros(num_epochs)
+        if verbose:
+            pbar = trange(num_epochs, desc="Training NF", miniters=int(num_epochs / 10))
+        else:
+            pbar = range(num_epochs)
+        best_model = self
+        best_loss = 1e9
+        for epoch in pbar:
+            # Use a separate PRNG key to permute image data during shuffling
+            rng, input_rng = jax.random.split(rng)
+            # Run an optimization step over a training batch
+            value, model, state = self.train_epoch(input_rng, optim, state, data, batch_size)
+            loss_values = loss_values.at[epoch].set(value)
+            if loss_values[epoch] < best_loss:
+                best_model = model
+                best_loss = loss_values[epoch]
+            if verbose:
+                assert isinstance(pbar, tqdm)
+                if num_epochs > 10:
+                    if epoch % int(num_epochs / 10) == 0:
+                        pbar.set_description(f"Training NF, current loss: {value:.3f}")
+                else:
+                    if epoch == num_epochs:
+                        pbar.set_description(f"Training NF, current loss: {value:.3f}")
+
+        return rng, best_model, state, loss_values
 
 
 class Bijection(eqx.Module):
