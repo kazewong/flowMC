@@ -65,7 +65,42 @@ The test suite is based on pytest. To run the tests, one needs to install `pytes
 
 # Attribution
 
-A Jax implementation of methods described in: 
+If you used `flowMC` in your research, we would really appericiate it if you could at least cite the following papers:
+
+```
+@article{Wong:2022xvh,
+    author = "Wong, Kaze W. k. and Gabri\'e, Marylou and Foreman-Mackey, Daniel",
+    title = "{flowMC: Normalizing flow enhanced sampling package for probabilistic inference in JAX}",
+    eprint = "2211.06397",
+    archivePrefix = "arXiv",
+    primaryClass = "astro-ph.IM",
+    doi = "10.21105/joss.05021",
+    journal = "J. Open Source Softw.",
+    volume = "8",
+    number = "83",
+    pages = "5021",
+    year = "2023"
+}
+
+@article{Gabrie:2021tlu,
+    author = "Gabri\'e, Marylou and Rotskoff, Grant M. and Vanden-Eijnden, Eric",
+    title = "{Adaptive Monte Carlo augmented with normalizing flows}",
+    eprint = "2105.12603",
+    archivePrefix = "arXiv",
+    primaryClass = "physics.data-an",
+    doi = "10.1073/pnas.2109420119",
+    journal = "Proc. Nat. Acad. Sci.",
+    volume = "119",
+    number = "10",
+    pages = "e2109420119",
+    year = "2022"
+}
+```
+
+This will help `flowMC` getting more recognition, and the main benefit *for you* is this means the `flowMC` community will grow and it will be continuously improved. If you believe in the magic of open-source software, please support us by attributing our software in your work.
+
+
+`flowMC` is a Jax implementation of methods described in: 
 > *Efficient Bayesian Sampling Using Normalizing Flows to Assist Markov Chain Monte Carlo Methods* Gabrié M., Rotskoff G. M., Vanden-Eijnden E. - ICML INNF+ workshop 2021 - [pdf](https://openreview.net/pdf?id=mvtooHbjOwx)
 
 > *Adaptive Monte Carlo augmented with normalizing flows.*
