@@ -1,13 +1,12 @@
-from abc import abstractmethod, abstractproperty
+from abc import abstractmethod
 import equinox as eqx
-from typing import overload, Optional, TypeVar
+from typing import overload, Optional
+from typing_extensions import Self
 from jaxtyping import Array, PRNGKeyArray, Float
 import optax
 from tqdm import trange, tqdm
 import jax.numpy as jnp
 import jax
-
-SelfNFModel = TypeVar("SelfNFModel", bound="NFModel")
 
 
 class NFModel(eqx.Module):
@@ -69,7 +68,7 @@ class NFModel(eqx.Module):
         """
         return NotImplemented
 
-    @abstractproperty
+    @abstractmethod
     def n_features(self) -> int:
         return NotImplemented
 
@@ -85,11 +84,11 @@ class NFModel(eqx.Module):
 
     @eqx.filter_jit
     def train_step(
-        self: SelfNFModel,
+        self: Self,
         x: Float[Array, "n_batch n_dim"],
         optim: optax.GradientTransformation,
         state: optax.OptState,
-    ) -> tuple[Float, SelfNFModel, optax.OptState]:
+    ) -> tuple[Float, Self, optax.OptState]:
         """Train for a single step.
 
         Args:
@@ -108,13 +107,13 @@ class NFModel(eqx.Module):
         return loss, model, state
 
     def train_epoch(
-        self: SelfNFModel,
+        self: Self,
         rng: PRNGKeyArray,
         optim: optax.GradientTransformation,
         state: optax.OptState,
         data: Float[Array, "n_example n_dim"],
         batch_size: Float,
-    ) -> tuple[Float, SelfNFModel, optax.OptState]:
+    ) -> tuple[Float, Self, optax.OptState]:
         """Train for a single epoch."""
         model = self
         train_ds_size = len(data)
@@ -133,7 +132,7 @@ class NFModel(eqx.Module):
         return value, model, state
 
     def train(
-        self: SelfNFModel,
+        self: Self,
         rng: PRNGKeyArray,
         data: Array,
         optim: optax.GradientTransformation,
@@ -141,7 +140,7 @@ class NFModel(eqx.Module):
         num_epochs: int,
         batch_size: int,
         verbose: bool = True,
-    ) -> tuple[PRNGKeyArray, SelfNFModel, optax.OptState, Array]:
+    ) -> tuple[PRNGKeyArray, Self, optax.OptState, Array]:
         """Train a normalizing flow model.
 
         Args:
