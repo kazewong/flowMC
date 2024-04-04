@@ -382,6 +382,9 @@ class MaskedCouplingRQSpline(NFModel):
         spline_range: tuple[float, float] = (-10.0, 10.0),
         **kwargs
     ):
+        optim = kwargs.get("optim")
+        assert optim is not None, "Optimiser is required for training."
+        super().__init__(optim=optim)
         if kwargs.get("base_dist") is not None:
             dist = kwargs.get("base_dist")
             assert isinstance(dist, Distribution)

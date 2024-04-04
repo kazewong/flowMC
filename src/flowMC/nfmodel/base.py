@@ -2,6 +2,8 @@ from abc import abstractmethod, abstractproperty
 import equinox as eqx
 from typing import overload, Optional
 from jaxtyping import Array, PRNGKeyArray, Float
+import optax
+
 class NFModel(eqx.Module):
 
     """
@@ -10,9 +12,12 @@ class NFModel(eqx.Module):
     This is an abstract template that should not be directly used.
     """
 
-    @abstractmethod
-    def __init__(self):
-        return NotImplemented
+    optim: optax.GradientTransformation
+    optim_state: optax.OptState
+
+    def __init__(self, optim: optax.GradientTransformation):
+        self.optim = optim
+        self.optim_state = optim.init(eqx.filter(self, eqx.is_array))
 
     def __call__(self, x: Float[Array, "n_dim"]) -> tuple[Float[Array, "n_dim"], Float]:
         """
