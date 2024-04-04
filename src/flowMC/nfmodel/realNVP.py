@@ -134,10 +134,8 @@ class RealNVP(NFModel):
         n_layers: int,
         n_hidden: int,
         key: PRNGKeyArray,
-        optim: optax.GradientTransformation,
         **kwargs
     ):
-        super().__init__(optim=optim)
         if kwargs.get("base_dist") is not None:
             self.base_dist = kwargs.get("base_dist")  # type: ignore
         else:
