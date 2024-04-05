@@ -2,12 +2,12 @@ import pickle
 import jax
 import jax.numpy as jnp
 from jaxtyping import Array, Int, Float, PRNGKeyArray
-from flowMC.proposal.NF_proposal import NFProposal
-import optax
-from flowMC.proposal.base import ProposalBase
-from flowMC.nfmodel.base import NFModel
 from tqdm import tqdm
 import equinox as eqx
+import optax
+from flowMC.proposal.NF_proposal import NFProposal
+from flowMC.proposal.base import ProposalBase
+from flowMC.nfmodel.base import NFModel
 
 
 class Sampler:
@@ -58,6 +58,7 @@ class Sampler:
     n_loop_production: int = 3
     train_thinning: int = 1
     output_thinning: int = 1
+    strategies: list = []
     local_autotune: bool = False
 
     # Normalizing flow hyperparameters
@@ -123,7 +124,9 @@ class Sampler:
 
         self.likelihood_vec = self.local_sampler.logpdf_vmap
 
-        self.optim = optax.chain(optax.clip(1.0), optax.adam(self.learning_rate, self.momentum))
+        self.optim = optax.chain(
+            optax.clip(1.0), optax.adam(self.learning_rate, self.momentum)
+        )
         self.optim_state = self.optim.init(eqx.filter(self.nf_model, eqx.is_array))
 
         # Initialized result dictionary
@@ -161,7 +164,6 @@ class Sampler:
 
         # Note that auto-tune function needs to have the same number of steps
         # as the actual sampling loop to avoid recompilation.
-
 
         initial_position = jnp.atleast_2d(initial_position)
         self.local_sampler_tuning(initial_position, data)
@@ -261,7 +263,6 @@ class Sampler:
                     lambda m: m._data_cov, self.nf_model, data_cov
                 )
 
-
                 (
                     rng_keys_nf,
                     self._global_sampler.model,
@@ -318,7 +319,10 @@ class Sampler:
         return last_step
 
     def local_sampler_tuning(
-        self, initial_position: Float[Array, "n_chain n_dim"], data: dict, max_iter: int = 100
+        self,
+        initial_position: Float[Array, "n_chain n_dim"],
+        data: dict,
+        max_iter: int = 100,
     ):
         """
         Tuning the local sampler. This runs a number of iterations of the local sampler,
@@ -409,7 +413,9 @@ class Sampler:
         else:
             return self.summary["production"]
 
-    def sample_flow(self, rng_key: PRNGKeyArray, n_samples: int) -> Float[Array, "n_samples n_dim"]:
+    def sample_flow(
+        self, rng_key: PRNGKeyArray, n_samples: int
+    ) -> Float[Array, "n_samples n_dim"]:
         """
         Sample from the normalizing flow.
 
@@ -423,7 +429,9 @@ class Sampler:
         samples = self.nf_model.sample(rng_key, n_samples)
         return samples
 
-    def evalulate_flow(self, samples: Float[Array, "n_samples n_dim"]) -> Float[Array, "n_samples"]:
+    def evalulate_flow(
+        self, samples: Float[Array, "n_samples n_dim"]
+    ) -> Float[Array, "n_samples"]:
         """
         Evaluate the log probability of the normalizing flow.
 
