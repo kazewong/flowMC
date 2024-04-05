@@ -11,6 +11,9 @@ from tqdm import tqdm
 
 class GlobalTuning(Strategy):
 
+    optim: optax.GradientTransformation
+    optim_state: optax.OptState
+
     n_dim: int
     n_chains: int
     n_local_steps: int
@@ -39,12 +42,12 @@ class GlobalTuning(Strategy):
         rng_key: PRNGKeyArray,
         local_sampler: ProposalBase,
         global_sampler: NFProposal,
-        optim: optax.GradientTransformation,
-        optim_state: optax.OptState,
         initial_position: Float[Array, "n_chains n_dim"],
         data: dict,
     ) -> tuple[
         PRNGKeyArray,
+        Float[Array, "n_chains n_dim"],
+        ProposalBase,
         NFProposal,
         PyTree,
     ]:
@@ -142,7 +145,7 @@ class GlobalTuning(Strategy):
             ) = global_sampler.model.train(
                 rng_keys_nf,
                 flat_chain,
-                optim,
+                self.optim,
                 optim_state,
                 self.n_epochs,
                 self.batch_size,
@@ -184,7 +187,7 @@ class GlobalTuning(Strategy):
                 axis=1,
             )
 
-        return rng_key, global_sampler, summary
+        return rng_key, summary['chains'][:, -1], local_sampler, global_sampler, summary
 
 
 class GlobalSampling(Strategy):
@@ -216,6 +219,9 @@ class GlobalSampling(Strategy):
         data: dict,
     ) -> tuple[
         PRNGKeyArray,
+        Float[Array, "n_chains n_dim"],
+        ProposalBase,
+        NFProposal,
         PyTree,
     ]:
 
@@ -292,4 +298,4 @@ class GlobalSampling(Strategy):
                 axis=1,
             )
 
-        return rng_key, summary
+        return rng_key, summary['chains'][:, -1], local_sampler, global_sampler, summary
