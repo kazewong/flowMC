@@ -198,38 +198,6 @@ class Sampler:
             )
             self.summary[strategy.__name__] = summary
 
-    def local_sampler_tuning(
-        self,
-        initial_position: Float[Array, "n_chain n_dim"],
-        data: dict,
-        max_iter: int = 100,
-    ):
-        """
-        Tuning the local sampler. This runs a number of iterations of the local sampler,
-        and then uses the acceptance rate to adjust the local sampler parameters.
-        Since this is mostly for a fast adaptation, we do not carry the sample state forward.
-        Instead, we only adapt the sampler parameters using the initial position.
-
-        Args:
-            n_steps (int): Number of steps to run the local sampler.
-            initial_position (Device Array): Initial position for the local sampler.
-            max_iter (int): Number of iterations to run the local sampler.
-        """
-        if self.local_autotune:
-            print("Tuning local sampler")
-            # kernel_vmap = self.local_sampler.kernel_vmap
-            # self.local_sampler.params = self.local_autotune(
-            #     kernel_vmap,
-            #     self.rng_keys_mcmc,
-            #     initial_position,
-            #     self.likelihood_vec(initial_position),
-            #     data,
-            #     self.local_sampler.params,
-            #     max_iter,
-            # )
-        else:
-            print("No autotune found, use input sampler_params")
-
     def get_sampler_state(self, training: bool = False) -> dict:
         """
         Get the sampler state. There are two sets of sampler outputs one can get,
