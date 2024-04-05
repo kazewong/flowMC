@@ -4,7 +4,7 @@ from jax import random
 from tqdm import tqdm
 from flowMC.nfmodel.base import NFModel
 from typing import Callable
-from flowMC.sampler.Proposal_Base import ProposalBase
+from flowMC.proposal.base import ProposalBase
 from jaxtyping import Array, Float, Int, PRNGKeyArray, PyTree
 from math import ceil
 
@@ -112,7 +112,6 @@ class NFProposal(ProposalBase):
         initial_position: Float[Array, "n_chains  n_dim"],
         data: PyTree,
         verbose: bool = False,
-        mode: str = "training",
     ) -> tuple[
         PRNGKeyArray,
         Float[Array, "n_chains n_steps  n_dim"],

@@ -1,4 +1,5 @@
 from abc import abstractmethod
+import copy
 import equinox as eqx
 from typing import overload, Optional
 from typing_extensions import Self
@@ -125,9 +126,9 @@ class NFModel(eqx.Module):
             perms = perms.reshape((steps_per_epoch, batch_size))
             for perm in perms:
                 batch = data[perm, ...]
-                value, model, state = self.train_step(batch, optim, state)
+                value, model, state = model.train_step(batch, optim, state)
         else:
-            value, model, state = self.train_step(data, optim, state)
+            value, model, state = model.train_step(data, optim, state)
 
         return value, model, state
 
@@ -161,13 +162,13 @@ class NFModel(eqx.Module):
             pbar = trange(num_epochs, desc="Training NF", miniters=int(num_epochs / 10))
         else:
             pbar = range(num_epochs)
-        best_model = self
+        best_model = model = self
         best_loss = 1e9
         for epoch in pbar:
             # Use a separate PRNG key to permute image data during shuffling
             rng, input_rng = jax.random.split(rng)
             # Run an optimization step over a training batch
-            value, model, state = self.train_epoch(input_rng, optim, state, data, batch_size)
+            value, model, state = model.train_epoch(input_rng, optim, state, data, batch_size)
             loss_values = loss_values.at[epoch].set(value)
             if loss_values[epoch] < best_loss:
                 best_model = model

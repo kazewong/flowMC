@@ -4,8 +4,8 @@ from jax.scipy.special import logsumexp
 import numpy as np
 
 from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
-from flowMC.sampler.MALA import MALA
-from flowMC.sampler.Sampler import Sampler
+from flowMC.proposal.MALA import MALA
+from flowMC.Sampler import Sampler
 
 import corner
 import matplotlib.pyplot as plt

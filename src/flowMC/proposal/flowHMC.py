@@ -3,8 +3,8 @@ import jax.numpy as jnp
 from flowMC.nfmodel.base import NFModel
 from jaxtyping import Array, PRNGKeyArray, PyTree
 from typing import Callable
-from flowMC.sampler.HMC import HMC
-from flowMC.sampler.NF_proposal import NFProposal
+from flowMC.proposal.HMC import HMC
+from flowMC.proposal.NF_proposal import NFProposal
 from jaxtyping import Array, Float, Int, PRNGKeyArray
 from math import ceil
 from jax import random
