@@ -15,3 +15,4 @@ class Strategy(ABC):
     @abstractmethod
     def __call__(self, **kwargs):
         raise NotImplementedError
+    
