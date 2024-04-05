@@ -2,7 +2,7 @@ import jax
 import jax.numpy as jnp
 from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
 from flowMC.proposal.MALA import MALA
-from Sampler import Sampler
+from flowMC.Sampler import Sampler
 
 
 def log_posterior(x, data: dict):

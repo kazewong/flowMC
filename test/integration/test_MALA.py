@@ -62,7 +62,7 @@ state = MALA_Sampler.sample(subkey, n_local_steps, initial_position[:, 0], data)
 
 
 from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
-from Sampler import Sampler
+from flowMC.Sampler import Sampler
 
 n_dim = 5
 n_chains = 2

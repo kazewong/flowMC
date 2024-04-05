@@ -5,7 +5,7 @@ import jax.numpy as jnp
 from jaxtyping import Float, Array
 from jax.scipy.special import logsumexp
 from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
-from Sampler import Sampler
+from flowMC.Sampler import Sampler
 
 
 def log_posterior(x, data):

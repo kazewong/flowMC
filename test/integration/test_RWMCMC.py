@@ -63,7 +63,7 @@ state = RWMCMC_sampler.sample(
 
 
 from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
-from Sampler import Sampler
+from flowMC.Sampler import Sampler
 
 n_dim = 5
 n_chains = 2

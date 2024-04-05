@@ -5,7 +5,7 @@ import numpy as np
 
 from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
 from flowMC.proposal.MALA import MALA
-from Sampler import Sampler
+from flowMC.Sampler import Sampler
 
 import corner
 import matplotlib.pyplot as plt
