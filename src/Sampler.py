@@ -103,8 +103,6 @@ class Sampler:
                 if not key.startswith("__"):
                     setattr(self, key, value)
 
-        self.variables: dict[str, Float] = {"mean": jnp.nan, "var": jnp.nan}
-
         # Initialized local and global samplers
 
         self.local_sampler = local_sampler
@@ -254,13 +252,13 @@ class Sampler:
                     )
                     flat_chain = flat_chain[: self.n_max_examples]
 
-                self.variables["mean"] = jnp.mean(flat_chain, axis=0)
-                self.variables["cov"] = jnp.cov(flat_chain.T)
+                data_mean = jnp.mean(flat_chain, axis=0)
+                data_cov = jnp.cov(flat_chain.T)
                 self._global_sampler.model = eqx.tree_at(
-                    lambda m: m._data_mean, self.nf_model, self.variables["mean"]
+                    lambda m: m._data_mean, self.nf_model, data_mean
                 )
                 self._global_sampler.model = eqx.tree_at(
-                    lambda m: m._data_cov, self.nf_model, self.variables["cov"]
+                    lambda m: m._data_cov, self.nf_model, data_cov
                 )
 
 
