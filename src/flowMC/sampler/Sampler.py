@@ -2,7 +2,6 @@ import pickle
 import jax
 import jax.numpy as jnp
 from jaxtyping import Array, Int, Float, PRNGKeyArray
-from flowMC.nfmodel.utils import make_training_loop
 from flowMC.sampler.NF_proposal import NFProposal
 import optax
 from flowMC.sampler.Proposal_Base import ProposalBase
@@ -50,7 +49,6 @@ class Sampler:
     rng_key: PRNGKeyArray
     data: dict
     local_sampler: ProposalBase
-    model: NFModel
 
     # Sampling hyperparameters
     n_chains: int = 20
@@ -97,7 +95,6 @@ class Sampler:
         self.rng_key = rng_key
         self.data = data
         self.local_sampler = local_sampler
-        self.model = nf_model
 
         # Set and override any given hyperparameters
         class_keys = list(self.__class__.__dict__.keys())
@@ -128,9 +125,8 @@ class Sampler:
 
         self.likelihood_vec = self.local_sampler.logpdf_vmap
 
-        tx = optax.chain(optax.clip(1.0), optax.adam(self.learning_rate, self.momentum))
-        self.optim_state = tx.init(eqx.filter(self.nf_model, eqx.is_array))
-        self.nf_training_loop, train_epoch, train_step = make_training_loop(tx)
+        self.optim = optax.chain(optax.clip(1.0), optax.adam(self.learning_rate, self.momentum))
+        self.optim_state = self.optim.init(eqx.filter(self.nf_model, eqx.is_array))
 
         # Initialized result dictionary
         training = {}
@@ -273,10 +269,10 @@ class Sampler:
                     self._global_sampler.model,
                     self.optim_state,
                     loss_values,
-                ) = self.nf_training_loop(
+                ) = self._global_sampler.model.train(
                     rng_keys_nf,
-                    self.nf_model,
                     flat_chain,
+                    self.optim,
                     self.optim_state,
                     self.n_epochs,
                     self.batch_size,

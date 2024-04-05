@@ -2,10 +2,8 @@ from flowMC.nfmodel.realNVP import RealNVP
 from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
 import jax
 import jax.numpy as jnp  # JAX NumPy
-
-from flowMC.nfmodel.utils import *
 import optax  # Optimizers
-
+import equinox as eqx  # Equinox utilities
 
 def test_realNVP():
 
@@ -21,13 +19,9 @@ def test_realNVP():
     optim = optax.adam(learning_rate, momentum)
     state = optim.init(eqx.filter(model, eqx.is_array))
 
-    train_flow, train_epoch, train_step = make_training_loop(optim)
-    rng, best_model, state, loss_values = train_flow(
-        rng, model, data, state, num_epochs, batch_size, verbose=True
-    )
+    rng, best_model, state, loss_values = model.train(init_rng, data, optim, state, num_epochs, batch_size, verbose=True)
     rng_key_nf = jax.random.PRNGKey(124098)
     model.sample(rng_key_nf, 10000)
-
 
 def test_rqSpline():
 
@@ -56,9 +50,6 @@ def test_rqSpline():
     optim = optax.adam(learning_rate, momentum)
     state = optim.init(eqx.filter(model, eqx.is_array))
 
-    train_flow, train_epoch, train_step = make_training_loop(optim)
-    rng, best_model, state, loss_values = train_flow(
-        rng, model, data, state, num_epochs, batch_size, verbose=True
-    )
+    rng, best_model, state, loss_values = model.train(init_rng, data, optim, state, num_epochs, batch_size, verbose=True)
     rng_key_nf = jax.random.PRNGKey(124098)
     model.sample(rng_key_nf, 10000)

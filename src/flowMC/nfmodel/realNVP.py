@@ -7,6 +7,7 @@ from flowMC.nfmodel.base import NFModel, Distribution
 from flowMC.nfmodel.common import MLP, MaskedCouplingLayer, MLPAffine, Gaussian
 from jaxtyping import Array, Float, PRNGKeyArray
 from functools import partial
+import optax
 
 
 class AffineCoupling(eqx.Module):
@@ -112,8 +113,8 @@ class RealNVP(NFModel):
     base_dist: Distribution
     affine_coupling: List[MaskedCouplingLayer]
     _n_features: int
-    _data_mean: Array | None
-    _data_cov: Array | None
+    _data_mean: Float[Array, " n_dim"] | None
+    _data_cov: Float[Array, " n_dim n_dim"] | None
 
     @property
     def n_features(self):
@@ -128,9 +129,13 @@ class RealNVP(NFModel):
         return jax.lax.stop_gradient(jnp.atleast_2d(self._data_cov))
 
     def __init__(
-        self, n_features: int, n_layers: int, n_hidden: int, key: PRNGKeyArray, **kwargs
+        self,
+        n_features: int,
+        n_layers: int,
+        n_hidden: int,
+        key: PRNGKeyArray,
+        **kwargs
     ):
-
         if kwargs.get("base_dist") is not None:
             self.base_dist = kwargs.get("base_dist")  # type: ignore
         else:
@@ -154,7 +159,7 @@ class RealNVP(NFModel):
             key, scale_subkey, shift_subkey = jax.random.split(key, 3)
             mask = jnp.ones(n_features)
             mask = mask.at[: int(n_features / 2)].set(0)
-            mask = jax.lax.cond(i%2==0, lambda x: 1 - x, lambda x: x, mask)
+            mask = jax.lax.cond(i % 2 == 0, lambda x: 1 - x, lambda x: x, mask)
             scale_MLP = MLP([n_features, n_hidden, n_features], key=scale_subkey)
             shift_MLP = MLP([n_features, n_hidden, n_features], key=shift_subkey)
             return MaskedCouplingLayer(MLPAffine(scale_MLP, shift_MLP), mask)

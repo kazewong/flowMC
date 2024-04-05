@@ -5,9 +5,8 @@ from flowMC.sampler.NF_proposal import NFProposal
 import jax
 import jax.numpy as jnp
 from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
-from flowMC.nfmodel.utils import *
 import optax  # Optimizers
-
+import equinox as eqx
 
 def log_posterior(x, data=None):
     return -0.5 * jnp.sum(x**2)
@@ -266,15 +265,14 @@ class TestNF:
         optim = optax.adam(learning_rate, momentum)
         state = optim.init(eqx.filter(model, eqx.is_array))
 
-        train_flow, train_epoch, train_step = make_training_loop(optim)
-        rng, self.model, state, loss_values = train_flow(
-            rng, model, data, state, num_epochs, batch_size, verbose=True
-        )
+
+        rng, subkey = jax.random.split(rng)
+        key, model, state, loss = model.train(rng, data, optim, state, num_epochs, batch_size, verbose=True)
         key1, rng, init_rng = jax.random.split(jax.random.PRNGKey(1), 3)
 
         n_dim = 2
         n_chains = 1
-        NF_obj = NFProposal(log_posterior, True, self.model)
+        NF_obj = NFProposal(log_posterior, True, model)
 
         initial_position = jax.random.normal(init_rng, shape=(n_chains, n_dim)) * 1
         NF_obj.sample(rng, 100, initial_position, None)
