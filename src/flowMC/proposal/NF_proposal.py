@@ -112,7 +112,6 @@ class NFProposal(ProposalBase):
         initial_position: Float[Array, "n_chains  n_dim"],
         data: PyTree,
         verbose: bool = False,
-        mode: str = "training",
     ) -> tuple[
         PRNGKeyArray,
         Float[Array, "n_chains n_steps  n_dim"],
