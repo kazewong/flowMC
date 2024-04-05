@@ -8,6 +8,8 @@ import optax
 from flowMC.proposal.NF_proposal import NFProposal
 from flowMC.proposal.base import ProposalBase
 from flowMC.nfmodel.base import NFModel
+from flowMC.strategy.base import Strategy
+from flowMC.strategy.global_tuning import GlobalTuning, GlobalSampling
 
 
 class Sampler:
@@ -49,6 +51,7 @@ class Sampler:
     rng_key: PRNGKeyArray
     data: dict
     local_sampler: ProposalBase
+    strategies: list[Strategy]
 
     # Sampling hyperparameters
     n_chains: int = 20
@@ -58,11 +61,10 @@ class Sampler:
     n_loop_production: int = 3
     train_thinning: int = 1
     output_thinning: int = 1
-    strategies: list = []
     local_autotune: bool = False
 
     # Normalizing flow hyperparameters
-    _global_sampler: NFProposal
+    global_sampler: NFProposal
     use_global: bool = True
     batch_size: int = 10000
     n_epochs: int = 30
@@ -79,7 +81,7 @@ class Sampler:
 
     @property
     def nf_model(self):
-        return self._global_sampler.model
+        return self.global_sampler.model
 
     def __init__(
         self,
@@ -115,7 +117,7 @@ class Sampler:
                 data=data,
             )
 
-        self._global_sampler = NFProposal(
+        self.global_sampler = NFProposal(
             self.local_sampler.logpdf,
             jit=self.local_sampler.jit,
             model=nf_model,
@@ -129,23 +131,39 @@ class Sampler:
         )
         self.optim_state = self.optim.init(eqx.filter(self.nf_model, eqx.is_array))
 
-        # Initialized result dictionary
-        training = {}
-        training["chains"] = jnp.empty((self.n_chains, 0, self.n_dim))
-        training["log_prob"] = jnp.empty((self.n_chains, 0))
-        training["local_accs"] = jnp.empty((self.n_chains, 0))
-        training["global_accs"] = jnp.empty((self.n_chains, 0))
-        training["loss_vals"] = jnp.empty((0, self.n_epochs))
+        self.strategies = [
+            GlobalTuning(
+                n_dim=self.n_dim,
+                n_chains=self.n_chains,
+                n_local_steps=self.n_local_steps,
+                n_global_steps=self.n_global_steps,
+                n_loop=self.n_loop_training,
+                output_thinning=self.output_thinning,
+                train_thinning=self.train_thinning,
+                optim=self.optim,
+                optim_state=self.optim_state,
+                n_epochs=self.n_epochs,
+                batch_size=self.batch_size,
+                n_max_examples=self.n_max_examples,
+                verbose=self.verbose,
+            ),
+            GlobalSampling(
+                n_dim=self.n_dim,
+                n_chains=self.n_chains,
+                n_local_steps=self.n_local_steps,
+                n_global_steps=self.n_global_steps,
+                n_loop=self.n_loop_production,
+                output_thinning=self.output_thinning,
+                verbose=self.verbose,
+            ),
+        ]
 
-        production = {}
-        production["chains"] = jnp.empty((self.n_chains, 0, self.n_dim))
-        production["log_prob"] = jnp.empty((self.n_chains, 0))
-        production["local_accs"] = jnp.empty((self.n_chains, 0))
-        production["global_accs"] = jnp.empty((self.n_chains, 0))
+        if kwargs.get("strategies") is not None:
+            kwargs_strategies = kwargs.get("strategies")
+            assert isinstance(kwargs_strategies, list)
+            self.strategies = kwargs_strategies
 
         self.summary = {}
-        self.summary["training"] = training
-        self.summary["production"] = production
 
     def sample(self, initial_position: Float[Array, "n_chains n_dim"], data: dict):
         """
@@ -165,158 +183,20 @@ class Sampler:
         # Note that auto-tune function needs to have the same number of steps
         # as the actual sampling loop to avoid recompilation.
 
-        initial_position = jnp.atleast_2d(initial_position)
-        self.local_sampler_tuning(initial_position, data)
+        initial_position = jnp.atleast_2d(initial_position) # type: ignore
+        rng_key = self.rng_key
         last_step = initial_position
-        if self.use_global is True:
-            last_step = self.global_sampler_tuning(last_step, data)
-
-        last_step = self.production_run(last_step, data)
-
-    def sampling_loop(
-        self,
-        initial_position: Float[Array, "n_chains n_dim"],
-        data: dict,
-        training=False,
-    ) -> Float[Array, "n_chains n_dim"]:
-        """
-        One sampling loop that iterate through the local sampler
-        and potentially the global sampler.
-        If training is set to True, the loop will also train the normalizing flow model.
-
-        Args:
-            initial_position (jnp.array): Initial position. Shape (n_chains, n_dim)
-            training (bool, optional):
-            Whether to train the normalizing flow model. Defaults to False.
-
-        Returns:
-            chains (jnp.array):
-            Samples from the posterior. Shape (n_chains, n_local_steps + n_global_steps, n_dim)
-        """
-
-        if training is True:
-            summary_mode = "training"
-        else:
-            summary_mode = "production"
-
-        self.rng_key, rng_keys_mcmc = jax.random.split(self.rng_key)
-        rng_keys_mcmc = jax.random.split(rng_keys_mcmc, self.n_chains)
-        (
-            rng_keys_mcmc,
-            positions,
-            log_prob,
-            local_acceptance,
-        ) = self.local_sampler.sample(
-            rng_keys_mcmc,
-            self.n_local_steps,
-            initial_position,
-            data,
-            verbose=self.verbose,
-        )
-
-        self.summary[summary_mode]["chains"] = jnp.append(
-            self.summary[summary_mode]["chains"],
-            positions[:, :: self.output_thinning],
-            axis=1,
-        )
-        self.summary[summary_mode]["log_prob"] = jnp.append(
-            self.summary[summary_mode]["log_prob"],
-            log_prob[:, :: self.output_thinning],
-            axis=1,
-        )
-
-        self.summary[summary_mode]["local_accs"] = jnp.append(
-            self.summary[summary_mode]["local_accs"],
-            local_acceptance[:, 1 :: self.output_thinning],
-            axis=1,
-        )
-
-        if self.use_global is True:
-            self.rng_key, rng_keys_nf = jax.random.split(self.rng_key)
-            if training is True:
-                positions = self.summary["training"]["chains"][
-                    :, :: self.train_thinning
-                ]
-                chain_size = positions.shape[0] * positions.shape[1]
-                if chain_size > self.n_max_examples:
-                    flat_chain = positions[
-                        :, -int(self.n_max_examples / self.n_chains) :
-                    ].reshape(-1, self.n_dim)
-                else:
-                    flat_chain = positions.reshape(-1, self.n_dim)
-
-                if flat_chain.shape[0] < self.n_max_examples:
-                    # This is to pad the training data to avoid recompilation.
-                    flat_chain = jnp.repeat(
-                        flat_chain,
-                        (self.n_max_examples // flat_chain.shape[0]) + 1,
-                        axis=0,
-                    )
-                    flat_chain = flat_chain[: self.n_max_examples]
-
-                data_mean = jnp.mean(flat_chain, axis=0)
-                data_cov = jnp.cov(flat_chain.T)
-                self._global_sampler.model = eqx.tree_at(
-                    lambda m: m._data_mean, self.nf_model, data_mean
-                )
-                self._global_sampler.model = eqx.tree_at(
-                    lambda m: m._data_cov, self.nf_model, data_cov
-                )
-
-                (
-                    rng_keys_nf,
-                    self._global_sampler.model,
-                    self.optim_state,
-                    loss_values,
-                ) = self._global_sampler.model.train(
-                    rng_keys_nf,
-                    flat_chain,
-                    self.optim,
-                    self.optim_state,
-                    self.n_epochs,
-                    self.batch_size,
-                    self.verbose,
-                )
-                self.summary["training"]["loss_vals"] = jnp.append(
-                    self.summary["training"]["loss_vals"],
-                    loss_values.reshape(1, -1),
-                    axis=0,
-                )
-
+        for strategy in self.strategies:
             (
-                rng_keys_nf,
-                nf_chain,
-                log_prob,
-                global_acceptance,
-            ) = self._global_sampler.sample(
-                rng_keys_nf,
-                self.n_global_steps,
-                positions[:, -1],
-                data,
-                verbose=self.verbose,
-                mode=summary_mode,
+                rng_key,
+                last_step,
+                self.local_sampler,
+                self.global_sampler,
+                summary,
+            ) = strategy(
+                rng_key, self.local_sampler, self.global_sampler, last_step, data
             )
-
-            self.summary[summary_mode]["chains"] = jnp.append(
-                self.summary[summary_mode]["chains"],
-                nf_chain[:, :: self.output_thinning],
-                axis=1,
-            )
-            self.summary[summary_mode]["log_prob"] = jnp.append(
-                self.summary[summary_mode]["log_prob"],
-                log_prob[:, :: self.output_thinning],
-                axis=1,
-            )
-
-            self.summary[summary_mode]["global_accs"] = jnp.append(
-                self.summary[summary_mode]["global_accs"],
-                global_acceptance[:, 1 :: self.output_thinning],
-                axis=1,
-            )
-
-        last_step = self.summary[summary_mode]["chains"][:, -1]
-
-        return last_step
+            self.summary[strategy.__name__] = summary
 
     def local_sampler_tuning(
         self,
@@ -350,51 +230,6 @@ class Sampler:
         else:
             print("No autotune found, use input sampler_params")
 
-    def global_sampler_tuning(
-        self, initial_position: Float[Array, "n_chain n_dim"], data: dict
-    ) -> Float[Array, "n_chains n_dim"]:
-        """
-        Tuning the global sampler. This runs both the local sampler and the global sampler,
-        and train the normalizing flow on the run.
-        To adapt the normalizing flow, we need to keep certain amount of the data generated during the sampling.
-        The data is stored in the summary dictionary and can be accessed through the `get_sampler_state` method.
-        This tuning run is meant to be followed by a production run as defined below.
-
-        Args:
-            initial_position (Device Array): Initial position for the sampler, shape (n_chains, n_dim)
-
-        """
-        print("Training normalizing flow")
-        last_step = initial_position
-        for _ in tqdm(
-            range(self.n_loop_training),
-            desc="Tuning global sampler",
-        ):
-            last_step = self.sampling_loop(last_step, data, training=True)
-        return last_step
-
-    def production_run(
-        self, initial_position: Float[Array, "n_chain n_dim"], data: dict
-    ) -> Float[Array, "n_chains n_dim"]:
-        """
-        Sampling procedure that produce the final set of samples.
-        The main difference between this and the global tuning step is
-        we do not train the normalizing flow, omitting training allows to maintain detail balance.
-        The data is stored in the summary dictionary and can be accessed through the `get_sampler_state` method.
-
-        Args:
-            initial_position (Device Array): Initial position for the sampler, shape (n_chains, n_dim)
-
-        """
-        print("Starting Production run")
-        last_step = initial_position
-        for _ in tqdm(
-            range(self.n_loop_production),
-            desc="Production run",
-        ):
-            last_step = self.sampling_loop(last_step, data)
-        return last_step
-
     def get_sampler_state(self, training: bool = False) -> dict:
         """
         Get the sampler state. There are two sets of sampler outputs one can get,
@@ -409,9 +244,9 @@ class Sampler:
 
         """
         if training is True:
-            return self.summary["training"]
+            return self.summary["GlobalTuning"]
         else:
-            return self.summary["production"]
+            return self.summary["GlobalSampling"]
 
     def sample_flow(
         self, rng_key: PRNGKeyArray, n_samples: int
@@ -467,22 +302,7 @@ class Sampler:
         Reset the sampler state.
 
         """
-        training = {}
-        training["chains"] = jnp.empty((self.n_chains, 0, self.n_dim))
-        training["log_prob"] = jnp.empty((self.n_chains, 0))
-        training["local_accs"] = jnp.empty((self.n_chains, 0))
-        training["global_accs"] = jnp.empty((self.n_chains, 0))
-        training["loss_vals"] = jnp.empty((0, self.n_epochs))
-
-        production = {}
-        production["chains"] = jnp.empty((self.n_chains, 0, self.n_dim))
-        production["log_prob"] = jnp.empty((self.n_chains, 0))
-        production["local_accs"] = jnp.empty((self.n_chains, 0))
-        production["global_accs"] = jnp.empty((self.n_chains, 0))
-
         self.summary = {}
-        self.summary["training"] = training
-        self.summary["production"] = production
 
     def get_global_acceptance_distribution(
         self, n_bins: int = 10, training: bool = False

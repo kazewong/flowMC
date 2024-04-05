@@ -27,11 +27,15 @@ class GlobalTuning(Strategy):
     n_max_examples: int
     verbose: bool
 
+    @property
+    def __name__(self):
+        return "GlobalTuning"
+
     def __init__(
         self,
         **kwargs,
     ):
-        class_keys = list(self.__class__.__dict__.keys())
+        class_keys = list(self.__class__.__annotations__.keys())
         for key, value in kwargs.items():
             if key in class_keys:
                 if not key.startswith("__"):
@@ -140,13 +144,13 @@ class GlobalTuning(Strategy):
             (
                 rng_keys_nf,
                 global_sampler.model,
-                optim_state,
+                self.optim_state,
                 loss_values,
             ) = global_sampler.model.train(
                 rng_keys_nf,
                 flat_chain,
                 self.optim,
-                optim_state,
+                self.optim_state,
                 self.n_epochs,
                 self.batch_size,
                 self.verbose,
@@ -200,11 +204,16 @@ class GlobalSampling(Strategy):
     output_thinning: int
     verbose: bool
 
+    @property
+    def __name__(self):
+        return "GlobalSampling"
+
     def __init__(
         self,
         **kwargs,
     ):
-        class_keys = list(self.__class__.__dict__.keys())
+        class_keys = list(self.__class__.__annotations__.keys())
+        print(class_keys)
         for key, value in kwargs.items():
             if key in class_keys:
                 if not key.startswith("__"):
@@ -268,6 +277,7 @@ class GlobalSampling(Strategy):
                 axis=1,
             )
 
+            rng_key, rng_keys_nf = jax.random.split(rng_key)
             (
                 rng_keys_nf,
                 nf_chain,

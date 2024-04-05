@@ -1,14 +1,18 @@
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from flowMC.proposal.base import ProposalBase
 from flowMC.proposal.NF_proposal import NFProposal
 from jaxtyping import Array, Float, PRNGKeyArray, PyTree
-class Strategy(ABC):
+class Strategy:
     """
     Base class for strategies, which are basically wrapper blocks that modify the state of the sampler
 
     This is an abstract template that should not be directly used.
     
     """
+
+    @abstractmethod
+    def __name__(self):
+        raise NotImplementedError
 
     @abstractmethod
     def __init__(self):

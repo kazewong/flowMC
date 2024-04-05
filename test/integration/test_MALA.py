@@ -78,7 +78,7 @@ rng_key, subkey = jax.random.split(rng_key)
 initial_position = jax.random.normal(subkey, shape=(n_chains, n_dim)) * 1
 
 rng_key, subkey = jax.random.split(rng_key)
-model = MaskedCouplingRQSpline(2, 4, [32, 32], 4, subkey)
+model = MaskedCouplingRQSpline(n_dim, 4, [32, 32], 4, subkey)
 
 print("Initializing sampler class")
 
