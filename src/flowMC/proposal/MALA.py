@@ -3,7 +3,7 @@ import jax
 import jax.numpy as jnp
 from jax.scipy.stats import multivariate_normal
 from tqdm import tqdm
-from flowMC.sampler.Proposal_Base import ProposalBase
+from flowMC.proposal.Proposal_Base import ProposalBase
 from functools import partialmethod
 from jaxtyping import PyTree, Array, Float, Int, PRNGKeyArray, Bool
 

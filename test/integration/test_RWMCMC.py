@@ -1,4 +1,4 @@
-from flowMC.sampler.Gaussian_random_walk import GaussianRandomWalk
+from flowMC.proposal.Gaussian_random_walk import GaussianRandomWalk
 import jax
 import jax.numpy as jnp
 from jax.scipy.special import logsumexp
@@ -63,7 +63,7 @@ state = RWMCMC_sampler.sample(
 
 
 from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
-from flowMC.sampler.Sampler import Sampler
+from Sampler import Sampler
 
 n_dim = 5
 n_chains = 2

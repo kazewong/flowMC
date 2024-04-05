@@ -2,9 +2,9 @@ import pickle
 import jax
 import jax.numpy as jnp
 from jaxtyping import Array, Int, Float, PRNGKeyArray
-from flowMC.sampler.NF_proposal import NFProposal
+from flowMC.proposal.NF_proposal import NFProposal
 import optax
-from flowMC.sampler.Proposal_Base import ProposalBase
+from flowMC.proposal.Proposal_Base import ProposalBase
 from flowMC.nfmodel.base import NFModel
 from tqdm import tqdm
 import equinox as eqx

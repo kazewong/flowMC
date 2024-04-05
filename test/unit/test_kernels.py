@@ -1,7 +1,7 @@
-from flowMC.sampler.HMC import HMC
-from flowMC.sampler.MALA import MALA
-from flowMC.sampler.Gaussian_random_walk import GaussianRandomWalk
-from flowMC.sampler.NF_proposal import NFProposal
+from flowMC.proposal.HMC import HMC
+from flowMC.proposal.MALA import MALA
+from flowMC.proposal.Gaussian_random_walk import GaussianRandomWalk
+from flowMC.proposal.NF_proposal import NFProposal
 import jax
 import jax.numpy as jnp
 from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline

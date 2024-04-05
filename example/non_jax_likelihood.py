@@ -3,9 +3,9 @@ import numpy as np
 import jax.numpy as jnp
 from scipy.stats import norm
 from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
-from flowMC.sampler.Gaussian_random_walk import GaussianRandomWalk
+from flowMC.proposal.Gaussian_random_walk import GaussianRandomWalk
 
-from flowMC.sampler.Sampler import Sampler
+from Sampler import Sampler
 from flowMC.utils.PRNG_keys import initialize_rng_keys
 from flowMC.utils.PythonFunctionWrap import wrap_python_log_prob_fn
 
