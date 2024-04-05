@@ -79,7 +79,6 @@ class GlobalTuning(Strategy):
         for _ in tqdm(
             range(self.n_loop),
             desc="Global Tuning",
-            disable=not self.verbose,
         ):
             rng_key, rng_keys_mcmc = jax.random.split(rng_key)
             rng_keys_mcmc = jax.random.split(rng_keys_mcmc, self.n_chains)
@@ -243,7 +242,6 @@ class GlobalSampling(Strategy):
         for _ in tqdm(
             range(self.n_loop),
             desc="Global Sampling",
-            disable=not self.verbose,
         ):
             rng_key, rng_keys_mcmc = jax.random.split(rng_key)
             rng_keys_mcmc = jax.random.split(rng_keys_mcmc, self.n_chains)
