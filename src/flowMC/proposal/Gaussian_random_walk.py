@@ -2,7 +2,7 @@ from typing import Callable
 import jax
 import jax.numpy as jnp
 from tqdm import tqdm
-from flowMC.proposal.Proposal_Base import ProposalBase
+from flowMC.proposal.base import ProposalBase
 from jaxtyping import PyTree, Array, Float, Int, PRNGKeyArray
 
 

@@ -4,7 +4,7 @@ import jax.numpy as jnp
 from jaxtyping import Array, Int, Float, PRNGKeyArray
 from flowMC.proposal.NF_proposal import NFProposal
 import optax
-from flowMC.proposal.Proposal_Base import ProposalBase
+from flowMC.proposal.base import ProposalBase
 from flowMC.nfmodel.base import NFModel
 from tqdm import tqdm
 import equinox as eqx

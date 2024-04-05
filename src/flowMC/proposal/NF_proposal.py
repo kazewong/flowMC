@@ -4,7 +4,7 @@ from jax import random
 from tqdm import tqdm
 from flowMC.nfmodel.base import NFModel
 from typing import Callable
-from flowMC.proposal.Proposal_Base import ProposalBase
+from flowMC.proposal.base import ProposalBase
 from jaxtyping import Array, Float, Int, PRNGKeyArray, PyTree
 from math import ceil
 
