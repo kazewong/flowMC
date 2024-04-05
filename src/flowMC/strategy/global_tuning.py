@@ -185,3 +185,111 @@ class GlobalTuning(Strategy):
             )
 
         return rng_key, global_sampler, summary
+
+
+class GlobalSampling(Strategy):
+
+    n_dim: int
+    n_chains: int
+    n_local_steps: int
+    n_global_steps: int
+    n_loop: int
+    output_thinning: int
+    verbose: bool
+
+    def __init__(
+        self,
+        **kwargs,
+    ):
+        class_keys = list(self.__class__.__dict__.keys())
+        for key, value in kwargs.items():
+            if key in class_keys:
+                if not key.startswith("__"):
+                    setattr(self, key, value)
+
+    def __call__(
+        self,
+        rng_key: PRNGKeyArray,
+        local_sampler: ProposalBase,
+        global_sampler: NFProposal,
+        initial_position: Float[Array, "n_chains n_dim"],
+        data: dict,
+    ) -> tuple[
+        PRNGKeyArray,
+        PyTree,
+    ]:
+
+        summary = {}
+        summary["chains"] = jnp.empty((self.n_chains, 0, self.n_dim))
+        summary["log_prob"] = jnp.empty((self.n_chains, 0))
+        summary["local_accs"] = jnp.empty((self.n_chains, 0))
+        summary["global_accs"] = jnp.empty((self.n_chains, 0))
+
+        for _ in tqdm(
+            range(self.n_loop),
+            desc="Global Sampling",
+            disable=not self.verbose,
+        ):
+            rng_key, rng_keys_mcmc = jax.random.split(rng_key)
+            rng_keys_mcmc = jax.random.split(rng_keys_mcmc, self.n_chains)
+            (
+                rng_keys_mcmc,
+                positions,
+                log_prob,
+                local_acceptance,
+            ) = local_sampler.sample(
+                rng_keys_mcmc,
+                self.n_local_steps,
+                initial_position,
+                data,
+                verbose=self.verbose,
+            )
+
+            summary["chains"] = jnp.append(
+                summary["chains"],
+                positions[:, :: self.output_thinning],
+                axis=1,
+            )
+            summary["log_prob"] = jnp.append(
+                summary["log_prob"],
+                log_prob[:, :: self.output_thinning],
+                axis=1,
+            )
+
+            summary["local_accs"] = jnp.append(
+                summary["local_accs"],
+                local_acceptance[:, 1 :: self.output_thinning],
+                axis=1,
+            )
+
+            (
+                rng_keys_nf,
+                nf_chain,
+                log_prob,
+                global_acceptance,
+            ) = global_sampler.sample(
+                rng_keys_nf,
+                self.n_global_steps,
+                positions[:, -1],
+                data,
+                verbose=self.verbose,
+            )
+
+            summary["chains"] = jnp.append(
+                summary["chains"],
+                nf_chain[:, :: self.output_thinning],
+                axis=1,
+            )
+            summary["log_prob"] = jnp.append(
+                summary["log_prob"],
+                log_prob[:, :: self.output_thinning],
+                axis=1,
+            )
+
+            summary["global_accs"] = jnp.append(
+                summary["global_accs"],
+                global_acceptance[:, 1 :: self.output_thinning],
+                axis=1,
+            )
+
+        return rng_key, summary
