@@ -1,15 +1,15 @@
 import pickle
-import jax
-import jax.numpy as jnp
-from jaxtyping import Array, Int, Float, PRNGKeyArray
-from tqdm import tqdm
+
 import equinox as eqx
+import jax.numpy as jnp
 import optax
-from flowMC.proposal.NF_proposal import NFProposal
-from flowMC.proposal.base import ProposalBase
+from jaxtyping import Array, Float, Int, PRNGKeyArray
+
 from flowMC.nfmodel.base import NFModel
+from flowMC.proposal.base import ProposalBase
+from flowMC.proposal.NF_proposal import NFProposal
 from flowMC.strategy.base import Strategy
-from flowMC.strategy.global_tuning import GlobalTuning, GlobalSampling
+from flowMC.strategy.global_tuning import GlobalSampling, GlobalTuning
 
 
 class Sampler:

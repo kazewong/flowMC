@@ -1,12 +1,14 @@
+from math import ceil
+from typing import Callable
+
 import jax
 import jax.numpy as jnp
 from jax import random
-from tqdm import tqdm
-from flowMC.nfmodel.base import NFModel
-from typing import Callable
-from flowMC.proposal.base import ProposalBase
 from jaxtyping import Array, Float, Int, PRNGKeyArray, PyTree
-from math import ceil
+from tqdm import tqdm
+
+from flowMC.nfmodel.base import NFModel
+from flowMC.proposal.base import ProposalBase
 
 
 @jax.tree_util.register_pytree_node_class

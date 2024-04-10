@@ -1,9 +1,11 @@
-from flowMC.nfmodel.realNVP import RealNVP
-from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
+import equinox as eqx  # Equinox utilities
 import jax
 import jax.numpy as jnp  # JAX NumPy
 import optax  # Optimizers
-import equinox as eqx  # Equinox utilities
+
+from flowMC.nfmodel.realNVP import RealNVP
+from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
+
 
 def test_realNVP():
 

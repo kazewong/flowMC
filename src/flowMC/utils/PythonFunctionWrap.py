@@ -1,6 +1,7 @@
 import warnings
 from functools import wraps
-from typing import Any, List, Dict, Callable, Iterable, Tuple, NamedTuple, Union
+from typing import (Any, Callable, Dict, Iterable, List, NamedTuple, Tuple,
+                    Union)
 
 Array = Any
 PyTree = Union[Array, Iterable[Array], Dict[Any, Array], NamedTuple]

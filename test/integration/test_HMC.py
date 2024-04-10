@@ -1,8 +1,10 @@
-from flowMC.proposal.HMC import HMC
 import jax
 import jax.numpy as jnp
 from jax.scipy.special import logsumexp
-from jaxtyping import Float, Array
+from jaxtyping import Array, Float
+
+from flowMC.proposal.HMC import HMC
+
 
 def dual_moon_pe(x: Float[Array, "n_dim"], data: dict):
     """

@@ -1,6 +1,7 @@
 import jax
 import jax.numpy as jnp
-from flowMC.nfmodel.realNVP import RealNVP, AffineCoupling
+
+from flowMC.nfmodel.realNVP import AffineCoupling, RealNVP
 from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
 
 

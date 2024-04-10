@@ -1,11 +1,13 @@
+from functools import partial
+
+import equinox as eqx
 import jax
 import jax.numpy as jnp
-from jaxtyping import Array, PRNGKeyArray, Float
-import equinox as eqx
+from jaxtyping import Array, Float, PRNGKeyArray
 
-from flowMC.nfmodel.base import NFModel, Bijection, Distribution
-from flowMC.nfmodel.common import MaskedCouplingLayer, ScalarAffine, MLP, Gaussian
-from functools import partial
+from flowMC.nfmodel.base import Bijection, Distribution, NFModel
+from flowMC.nfmodel.common import (MLP, Gaussian, MaskedCouplingLayer,
+                                   ScalarAffine)
 
 
 @partial(jax.vmap, in_axes=(0, None, None))

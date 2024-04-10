@@ -1,12 +1,13 @@
+import equinox as eqx
+import jax
+import jax.numpy as jnp
+import optax
+from jaxtyping import Array, Float, PRNGKeyArray, PyTree
+from tqdm import tqdm
+
 from flowMC.proposal.base import ProposalBase
 from flowMC.proposal.NF_proposal import NFProposal
 from flowMC.strategy.base import Strategy
-import jax
-import jax.numpy as jnp
-from jaxtyping import Array, Float, PRNGKeyArray, PyTree
-import optax
-import equinox as eqx
-from tqdm import tqdm
 
 
 class GlobalTuning(Strategy):

@@ -1,7 +1,11 @@
 from abc import abstractmethod
+
+from jaxtyping import Array, Float, PRNGKeyArray, PyTree
+
 from flowMC.proposal.base import ProposalBase
 from flowMC.proposal.NF_proposal import NFProposal
-from jaxtyping import Array, Float, PRNGKeyArray, PyTree
+
+
 class Strategy:
     """
     Base class for strategies, which are basically wrapper blocks that modify the state of the sampler

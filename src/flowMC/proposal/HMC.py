@@ -1,9 +1,11 @@
 from typing import Callable
+
 import jax
 import jax.numpy as jnp
+from jaxtyping import Array, Float, Int, PRNGKeyArray, PyTree
 from tqdm import tqdm
+
 from flowMC.proposal.base import ProposalBase
-from jaxtyping import PyTree, Array, Float, Int, PRNGKeyArray
 
 
 class HMC(ProposalBase):

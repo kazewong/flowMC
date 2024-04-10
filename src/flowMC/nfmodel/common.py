@@ -1,16 +1,11 @@
 from typing import Callable, List, Tuple
 
+import equinox as eqx
 import jax
 import jax.numpy as jnp
-from jaxtyping import Array
-import equinox as eqx
+from jaxtyping import Array, Float, PRNGKeyArray
 
 from flowMC.nfmodel.base import Bijection, Distribution
-
-import jax
-import jax.numpy as jnp
-import equinox as eqx
-from jaxtyping import Array, Float, PRNGKeyArray
 
 
 class MLP(eqx.Module):

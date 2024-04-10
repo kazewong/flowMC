@@ -1,14 +1,15 @@
+from math import ceil
+from typing import Callable
+
 import jax
 import jax.numpy as jnp
+from jax import random
+from jaxtyping import Array, Float, Int, PRNGKeyArray, PyTree
+from tqdm import tqdm
+
 from flowMC.nfmodel.base import NFModel
-from jaxtyping import Array, PRNGKeyArray, PyTree
-from typing import Callable
 from flowMC.proposal.HMC import HMC
 from flowMC.proposal.NF_proposal import NFProposal
-from jaxtyping import Array, Float, Int, PRNGKeyArray
-from math import ceil
-from jax import random
-from tqdm import tqdm
 
 ###################################
 # This is not in production yet

@@ -1,11 +1,13 @@
+from functools import partialmethod
 from typing import Callable
+
 import jax
 import jax.numpy as jnp
 from jax.scipy.stats import multivariate_normal
+from jaxtyping import Array, Bool, Float, Int, PRNGKeyArray, PyTree
 from tqdm import tqdm
+
 from flowMC.proposal.base import ProposalBase
-from functools import partialmethod
-from jaxtyping import PyTree, Array, Float, Int, PRNGKeyArray, Bool
 
 
 class MALA(ProposalBase):

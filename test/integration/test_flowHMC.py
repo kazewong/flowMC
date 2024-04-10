@@ -1,10 +1,11 @@
-from flowMC.proposal.MALA import MALA
-from flowMC.proposal.flowHMC import flowHMC
 import jax
 import jax.numpy as jnp
-from jaxtyping import Float, Array
 from jax.scipy.special import logsumexp
+from jaxtyping import Array, Float
+
 from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
+from flowMC.proposal.flowHMC import flowHMC
+from flowMC.proposal.MALA import MALA
 from flowMC.Sampler import Sampler
 
 

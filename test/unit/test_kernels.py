@@ -1,12 +1,14 @@
-from flowMC.proposal.HMC import HMC
-from flowMC.proposal.MALA import MALA
-from flowMC.proposal.Gaussian_random_walk import GaussianRandomWalk
-from flowMC.proposal.NF_proposal import NFProposal
+import equinox as eqx
 import jax
 import jax.numpy as jnp
-from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
 import optax  # Optimizers
-import equinox as eqx
+
+from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
+from flowMC.proposal.Gaussian_random_walk import GaussianRandomWalk
+from flowMC.proposal.HMC import HMC
+from flowMC.proposal.MALA import MALA
+from flowMC.proposal.NF_proposal import NFProposal
+
 
 def log_posterior(x, data=None):
     return -0.5 * jnp.sum(x**2)

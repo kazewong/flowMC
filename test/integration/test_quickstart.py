@@ -1,5 +1,6 @@
 import jax
 import jax.numpy as jnp
+
 from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
 from flowMC.proposal.MALA import MALA
 from flowMC.Sampler import Sampler

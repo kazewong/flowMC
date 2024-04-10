@@ -1,14 +1,13 @@
+import corner
 import jax
 import jax.numpy as jnp  # JAX NumPy
-from jax.scipy.special import logsumexp
+import matplotlib.pyplot as plt
 import numpy as np
+from jax.scipy.special import logsumexp
 
 from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
 from flowMC.proposal.MALA import MALA
 from flowMC.Sampler import Sampler
-
-import corner
-import matplotlib.pyplot as plt
 
 
 def target_dualmoon(x, data):

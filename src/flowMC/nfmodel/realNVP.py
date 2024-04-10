@@ -1,13 +1,15 @@
+from functools import partial
 from typing import List, Tuple
+
+import equinox as eqx
 import jax
 import jax.numpy as jnp
 import numpy as np
-import equinox as eqx
-from flowMC.nfmodel.base import NFModel, Distribution
-from flowMC.nfmodel.common import MLP, MaskedCouplingLayer, MLPAffine, Gaussian
-from jaxtyping import Array, Float, PRNGKeyArray
-from functools import partial
 import optax
+from jaxtyping import Array, Float, PRNGKeyArray
+
+from flowMC.nfmodel.base import Distribution, NFModel
+from flowMC.nfmodel.common import MLP, Gaussian, MaskedCouplingLayer, MLPAffine
 
 
 class AffineCoupling(eqx.Module):

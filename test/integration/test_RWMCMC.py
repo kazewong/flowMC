@@ -1,8 +1,9 @@
-from flowMC.proposal.Gaussian_random_walk import GaussianRandomWalk
 import jax
 import jax.numpy as jnp
 from jax.scipy.special import logsumexp
-from jaxtyping import Float, Array
+from jaxtyping import Array, Float
+
+from flowMC.proposal.Gaussian_random_walk import GaussianRandomWalk
 
 
 def dual_moon_pe(x: Float[Array, "n_dim"], data: dict):

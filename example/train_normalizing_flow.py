@@ -1,12 +1,11 @@
-from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
 import jax
 import jax.numpy as jnp  # JAX NumPy
-
-from flowMC.nfmodel.utils import *
 import optax  # Optimizers
-from flowMC.nfmodel.utils import make_training_loop
-
 from sklearn.datasets import make_moons
+
+from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
+from flowMC.nfmodel.utils import *
+from flowMC.nfmodel.utils import make_training_loop
 
 """
 Training a Masked Coupling RQSpline flow to fit the dual moons dataset.

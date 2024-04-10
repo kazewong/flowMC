@@ -1,7 +1,8 @@
-import matplotlib.pyplot as plt
 import jax.numpy as jnp
+import matplotlib.pyplot as plt
 # from flowMC.sampler.Sampler import Sampler
-from jaxtyping import Float, Array
+from jaxtyping import Array, Float
+
 
 def plot_summary(sampler: object, training: bool = False, **plotkwargs) -> None:
     """

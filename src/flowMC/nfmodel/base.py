@@ -1,13 +1,14 @@
-from abc import abstractmethod
 import copy
+from abc import abstractmethod
+from typing import Optional, overload
+
 import equinox as eqx
-from typing import overload, Optional
-from typing_extensions import Self
-from jaxtyping import Array, PRNGKeyArray, Float
-import optax
-from tqdm import trange, tqdm
-import jax.numpy as jnp
 import jax
+import jax.numpy as jnp
+import optax
+from jaxtyping import Array, Float, PRNGKeyArray
+from tqdm import tqdm, trange
+from typing_extensions import Self
 
 
 class NFModel(eqx.Module):

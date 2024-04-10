@@ -1,8 +1,8 @@
-from evosax import CMA_ES
 import jax
 import jax.numpy as jnp
-from jaxtyping import PRNGKeyArray
 import tqdm
+from evosax import CMA_ES
+from jaxtyping import PRNGKeyArray
 
 
 class EvolutionaryOptimizer:
