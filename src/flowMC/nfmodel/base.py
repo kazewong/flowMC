@@ -103,9 +103,10 @@ class NFModel(eqx.Module):
             model (eqx.Model): Updated model.
             opt_state (optax.OptState): Updated optimizer state.
         """
-        loss, grads = self.loss_fn(x)
+        model = self
+        loss, grads = model.loss_fn(x)
         updates, state = optim.update(grads, state)
-        model = eqx.apply_updates(self, updates)
+        model = eqx.apply_updates(model, updates)
         return loss, model, state
 
     def train_epoch(
@@ -163,6 +164,7 @@ class NFModel(eqx.Module):
             pbar = trange(num_epochs, desc="Training NF", miniters=int(num_epochs / 10))
         else:
             pbar = range(num_epochs)
+            
         best_model = model = self
         best_loss = 1e9
         for epoch in pbar:

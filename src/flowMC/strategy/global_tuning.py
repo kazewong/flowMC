@@ -77,6 +77,7 @@ class GlobalTuning(Strategy):
         summary["local_accs"] = jnp.empty((self.n_chains, 0))
         summary["global_accs"] = jnp.empty((self.n_chains, 0))
         summary["loss_vals"] = jnp.empty((0, self.n_epochs))
+        current_position = initial_position
         for _ in tqdm(
             range(self.n_loop),
             desc="Global Tuning",
@@ -91,7 +92,7 @@ class GlobalTuning(Strategy):
             ) = local_sampler.sample(
                 rng_keys_mcmc,
                 self.n_local_steps,
-                initial_position,
+                current_position,
                 data,
                 verbose=self.verbose,
             )
@@ -112,6 +113,8 @@ class GlobalTuning(Strategy):
                 local_acceptance[:, 1 :: self.output_thinning],
                 axis=1,
             )
+
+            current_position = summary["chains"][:, -1]
 
             rng_key, rng_keys_nf = jax.random.split(rng_key)
             positions = summary["chains"][:, :: self.train_thinning]
@@ -143,7 +146,7 @@ class GlobalTuning(Strategy):
 
             (
                 rng_keys_nf,
-                global_sampler.model,
+                model,
                 self.optim_state,
                 loss_values,
             ) = global_sampler.model.train(
@@ -155,6 +158,7 @@ class GlobalTuning(Strategy):
                 self.batch_size,
                 self.verbose,
             )
+            global_sampler.model = model
             summary["loss_vals"] = jnp.append(
                 summary["loss_vals"],
                 loss_values.reshape(1, -1),
@@ -169,7 +173,7 @@ class GlobalTuning(Strategy):
             ) = global_sampler.sample(
                 rng_keys_nf,
                 self.n_global_steps,
-                positions[:, -1],
+                current_position,
                 data,
                 verbose=self.verbose,
             )
@@ -190,6 +194,8 @@ class GlobalTuning(Strategy):
                 global_acceptance[:, 1 :: self.output_thinning],
                 axis=1,
             )
+
+            current_position = summary["chains"][:, -1]
 
         return rng_key, summary['chains'][:, -1], local_sampler, global_sampler, summary
 
@@ -240,6 +246,7 @@ class GlobalSampling(Strategy):
         summary["local_accs"] = jnp.empty((self.n_chains, 0))
         summary["global_accs"] = jnp.empty((self.n_chains, 0))
 
+        current_position = initial_position
         for _ in tqdm(
             range(self.n_loop),
             desc="Global Sampling",
@@ -254,7 +261,7 @@ class GlobalSampling(Strategy):
             ) = local_sampler.sample(
                 rng_keys_mcmc,
                 self.n_local_steps,
-                initial_position,
+                current_position,
                 data,
                 verbose=self.verbose,
             )
@@ -275,6 +282,8 @@ class GlobalSampling(Strategy):
                 local_acceptance[:, 1 :: self.output_thinning],
                 axis=1,
             )
+
+            current_position = summary["chains"][:, -1]
 
             rng_key, rng_keys_nf = jax.random.split(rng_key)
             (
@@ -306,5 +315,7 @@ class GlobalSampling(Strategy):
                 global_acceptance[:, 1 :: self.output_thinning],
                 axis=1,
             )
+
+            current_position = summary["chains"][:, -1]
 
         return rng_key, summary['chains'][:, -1], local_sampler, global_sampler, summary
