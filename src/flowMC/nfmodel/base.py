@@ -164,17 +164,21 @@ class NFModel(eqx.Module):
             pbar = trange(num_epochs, desc="Training NF", miniters=int(num_epochs / 10))
         else:
             pbar = range(num_epochs)
-            
+
         best_model = model = self
+        best_state = state
         best_loss = 1e9
         for epoch in pbar:
             # Use a separate PRNG key to permute image data during shuffling
             rng, input_rng = jax.random.split(rng)
             # Run an optimization step over a training batch
-            value, model, state = model.train_epoch(input_rng, optim, state, data, batch_size)
+            value, model, state = model.train_epoch(
+                input_rng, optim, state, data, batch_size
+            )
             loss_values = loss_values.at[epoch].set(value)
             if loss_values[epoch] < best_loss:
                 best_model = model
+                best_state = state
                 best_loss = loss_values[epoch]
             if verbose:
                 assert isinstance(pbar, tqdm)
@@ -185,7 +189,7 @@ class NFModel(eqx.Module):
                     if epoch == num_epochs:
                         pbar.set_description(f"Training NF, current loss: {value:.3f}")
 
-        return rng, best_model, state, loss_values
+        return rng, best_model, best_state, loss_values
 
 
 class Bijection(eqx.Module):

@@ -114,7 +114,7 @@ class GlobalTuning(Strategy):
                 axis=1,
             )
 
-            current_position = summary["chains"][:, -1]
+            current_position = positions[:, -1]
 
             rng_key, rng_keys_nf = jax.random.split(rng_key)
             positions = summary["chains"][:, :: self.train_thinning]
@@ -147,7 +147,7 @@ class GlobalTuning(Strategy):
             (
                 rng_keys_nf,
                 model,
-                self.optim_state,
+                optim_state,
                 loss_values,
             ) = global_sampler.model.train(
                 rng_keys_nf,
@@ -159,6 +159,7 @@ class GlobalTuning(Strategy):
                 self.verbose,
             )
             global_sampler.model = model
+            self.optim_state = optim_state
             summary["loss_vals"] = jnp.append(
                 summary["loss_vals"],
                 loss_values.reshape(1, -1),
@@ -195,9 +196,9 @@ class GlobalTuning(Strategy):
                 axis=1,
             )
 
-            current_position = summary["chains"][:, -1]
+            current_position = positions[:, -1]
 
-        return rng_key, summary['chains'][:, -1], local_sampler, global_sampler, summary
+        return rng_key, current_position, local_sampler, global_sampler, summary
 
 
 class GlobalSampling(Strategy):
