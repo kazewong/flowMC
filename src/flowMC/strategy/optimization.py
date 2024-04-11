@@ -43,7 +43,7 @@ class Adam(Strategy):
             jnp.arange(self.n_steps),
         )
 
-        return params
+        return params # type: ignore
 
     def _kernel(self, carry, data):
         params, opt_state, grad_fn = carry
