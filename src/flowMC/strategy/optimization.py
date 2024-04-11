@@ -43,7 +43,7 @@ class Adam(Strategy):
             jnp.arange(self.n_steps),
         )
 
-        return params # type: ignore
+        return params  # type: ignore
 
     def _kernel(self, carry, data):
         params, opt_state, grad_fn = carry
@@ -67,8 +67,30 @@ class Adam(Strategy):
             return -local_sampler.logpdf(params, data)
 
         optimized_positions = jax.vmap(self._single_optimize, in_axes=(None, 0))(
-            loss_fn,
-            initial_position
+            loss_fn, initial_position
         )
 
         return rng_key, optimized_positions, local_sampler, global_sampler, data
+
+
+class Evosax_CMA_ES(Strategy):
+
+    def __init__(
+        self,
+        **kwargs,
+    ):
+        class_keys = list(self.__class__.__annotations__.keys())
+        for key, value in kwargs.items():
+            if key in class_keys:
+                if not key.startswith("__"):
+                    setattr(self, key, value)
+
+    def __call__(
+        self,
+        rng_key: PRNGKeyArray,
+        local_sampler: ProposalBase,
+        global_sampler: NFProposal,
+        initial_position: Array,
+        data: dict,
+    ) -> tuple[PRNGKeyArray, Array, ProposalBase, NFProposal, PyTree]:
+        raise NotImplementedError
