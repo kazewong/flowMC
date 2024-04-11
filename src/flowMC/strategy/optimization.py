@@ -1,9 +1,7 @@
-import equinox as eqx
 import jax
 import jax.numpy as jnp
 import optax
 from jaxtyping import Array, Float, PRNGKeyArray, PyTree
-from tqdm import tqdm
 from typing import Callable
 
 from flowMC.proposal.base import ProposalBase
