@@ -114,7 +114,7 @@ class GlobalTuning(Strategy):
                 axis=1,
             )
 
-            current_position = positions[:, -1]
+            current_position = summary["chains"][:, -1]
 
             rng_key, rng_keys_nf = jax.random.split(rng_key)
             positions = summary["chains"][:, :: self.train_thinning]
@@ -196,7 +196,7 @@ class GlobalTuning(Strategy):
                 axis=1,
             )
 
-            current_position = positions[:, -1]
+            current_position = summary["chains"][:, -1]
 
         return rng_key, current_position, local_sampler, global_sampler, summary
 
