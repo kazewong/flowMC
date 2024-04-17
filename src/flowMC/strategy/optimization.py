@@ -15,6 +15,10 @@ class optimization_Adam(Strategy):
     learning_rate: float = 1e-2
     noise_level: float = 10
 
+    @property
+    def __name__(self):
+        return "AdamOptimization"
+    
     def __init__(
         self,
         **kwargs,
@@ -66,13 +70,20 @@ class optimization_Adam(Strategy):
 
             return params  # type: ignore
 
+        print("Using Adam optimization")
         rng_key, subkey = jax.random.split(rng_key)
         keys = jax.random.split(subkey, initial_position.shape[0])
         optimized_positions = jax.vmap(_single_optimize, in_axes=(0, 0))(
             keys, initial_position
         )
 
-        return rng_key, optimized_positions, local_sampler, global_sampler, data
+        summary = {}
+        summary["initial_positions"] = initial_position
+        summary["initial_log_prob"] = local_sampler.logpdf_vmap(initial_position, data)
+        summary["final_positions"] = optimized_positions
+        summary["final_log_prob"] = local_sampler.logpdf_vmap(optimized_positions, data)
+
+        return rng_key, optimized_positions, local_sampler, global_sampler, summary
 
 
 class Evosax_CMA_ES(Strategy):
