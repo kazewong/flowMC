@@ -41,3 +41,7 @@ class TestStrategies:
         key, optimized_positions, local_sampler, global_sampler, data = Adam_obj(
             subkey, local_sampler, global_sampler, initial_position, {}
         )
+
+        vmapped_logp = jax.vmap(log_posterior)
+
+        assert vmapped_logp(optimized_positions).mean() > vmapped_logp(initial_position).mean()
