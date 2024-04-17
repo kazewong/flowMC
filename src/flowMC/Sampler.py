@@ -131,7 +131,7 @@ class Sampler:
         )
         self.optim_state = self.optim.init(eqx.filter(self.nf_model, eqx.is_array))
 
-        self.strategies = [
+        default_strategies = [
             GlobalTuning(
                 n_dim=self.n_dim,
                 n_chains=self.n_chains,
@@ -161,7 +161,15 @@ class Sampler:
         if kwargs.get("strategies") is not None:
             kwargs_strategies = kwargs.get("strategies")
             assert isinstance(kwargs_strategies, list)
-            self.strategies = kwargs_strategies
+            self.strategies = []
+            for strategy in kwargs_strategies:
+                if isinstance(strategy, str):
+                    if strategy.lower() == "default":
+                        self.strategies += default_strategies
+                else:
+                    self.strategies.append(strategy)
+        else:
+            self.strategies = default_strategies 
 
         self.summary = {}
 

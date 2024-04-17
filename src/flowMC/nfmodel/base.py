@@ -166,6 +166,7 @@ class NFModel(eqx.Module):
             pbar = range(num_epochs)
 
         best_model = model = self
+        best_state = state
         best_loss = 1e9
         for epoch in pbar:
             # Use a separate PRNG key to permute image data during shuffling
