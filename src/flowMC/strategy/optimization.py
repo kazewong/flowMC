@@ -9,10 +9,11 @@ from flowMC.proposal.NF_proposal import NFProposal
 from flowMC.strategy.base import Strategy
 
 
-class Adam(Strategy):
+class optimization_Adam(Strategy):
 
     n_steps: int = 100
     learning_rate: float = 1e-2
+    noise_level: float = 10
 
     def __init__(
         self,
@@ -25,31 +26,6 @@ class Adam(Strategy):
                     setattr(self, key, value)
 
         self.solver = optax.adam(learning_rate=self.learning_rate)
-
-    def _single_optimize(
-        self,
-        loss_fn: Callable,
-        initial_position: Float[Array, " n_dim"],
-    ) -> Float[Array, " n_dim"]:
-
-        opt_state = self.solver.init(initial_position)
-        grad_fn = jax.jit(jax.grad(loss_fn))
-
-        (params, opt_state, _), _ = jax.lax.scan(
-            self._kernel,
-            (initial_position, opt_state, grad_fn),
-            jnp.arange(self.n_steps),
-        )
-
-        return params  # type: ignore
-
-    def _kernel(self, carry, data):
-        params, opt_state, grad_fn = carry
-
-        grad = grad_fn(params)
-        updates, opt_state = self.solver.update(grad, opt_state, params)
-        params = optax.apply_updates(params, updates)
-        return (params, opt_state, grad_fn), None
 
     def __call__(
         self,
@@ -64,8 +40,36 @@ class Adam(Strategy):
         def loss_fn(params: Float[Array, " n_dim"]) -> Float:
             return -local_sampler.logpdf(params, data)
 
-        optimized_positions = jax.vmap(self._single_optimize, in_axes=(None, 0))(
-            loss_fn, initial_position
+        grad_fn = jax.jit(jax.grad(loss_fn))
+
+        def _kernel(carry, data):
+            key, params, opt_state = carry
+
+            key, subkey = jax.random.split(key)
+            grad = grad_fn(params) * (1 + jax.random.normal(subkey) * self.noise_level)
+            updates, opt_state = self.solver.update(grad, opt_state, params)
+            params = optax.apply_updates(params, updates)
+            return (key, params, opt_state), None
+
+        def _single_optimize(
+            key: PRNGKeyArray,
+            initial_position: Float[Array, " n_dim"],
+        ) -> Float[Array, " n_dim"]:
+
+            opt_state = self.solver.init(initial_position)
+
+            (key, params, opt_state), _ = jax.lax.scan(
+                _kernel,
+                (key, initial_position, opt_state),
+                jnp.arange(self.n_steps),
+            )
+
+            return params  # type: ignore
+
+        rng_key, subkey = jax.random.split(rng_key)
+        keys = jax.random.split(subkey, initial_position.shape[0])
+        optimized_positions = jax.vmap(_single_optimize, in_axes=(0, 0))(
+            keys, initial_position
         )
 
         return rng_key, optimized_positions, local_sampler, global_sampler, data
