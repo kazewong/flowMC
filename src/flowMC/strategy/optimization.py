@@ -11,6 +11,12 @@ from flowMC.strategy.base import Strategy
 
 class optimization_Adam(Strategy):
 
+    """
+    Optimize a set of chains using Adam optimization.
+    Note that if the posterior can go to infinity, this optimization scheme is likely to return NaNs.
+    
+    """
+
     n_steps: int = 100
     learning_rate: float = 1e-2
     noise_level: float = 10
@@ -29,7 +35,9 @@ class optimization_Adam(Strategy):
                 if not key.startswith("__"):
                     setattr(self, key, value)
 
-        self.solver = optax.adam(learning_rate=self.learning_rate)
+        self.solver = optax.chain(
+            optax.adam(learning_rate=self.learning_rate),
+        )
 
     def __call__(
         self,
@@ -83,6 +91,9 @@ class optimization_Adam(Strategy):
         summary["final_positions"] = optimized_positions
         summary["final_log_prob"] = local_sampler.logpdf_vmap(optimized_positions, data)
 
+        if jnp.isinf(summary['final_log_prob']).any() or jnp.isnan(summary['final_log_prob']).any():
+            print("Warning: Optimization accessed infinite or NaN log-probabilities.")
+            
         return rng_key, optimized_positions, local_sampler, global_sampler, summary
 
 
