@@ -26,6 +26,7 @@ class optimization_Adam(Strategy):
     n_steps: int = 100
     learning_rate: float = 1e-2
     noise_level: float = 10
+    bounds: Float[Array, "n_dim 2"] = jnp.array([[-jnp.inf, jnp.inf]])
 
     @property
     def __name__(self):
@@ -33,6 +34,7 @@ class optimization_Adam(Strategy):
 
     def __init__(
         self,
+        bounds: Float[Array, "n_dim 2"] = jnp.array([[-jnp.inf, jnp.inf]]),
         **kwargs,
     ):
         class_keys = list(self.__class__.__annotations__.keys())
@@ -44,6 +46,8 @@ class optimization_Adam(Strategy):
         self.solver = optax.chain(
             optax.adam(learning_rate=self.learning_rate),
         )
+
+        self.bounds = bounds
 
     def __call__(
         self,
@@ -67,6 +71,7 @@ class optimization_Adam(Strategy):
             grad = grad_fn(params) * (1 + jax.random.normal(subkey) * self.noise_level)
             updates, opt_state = self.solver.update(grad, opt_state, params)
             params = optax.apply_updates(params, updates)
+            params = optax.projections.projection_box(params, self.bounds[:, 0], self.bounds[:, 1])
             return (key, params, opt_state), None
 
         def _single_optimize(
