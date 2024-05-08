@@ -388,3 +388,46 @@ class Sampler:
         """
         with open(path, "wb") as f:
             pickle.dump(self.summary, f)
+
+    def print_summary(self) -> None:
+        """
+        Print summary to the screen about log probabilities and local/global acceptance rates.
+        """
+        train_summary = self.get_sampler_state(training=True)
+        production_summary = self.get_sampler_state(training=False)
+
+        training_log_prob = train_summary["log_prob"]
+        training_local_acceptance = train_summary["local_accs"]
+        training_global_acceptance = train_summary["global_accs"]
+        training_loss = train_summary["loss_vals"]
+
+        production_log_prob = production_summary["log_prob"]
+        production_local_acceptance = production_summary["local_accs"]
+        production_global_acceptance = production_summary["global_accs"]
+
+        print("Training summary")
+        print("=" * 10)
+        print(
+            f"Log probability: {training_log_prob.mean():.3f} +/- {training_log_prob.std():.3f}"
+        )
+        print(
+            f"Local acceptance: {training_local_acceptance.mean():.3f} +/- {training_local_acceptance.std():.3f}"
+        )
+        print(
+            f"Global acceptance: {training_global_acceptance.mean():.3f} +/- {training_global_acceptance.std():.3f}"
+        )
+        print(
+            f"Max loss: {training_loss.max():.3f}, Min loss: {training_loss.min():.3f}"
+        )
+
+        print("Production summary")
+        print("=" * 10)
+        print(
+            f"Log probability: {production_log_prob.mean():.3f} +/- {production_log_prob.std():.3f}"
+        )
+        print(
+            f"Local acceptance: {production_local_acceptance.mean():.3f} +/- {production_local_acceptance.std():.3f}"
+        )
+        print(
+            f"Global acceptance: {production_global_acceptance.mean():.3f} +/- {production_global_acceptance.std():.3f}"
+        )
