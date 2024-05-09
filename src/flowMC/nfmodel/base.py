@@ -201,9 +201,9 @@ class NFModel(eqx.Module):
             eqx.Module: Model with parameters converted to the given precision.
         """
 
-        precisions_dict  = {"bfloat16": jnp.bfloat16, "float32": jnp.float32, "float64": jnp.float64}
+        precisions_dict  = {"float16": jnp.float16, "bfloat16": jnp.bfloat16, "float32": jnp.float32, "float64": jnp.float64}
         try:
-            precision = precisions_dict[precision]
+            precision = precisions_dict[precision.lower()]
         except KeyError:
             raise ValueError(f"Precision {precision} not supported. Choose from {precisions_dict.keys()}")
         dynamic_model, static_model = eqx.partition(self, eqx.is_array)
