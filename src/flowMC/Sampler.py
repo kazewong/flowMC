@@ -271,7 +271,7 @@ class Sampler:
         Args:
             path (str): Path to save the normalizing flow.
         """
-        self.nf_model.load_model(path)
+        self.nf_model = self.nf_model.load_model(path)
 
     def reset(self):
         """
