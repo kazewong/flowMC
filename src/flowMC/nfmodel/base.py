@@ -194,6 +194,9 @@ class NFModel(eqx.Module):
     def to_precision(self, precision: str = "float32"):
         """Convert all parameters to a given precision.
 
+        !!! warning
+            This function is **experimental** and may change in the future.
+
         Args:
             precision (str): Precision to convert to.
 
