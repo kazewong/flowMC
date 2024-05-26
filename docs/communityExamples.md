@@ -10,3 +10,4 @@ If you find flowMC useful, please consider contributing your example to this pag
 - [jim - A JAX-based gravitational-wave inference toolkit](https://github.com/kazewong/jim)
 - [Bayeux - Stitching together models and samplers](https://github.com/jax-ml/bayeux)
   - [Colab example](https://colab.research.google.com/drive/1-PhneVVik5GUq6w2HlKOsqvus13ZLaBH?usp=sharing)
+- [Markovian Flow Matching: Accelerating MCMC with Continuous Normalizing Flows](https://arxiv.org/pdf/2405.14392)
