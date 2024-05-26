@@ -191,6 +191,28 @@ class NFModel(eqx.Module):
 
         return rng, best_model, best_state, loss_values
 
+    def to_precision(self, precision: str = "float32"):
+        """Convert all parameters to a given precision.
+
+        !!! warning
+            This function is **experimental** and may change in the future.
+
+        Args:
+            precision (str): Precision to convert to.
+
+        Returns:
+            eqx.Module: Model with parameters converted to the given precision.
+        """
+
+        precisions_dict  = {"float16": jnp.float16, "bfloat16": jnp.bfloat16, "float32": jnp.float32, "float64": jnp.float64}
+        try:
+            precision_format = precisions_dict[precision.lower()]
+        except KeyError:
+            raise ValueError(f"Precision {precision} not supported. Choose from {precisions_dict.keys()}")
+        dynamic_model, static_model = eqx.partition(self, eqx.is_array)
+        dynamic_model = jax.tree.map(lambda x: x.astype(precision_format), dynamic_model)
+        return eqx.combine(dynamic_model, static_model)
+
 
 class Bijection(eqx.Module):
     """
