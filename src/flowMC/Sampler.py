@@ -127,7 +127,7 @@ class Sampler:
         self.likelihood_vec = self.local_sampler.logpdf_vmap
 
         self.optim = optax.chain(
-            optax.clip(1.0), optax.adam(self.learning_rate, self.momentum)
+            optax.clip(1.0), optax.adamw(self.learning_rate, self.momentum), optax.ema(0.999)
         )
         self.optim_state = self.optim.init(eqx.filter(self.nf_model, eqx.is_array))
 
@@ -271,7 +271,7 @@ class Sampler:
         Args:
             path (str): Path to save the normalizing flow.
         """
-        self.nf_model = self.nf_model.load_model(path)
+        self.global_sampler.model = self.nf_model.load_model(path)
 
     def reset(self):
         """

@@ -77,7 +77,7 @@ class NFModel(eqx.Module):
     def save_model(self, path: str):
         eqx.tree_serialise_leaves(path + ".eqx", self)
 
-    def load_model(self, path: str):
+    def load_model(self, path: str) -> Self:
         return eqx.tree_deserialise_leaves(path + ".eqx", self)
 
     @eqx.filter_value_and_grad
