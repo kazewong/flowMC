@@ -6,7 +6,6 @@ from scipy.stats import norm
 from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
 from flowMC.proposal.Gaussian_random_walk import GaussianRandomWalk
 from flowMC.Sampler import Sampler
-# from flowMC.utils.PRNG_keys import initialize_rng_keys
 from flowMC.utils.PythonFunctionWrap import wrap_python_log_prob_fn
 
 """
