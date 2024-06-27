@@ -1,62 +1,96 @@
+import os
+
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
-# from flowMC.sampler.Sampler import Sampler
-from jaxtyping import Array, Float
+
+from flowMC import Sampler
 
 
-def plot_summary(sampler: object, training: bool = False, **plotkwargs) -> None:
+def plot_summary(sampler: Sampler, **plotkwargs) -> None:
     """
     Create plots of the most important quantities in the summary.
 
     Args:
         training (bool, optional): If True, plot training quantities. If False, plot production quantities. Defaults to False.
     """
-    
-    # Choose the dataset
-    data = sampler.get_sampler_state(training=training)
-    # TODO add loss values in plotting
     keys = ["local_accs", "global_accs", "log_prob"]
-    if sampler.track_gelman_rubin:
-        keys.append("gelman_rubin")
-    
+
     # Check if outdir is property of sampler
     if hasattr(sampler, "outdir"):
         outdir = sampler.outdir
     else:
         outdir = "./outdir/"
-    
-    for key in keys:
-        if training:
-            which = "training"
-        else:
-            which = "production"
-        _single_plot(data, key, which, outdir=outdir, **plotkwargs)
-            
-def _single_plot(data: dict, name: str, which: str = "training", outdir: str = "./outdir/", **plotkwargs):
-    """
-    Create a single plot of a quantity in the summary.
 
-    Args:
-        data (dict): Dictionary with the summary data.
-        name (str): Name of the quantity to plot.
-        which (str, optional): Name of this summary dict. Defaults to "training".
-    """
+    if outdir[-1] != "/":
+        outdir += "/"
+
+    os.makedirs(outdir, exist_ok=True)
+
+    training_sampler_state = sampler.get_sampler_state(training=True)
+
+    _loss_val_plot(training_sampler_state["loss_vals"], outdir=outdir, **plotkwargs)
+
+    production_sampler_state = sampler.get_sampler_state(training=False)
+
+    for key in keys:
+        training_data = training_sampler_state[key]
+        production_data = production_sampler_state[key]
+        _stacked_plot(
+            training_data,
+            production_data,
+            key,
+            outdir=outdir,
+            **plotkwargs,
+        )
+
+
+def _stacked_plot(
+    training_data: dict,
+    production_data: dict,
+    name: str,
+    outdir: str = "./outdir/",
+    **plotkwargs,
+):
+    training_data_mean = jnp.mean(training_data, axis=0)
+    production_data_mean = jnp.mean(production_data, axis=0)
+    x_training = list(range(1, len(training_data_mean) + 1))
+    x_production = list(range(1, len(production_data_mean) + 1))
+
+    figsize = plotkwargs.get("figsize", (15, 10))
+    alpha = plotkwargs.get("alpha", 1)
+    eps = 1e-3
+
+    fig, ax = plt.subplots(2, 1, figsize=figsize, sharex=True, sharey=True)
+    ax[0].plot(
+        x_training, training_data_mean, linestyle="-", color="#3498DB", alpha=alpha
+    )
+    ax[1].plot(
+        x_production, production_data_mean, linestyle="-", color="#3498DB", alpha=alpha
+    )
+    ax[0].set_ylabel(f"{name} (training)")
+    ax[1].set_ylabel(f"{name} (production)")
+    plt.xlabel("Iteration")
+    if "acc" in name:
+        plt.ylim(0 - eps, 1 + eps)
+    plt.savefig(f"{outdir}{name}.png", bbox_inches="tight")
+
+
+def _loss_val_plot(
+    data,
+    outdir: str = "./outdir/",
+    **plotkwargs,
+):
     # Get plot kwargs
     figsize = plotkwargs["figsize"] if "figsize" in plotkwargs else (12, 8)
     alpha = plotkwargs["alpha"] if "alpha" in plotkwargs else 1
-    eps = 1e-3
-    
-    # Prepare plot data
-    plotdata = data[name]        
-    mean = jnp.mean(plotdata, axis=0)
-    x = [i+1 for i in range(len(mean))]
-    
+
+    data_to_plot = data.reshape(-1)
+    x = list(range(1, len(data_to_plot) + 1))
+
     # Plot
     plt.figure(figsize=figsize)
-    plt.plot(x, mean, linestyle="-", color="blue", alpha=alpha)
+    plt.plot(x, data_to_plot, linestyle="-", color="#3498DB", alpha=alpha)
     plt.xlabel("Iteration")
-    plt.ylabel(f"{name} ({which})")
+    plt.ylabel("loss")
     # Extras for some variables:
-    if "acc" in name:
-        plt.ylim(0-eps, 1+eps)
-    plt.savefig(f"{outdir}{name}_{which}.png", bbox_inches='tight')
+    plt.savefig(f"{outdir}loss.png", bbox_inches="tight")
