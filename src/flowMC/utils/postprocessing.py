@@ -1,5 +1,3 @@
-import os
-
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 
@@ -23,8 +21,6 @@ def plot_summary(sampler: Sampler, **plotkwargs) -> None:
 
     if outdir[-1] != "/":
         outdir += "/"
-
-    os.makedirs(outdir, exist_ok=True)
 
     training_sampler_state = sampler.get_sampler_state(training=True)
 
