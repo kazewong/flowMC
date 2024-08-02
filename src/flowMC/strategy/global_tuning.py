@@ -220,7 +220,6 @@ class GlobalSampling(Strategy):
         **kwargs,
     ):
         class_keys = list(self.__class__.__annotations__.keys())
-        print(class_keys)
         for key, value in kwargs.items():
             if key in class_keys:
                 if not key.startswith("__"):
