@@ -1,6 +1,5 @@
-import copy
 from abc import abstractmethod
-from typing import Optional, overload
+from typing import Optional
 
 import equinox as eqx
 import jax
@@ -86,7 +85,7 @@ class NFModel(eqx.Module):
 
     @eqx.filter_jit
     def train_step(
-        self: Self,
+        model: Self,
         x: Float[Array, "n_batch n_dim"],
         optim: optax.GradientTransformation,
         state: optax.OptState,
@@ -103,9 +102,8 @@ class NFModel(eqx.Module):
             model (eqx.Model): Updated model.
             opt_state (optax.OptState): Updated optimizer state.
         """
-        model = self
         loss, grads = model.loss_fn(x)
-        updates, state = optim.update(grads, state)
+        updates, state = optim.update(grads, state, model) # type: ignore
         model = eqx.apply_updates(model, updates)
         return loss, model, state
 
