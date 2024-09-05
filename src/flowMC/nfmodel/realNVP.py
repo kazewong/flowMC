@@ -1,3 +1,6 @@
+# Copyright (c) 2022 Kaze Wong & contributor
+
+
 from functools import partial
 from typing import List, Tuple
 

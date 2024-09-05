@@ -1,3 +1,6 @@
+# Copyright (c) 2022 Kaze Wong & contributor
+
+
 import jax
 import jax.numpy as jnp
 

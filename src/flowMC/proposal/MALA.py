@@ -1,3 +1,6 @@
+# Copyright (c) 2022 Kaze Wong & contributor
+
+
 from functools import partialmethod
 from typing import Callable
 

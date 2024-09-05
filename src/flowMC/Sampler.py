@@ -1,3 +1,6 @@
+# Copyright (c) 2022 Kaze Wong & contributor
+
+
 import pickle
 
 import equinox as eqx

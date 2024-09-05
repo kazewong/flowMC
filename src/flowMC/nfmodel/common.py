@@ -1,3 +1,6 @@
+# Copyright (c) 2022 Kaze Wong & contributor
+
+
 from typing import Callable, List, Tuple
 
 import equinox as eqx

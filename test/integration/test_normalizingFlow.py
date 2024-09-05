@@ -1,3 +1,6 @@
+# Copyright (c) 2022 Kaze Wong & contributor
+
+
 import equinox as eqx  # Equinox utilities
 import jax
 import jax.numpy as jnp  # JAX NumPy

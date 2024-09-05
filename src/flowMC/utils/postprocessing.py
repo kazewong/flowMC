@@ -1,3 +1,6 @@
+# Copyright (c) 2022 Kaze Wong & contributor
+
+
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 

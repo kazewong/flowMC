@@ -1,3 +1,6 @@
+# Copyright (c) 2022 Kaze Wong & contributor
+
+
 from abc import abstractmethod
 from typing import Optional
 from typing_extensions import Self

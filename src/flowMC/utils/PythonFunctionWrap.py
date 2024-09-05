@@ -1,3 +1,6 @@
+# Copyright (c) 2022 Kaze Wong & contributor
+
+
 import warnings
 from functools import wraps
 from typing import Any, Callable, Dict, Iterable, List, NamedTuple, Tuple, Union
