@@ -16,7 +16,11 @@ class NFProposal(ProposalBase):
     model: NFModel
 
     def __init__(
-        self, logpdf: Callable, jit: bool, model: NFModel, n_flow_sample: int = 10000
+        self,
+        logpdf: Callable,
+        jit: bool,
+        model: NFModel,
+        n_flow_sample: int = 10000,
     ):
         super().__init__(logpdf, jit)
         self.model = model
@@ -35,7 +39,10 @@ class NFProposal(ProposalBase):
         log_prob_nf_initial: Float[Array, "1"],
         log_prob_nf_proposal: Float[Array, "1"],
     ) -> tuple[
-        Float[Array, " n_dim"], Float[Array, "1"], Float[Array, "1"], Int[Array, "1"]
+        Float[Array, " n_dim"],
+        Float[Array, "1"],
+        Float[Array, "1"],
+        Int[Array, "1"],
     ]:
         rng_key, subkey = random.split(rng_key)
 
@@ -46,7 +53,9 @@ class NFProposal(ProposalBase):
         do_accept = uniform_random < ratio
         position = jnp.where(do_accept, proposal_position, initial_position)
         log_prob = jnp.where(do_accept, log_prob_proposal, log_prob_initial)
-        log_prob_nf = jnp.where(do_accept, log_prob_nf_proposal, log_prob_nf_initial)
+        log_prob_nf = jnp.where(
+            do_accept, log_prob_nf_proposal, log_prob_nf_initial
+        )
         return position, log_prob, log_prob_nf, do_accept
 
     def update(
@@ -127,8 +136,8 @@ class NFProposal(ProposalBase):
         log_prob_initial = self.logpdf_vmap(initial_position, data)[:, None]
         log_prob_nf_initial = self.model.log_prob(initial_position)[:, None]
 
-        proposal_position, log_prob_proposal, log_prob_nf_proposal = self.sample_flow(
-            subkeys[0], initial_position, data, n_steps
+        proposal_position, log_prob_proposal, log_prob_nf_proposal = (
+            self.sample_flow(subkeys[0], initial_position, data, n_steps)
         )
 
         state = (
@@ -201,7 +210,9 @@ class NFProposal(ProposalBase):
                     self.model.log_prob(proposal_position[i])
                 )
 
-            proposal_position = proposal_position.reshape(-1, n_dim)[:total_size]
+            proposal_position = proposal_position.reshape(-1, n_dim)[
+                :total_size
+            ]
             log_prob_proposal = log_prob_proposal.reshape(-1)[:total_size]
             log_prob_nf_proposal = log_prob_nf_proposal.reshape(-1)[:total_size]
 

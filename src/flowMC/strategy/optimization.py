@@ -1,8 +1,9 @@
+from typing import Callable
+
 import jax
 import jax.numpy as jnp
 import optax
 from jaxtyping import Array, Float, PRNGKeyArray, PyTree
-from typing import Callable
 
 from flowMC.proposal.base import ProposalBase
 from flowMC.proposal.NF_proposal import NFProposal
@@ -57,7 +58,11 @@ class optimization_Adam(Strategy):
         initial_position: Float[Array, " n_chain n_dim"],
         data: dict,
     ) -> tuple[
-        PRNGKeyArray, Float[Array, " n_chain n_dim"], ProposalBase, NFProposal, PyTree
+        PRNGKeyArray,
+        Float[Array, " n_chain n_dim"],
+        ProposalBase,
+        NFProposal,
+        PyTree,
     ]:
         def loss_fn(params: Float[Array, " n_dim"]) -> Float:
             return -local_sampler.logpdf(params, data)
@@ -68,17 +73,20 @@ class optimization_Adam(Strategy):
             key, params, opt_state = carry
 
             key, subkey = jax.random.split(key)
-            grad = grad_fn(params) * (1 + jax.random.normal(subkey) * self.noise_level)
+            grad = grad_fn(params) * (
+                1 + jax.random.normal(subkey) * self.noise_level
+            )
             updates, opt_state = self.solver.update(grad, opt_state, params)
             params = optax.apply_updates(params, updates)
-            params = optax.projections.projection_box(params, self.bounds[:, 0], self.bounds[:, 1])
+            params = optax.projections.projection_box(
+                params, self.bounds[:, 0], self.bounds[:, 1]
+            )
             return (key, params, opt_state), None
 
         def _single_optimize(
             key: PRNGKeyArray,
             initial_position: Float[Array, " n_dim"],
         ) -> Float[Array, " n_dim"]:
-
             opt_state = self.solver.init(initial_position)
 
             (key, params, opt_state), _ = jax.lax.scan(
@@ -98,17 +106,29 @@ class optimization_Adam(Strategy):
 
         summary = {}
         summary["initial_positions"] = initial_position
-        summary["initial_log_prob"] = local_sampler.logpdf_vmap(initial_position, data)
+        summary["initial_log_prob"] = local_sampler.logpdf_vmap(
+            initial_position, data
+        )
         summary["final_positions"] = optimized_positions
-        summary["final_log_prob"] = local_sampler.logpdf_vmap(optimized_positions, data)
+        summary["final_log_prob"] = local_sampler.logpdf_vmap(
+            optimized_positions, data
+        )
 
         if (
             jnp.isinf(summary["final_log_prob"]).any()
             or jnp.isnan(summary["final_log_prob"]).any()
         ):
-            print("Warning: Optimization accessed infinite or NaN log-probabilities.")
+            print(
+                "Warning: Optimization accessed infinite or NaN log-probabilities."
+            )
 
-        return rng_key, optimized_positions, local_sampler, global_sampler, summary
+        return (
+            rng_key,
+            optimized_positions,
+            local_sampler,
+            global_sampler,
+            summary,
+        )
 
     def optimize(
         self,
@@ -133,7 +153,9 @@ class optimization_Adam(Strategy):
             key, params, opt_state = carry
 
             key, subkey = jax.random.split(key)
-            grad = grad_fn(params) * (1 + jax.random.normal(subkey) * self.noise_level)
+            grad = grad_fn(params) * (
+                1 + jax.random.normal(subkey) * self.noise_level
+            )
             updates, opt_state = self.solver.update(grad, opt_state, params)
             params = optax.apply_updates(params, updates)
             return (key, params, opt_state), None
@@ -142,7 +164,6 @@ class optimization_Adam(Strategy):
             key: PRNGKeyArray,
             initial_position: Float[Array, " n_dim"],
         ) -> Float[Array, " n_dim"]:
-
             opt_state = self.solver.init(initial_position)
 
             (key, params, opt_state), _ = jax.lax.scan(
@@ -162,20 +183,26 @@ class optimization_Adam(Strategy):
 
         summary = {}
         summary["initial_positions"] = initial_position
-        summary["initial_log_prob"] = jax.jit(jax.vmap(objective))(initial_position)
+        summary["initial_log_prob"] = jax.jit(jax.vmap(objective))(
+            initial_position
+        )
         summary["final_positions"] = optimized_positions
-        summary["final_log_prob"] = jax.jit(jax.vmap(objective))(optimized_positions)
+        summary["final_log_prob"] = jax.jit(jax.vmap(objective))(
+            optimized_positions
+        )
 
         if (
             jnp.isinf(summary["final_log_prob"]).any()
             or jnp.isnan(summary["final_log_prob"]).any()
         ):
-            print("Warning: Optimization accessed infinite or NaN log-probabilities.")
+            print(
+                "Warning: Optimization accessed infinite or NaN log-probabilities."
+            )
 
         return rng_key, optimized_positions, summary
 
-class Evosax_CMA_ES(Strategy):
 
+class Evosax_CMA_ES(Strategy):
     def __init__(
         self,
         **kwargs,

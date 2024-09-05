@@ -34,14 +34,21 @@ class TestStrategies:
         Adam_obj = optimization_Adam(n_steps=10000, learning_rate=1e-2)
 
         key, subkey = jax.random.split(key)
-        initial_position = jax.random.normal(subkey, shape=(n_chains, n_dim)) * 1 + 10
+        initial_position = (
+            jax.random.normal(subkey, shape=(n_chains, n_dim)) * 1 + 10
+        )
 
         key, subkey = jax.random.split(key)
 
-        key, optimized_positions, local_sampler, global_sampler, data = Adam_obj(
-            subkey, local_sampler, global_sampler, initial_position, {}
+        key, optimized_positions, local_sampler, global_sampler, data = (
+            Adam_obj(
+                subkey, local_sampler, global_sampler, initial_position, {}
+            )
         )
 
         vmapped_logp = jax.vmap(log_posterior)
 
-        assert vmapped_logp(optimized_positions).mean() > vmapped_logp(initial_position).mean()
+        assert (
+            vmapped_logp(optimized_positions).mean()
+            > vmapped_logp(initial_position).mean()
+        )

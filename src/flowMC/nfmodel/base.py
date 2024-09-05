@@ -1,5 +1,6 @@
 from abc import abstractmethod
 from typing import Optional
+from typing_extensions import Self
 
 import equinox as eqx
 import jax
@@ -7,7 +8,6 @@ import jax.numpy as jnp
 import optax
 from jaxtyping import Array, Float, PRNGKeyArray
 from tqdm import tqdm, trange
-from typing_extensions import Self
 
 
 class NFModel(eqx.Module):
@@ -21,7 +21,10 @@ class NFModel(eqx.Module):
     def __init__(self):
         raise NotImplementedError
 
-    def __call__(self, x: Float[Array, "n_dim"]) -> tuple[Float[Array, "n_dim"], Float]:
+    def __call__(
+        self,
+        x: Float[Array, "n_dim"],  # noqa: F821
+    ) -> tuple[Float[Array, "n_dim"], Float]:  # noqa: F821
         """
         Forward pass of the model.
 
@@ -34,7 +37,7 @@ class NFModel(eqx.Module):
         return self.forward(x)
 
     @abstractmethod
-    def log_prob(self, x: Float[Array, "n_dim"]) -> Float:
+    def log_prob(self, x: Float[Array, "n_dim"]) -> Float:  # noqa: F821
         return NotImplemented
 
     @abstractmethod
@@ -43,8 +46,10 @@ class NFModel(eqx.Module):
 
     @abstractmethod
     def forward(
-        self, x: Float[Array, "n_dim"], key: Optional[PRNGKeyArray] = None
-    ) -> tuple[Float[Array, "n_dim"], Float]:
+        self,
+        x: Float[Array, "n_dim"],  # noqa: F821
+        key: Optional[PRNGKeyArray] = None,
+    ) -> tuple[Float[Array, "n_dim"], Float]:  # noqa: F821
         """
         Forward pass of the model.
 
@@ -57,7 +62,10 @@ class NFModel(eqx.Module):
         return NotImplemented
 
     @abstractmethod
-    def inverse(self, x: Float[Array, "n_dim"]) -> tuple[Float[Array, "n_dim"], Float]:
+    def inverse(
+        self,
+        x: Float[Array, "n_dim"],  # noqa: F821
+    ) -> tuple[Float[Array, "n_dim"], Float]:  # noqa: F821
         """
         Inverse pass of the model.
 
@@ -103,7 +111,7 @@ class NFModel(eqx.Module):
             opt_state (optax.OptState): Updated optimizer state.
         """
         loss, grads = model.loss_fn(x)
-        updates, state = optim.update(grads, state, model) # type: ignore
+        updates, state = optim.update(grads, state, model)  # type: ignore
         model = eqx.apply_updates(model, updates)
         return loss, model, state
 
@@ -122,7 +130,9 @@ class NFModel(eqx.Module):
         if steps_per_epoch > 0:
             perms = jax.random.permutation(rng, train_ds_size)
 
-            perms = perms[: steps_per_epoch * batch_size]  # skip incomplete batch
+            perms = perms[
+                : steps_per_epoch * batch_size
+            ]  # skip incomplete batch
             perms = perms.reshape((steps_per_epoch, batch_size))
             for perm in perms:
                 batch = data[perm, ...]
@@ -159,7 +169,9 @@ class NFModel(eqx.Module):
         """
         loss_values = jnp.zeros(num_epochs)
         if verbose:
-            pbar = trange(num_epochs, desc="Training NF", miniters=int(num_epochs / 10))
+            pbar = trange(
+                num_epochs, desc="Training NF", miniters=int(num_epochs / 10)
+            )
         else:
             pbar = range(num_epochs)
 
@@ -182,10 +194,14 @@ class NFModel(eqx.Module):
                 assert isinstance(pbar, tqdm)
                 if num_epochs > 10:
                     if epoch % int(num_epochs / 10) == 0:
-                        pbar.set_description(f"Training NF, current loss: {value:.3f}")
+                        pbar.set_description(
+                            f"Training NF, current loss: {value:.3f}"
+                        )
                 else:
                     if epoch == num_epochs:
-                        pbar.set_description(f"Training NF, current loss: {value:.3f}")
+                        pbar.set_description(
+                            f"Training NF, current loss: {value:.3f}"
+                        )
 
         return rng, best_model, best_state, loss_values
 
@@ -202,13 +218,22 @@ class NFModel(eqx.Module):
             eqx.Module: Model with parameters converted to the given precision.
         """
 
-        precisions_dict  = {"float16": jnp.float16, "bfloat16": jnp.bfloat16, "float32": jnp.float32, "float64": jnp.float64}
+        precisions_dict = {
+            "float16": jnp.float16,
+            "bfloat16": jnp.bfloat16,
+            "float32": jnp.float32,
+            "float64": jnp.float64,
+        }
         try:
             precision_format = precisions_dict[precision.lower()]
         except KeyError:
-            raise ValueError(f"Precision {precision} not supported. Choose from {precisions_dict.keys()}")
+            raise ValueError(
+                f"Precision {precision} not supported. Choose from {precisions_dict.keys()}"
+            )
         dynamic_model, static_model = eqx.partition(self, eqx.is_array)
-        dynamic_model = jax.tree.map(lambda x: x.astype(precision_format), dynamic_model)
+        dynamic_model = jax.tree.map(
+            lambda x: x.astype(precision_format), dynamic_model
+        )
         return eqx.combine(dynamic_model, static_model)
 
 

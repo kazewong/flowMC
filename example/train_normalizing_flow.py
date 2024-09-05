@@ -7,6 +7,7 @@ from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
 from flowMC.nfmodel.utils import *
 from flowMC.nfmodel.utils import make_training_loop
 
+
 """
 Training a Masked Coupling RQSpline flow to fit the dual moons dataset.
 """
@@ -37,6 +38,8 @@ model = MaskedCouplingRQSpline(
 optim = optax.adam(learning_rate)
 train_flow, _, _ = make_training_loop(optim)
 
-key, model, loss = train_flow(rng, model, data, num_epochs, batch_size, verbose=True)
+key, model, loss = train_flow(
+    rng, model, data, num_epochs, batch_size, verbose=True
+)
 
 nf_samples = model.sample(jax.random.PRNGKey(124098), 5000)

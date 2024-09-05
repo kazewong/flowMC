@@ -30,7 +30,9 @@ class MALA(ProposalBase):
         step_size: Float,
         use_autotune=False,
     ):
-        super().__init__(logpdf, jit, step_size=step_size, use_autotune=use_autotune)
+        super().__init__(
+            logpdf, jit, step_size=step_size, use_autotune=use_autotune
+        )
         self.step_size = step_size
         self.logpdf: Callable = logpdf
         self.use_autotune: Bool = use_autotune
@@ -41,14 +43,20 @@ class MALA(ProposalBase):
         this_key: PRNGKeyArray,
     ) -> tuple[
         tuple[Float[Array, " n_dim"], float, dict],
-        tuple[Float[Array, " n_dim"], Float[Array, "1"], Float[Array, " n_dim"]],
+        tuple[
+            Float[Array, " n_dim"], Float[Array, "1"], Float[Array, " n_dim"]
+        ],
     ]:
         print("Compiling MALA body")
         this_position, dt, data = carry
         dt2 = dt * dt
-        this_log_prob, this_d_log = jax.value_and_grad(self.logpdf)(this_position, data)
+        this_log_prob, this_d_log = jax.value_and_grad(self.logpdf)(
+            this_position, data
+        )
         proposal = this_position + jnp.dot(dt2, this_d_log) / 2
-        proposal += jnp.dot(dt, jax.random.normal(this_key, shape=this_position.shape))
+        proposal += jnp.dot(
+            dt, jax.random.normal(this_key, shape=this_position.shape)
+        )
         return (proposal, dt, data), (proposal, this_log_prob, this_d_log)
 
     def kernel(

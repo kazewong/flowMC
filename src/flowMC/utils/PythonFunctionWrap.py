@@ -1,7 +1,7 @@
 import warnings
 from functools import wraps
-from typing import (Any, Callable, Dict, Iterable, List, NamedTuple, Tuple,
-                    Union)
+from typing import Any, Callable, Dict, Iterable, List, NamedTuple, Tuple, Union
+
 
 Array = Any
 PyTree = Union[Array, Iterable[Array], Dict[Any, Array], NamedTuple]
@@ -47,10 +47,14 @@ def wrap_python_log_prob_fn(python_log_prob_fn: Callable[..., Array]):
             def eval_one(x):
                 return python_log_prob_fn(unravel(x))
 
-        result_shape = jax.ShapeDtypeStruct((flat_params.shape[0],), flat_params.dtype)
+        result_shape = jax.ShapeDtypeStruct(
+            (flat_params.shape[0],), flat_params.dtype
+        )
 
         result = host_callback.call(
-            lambda y: np.stack([eval_one({"params": x, "data": data}) for x in y]),
+            lambda y: np.stack(
+                [eval_one({"params": x, "data": data}) for x in y]
+            ),
             flat_params,
             result_shape=result_shape,
         )
@@ -105,7 +109,9 @@ def _ravel_inner(lst: List[Array]) -> Tuple[Array, UnravelFn]:
 
         def unravel(arr: Array) -> PyTree:
             chunks = jnp.split(arr, indices[:-1])
-            return [chunk.reshape(shape) for chunk, shape in zip(chunks, shapes)]
+            return [
+                chunk.reshape(shape) for chunk, shape in zip(chunks, shapes)
+            ]
 
         def ravel(arg):
             return jnp.concatenate([jnp.ravel(e) for e in arg])

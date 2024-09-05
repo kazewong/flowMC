@@ -49,7 +49,7 @@ class ProposalBase:
                 .lower(
                     key,
                     jnp.ones((n_chains, n_dims)),
-                    jnp.ones((n_chains, )),
+                    jnp.ones((n_chains,)),
                     data,
                 )
                 .compile()
@@ -61,8 +61,18 @@ class ProposalBase:
                     (
                         key,
                         jnp.ones((n_chains, n_step, n_dims)),
-                        jnp.ones((n_chains, n_step, )),
-                        jnp.zeros((n_chains, n_step, )),
+                        jnp.ones(
+                            (
+                                n_chains,
+                                n_step,
+                            )
+                        ),
+                        jnp.zeros(
+                            (
+                                n_chains,
+                                n_step,
+                            )
+                        ),
                         data,
                     ),
                 )
@@ -71,11 +81,13 @@ class ProposalBase:
         else:
             print("jit is not requested, compiling only vmap functions...")
             key = jax.random.split(jax.random.PRNGKey(0), n_chains)
-            self.logpdf_vmap = self.logpdf_vmap(jnp.ones((n_chains, n_dims)), data)
+            self.logpdf_vmap = self.logpdf_vmap(
+                jnp.ones((n_chains, n_dims)), data
+            )
             self.kernel_vmap(
                 key,
                 jnp.ones((n_chains, n_dims)),
-                jnp.ones((n_chains, )),
+                jnp.ones((n_chains,)),
                 data,
             )
             self.update_vmap(
@@ -83,8 +95,18 @@ class ProposalBase:
                 (
                     key,
                     jnp.ones((n_chains, n_step, n_dims)),
-                    jnp.ones((n_chains, n_step, )),
-                    jnp.zeros((n_chains, n_step, )),
+                    jnp.ones(
+                        (
+                            n_chains,
+                            n_step,
+                        )
+                    ),
+                    jnp.zeros(
+                        (
+                            n_chains,
+                            n_step,
+                        )
+                    ),
                     data,
                 ),
             )
@@ -97,7 +119,9 @@ class ProposalBase:
         log_prob: Float[Array, "nstep 1"],
         data: PyTree,
     ) -> tuple[
-        Float[Array, "nstep  n_dim"], Float[Array, "nstep 1"], Int[Array, "n_step 1"]
+        Float[Array, "nstep  n_dim"],
+        Float[Array, "nstep 1"],
+        Int[Array, "n_step 1"],
     ]:
         """
         Kernel for one step in the proposal cycle.
@@ -146,7 +170,11 @@ class ProposalBase:
     def tree_flatten(self):
         children = ()
 
-        aux_data = {"logpdf": self.logpdf, "jit": self.jit, "kwargs": self.kwargs}
+        aux_data = {
+            "logpdf": self.logpdf,
+            "jit": self.jit,
+            "kwargs": self.kwargs,
+        }
         return (children, aux_data)
 
     @classmethod

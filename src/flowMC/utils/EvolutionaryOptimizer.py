@@ -40,12 +40,16 @@ class EvolutionaryOptimizer:
 
     def __init__(self, ndims, popsize=100, verbose=False):
         self.strategy = CMA_ES(num_dims=ndims, popsize=popsize, elite_ratio=0.5)
-        self.es_params = self.strategy.default_params.replace(clip_min=0, clip_max=1)
+        self.es_params = self.strategy.default_params.replace(
+            clip_min=0, clip_max=1
+        )
         self.verbose = verbose
         self.history = []
         self.state = None
 
-    def optimize(self, objective, bound, n_loops=100, seed=9527, keep_history_step=0):
+    def optimize(
+        self, objective, bound, n_loops=100, seed=9527, keep_history_step=0
+    ):
         """
         Optimize the objective function.
 
@@ -96,7 +100,9 @@ class EvolutionaryOptimizer:
                         f"Generation: {i}, Fitness: {self.state.best_fitness:.4f}"
                     )
 
-    def optimize_step(self, key: PRNGKeyArray, state, objective: callable, bound):
+    def optimize_step(
+        self, key: PRNGKeyArray, state, objective: callable, bound
+    ):
         key, subkey = jax.random.split(key)
         x, state = self.strategy.ask(subkey, state, self.es_params)
         theta = x * (bound[:, 1] - bound[:, 0]) + bound[:, 0]

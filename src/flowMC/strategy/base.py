@@ -11,7 +11,7 @@ class Strategy:
     Base class for strategies, which are basically wrapper blocks that modify the state of the sampler
 
     This is an abstract template that should not be directly used.
-    
+
     """
 
     @abstractmethod
@@ -21,7 +21,7 @@ class Strategy:
     @abstractmethod
     def __init__(self):
         raise NotImplementedError
-    
+
     @abstractmethod
     def __call__(
         self,

@@ -19,7 +19,7 @@ The code is open source under MIT license, and it is under active development.
 - Suit for problems with multi-modality.
 - Minimal tuning.
 
-# Installation 
+# Installation
 
 The simplest way to install the package is to do it through pip
 
@@ -55,7 +55,7 @@ Here is a list of packages we use in the main library
     * Jaxlib
     * equinox
 
-To visualize the inference results in the examples, we requrie the following packages in addtion to the above:
+To visualize the inference results in the examples, we require the following packages in addition to the above:
 
     * matplotlib
     * corner
@@ -99,11 +99,8 @@ If you used `flowMC` in your research, we would really appericiate it if you cou
 
 This will help `flowMC` getting more recognition, and the main benefit *for you* is this means the `flowMC` community will grow and it will be continuously improved. If you believe in the magic of open-source software, please support us by attributing our software in your work.
 
-
-`flowMC` is a Jax implementation of methods described in: 
+`flowMC` is a Jax implementation of methods described in:
 > *Efficient Bayesian Sampling Using Normalizing Flows to Assist Markov Chain Monte Carlo Methods* Gabrié M., Rotskoff G. M., Vanden-Eijnden E. - ICML INNF+ workshop 2021 - [pdf](https://openreview.net/pdf?id=mvtooHbjOwx)
 
 > *Adaptive Monte Carlo augmented with normalizing flows.*
 Gabrié M., Rotskoff G. M., Vanden-Eijnden E. - PNAS 2022 - [doi](https://www.pnas.org/doi/10.1073/pnas.2109420119), [arxiv](https://arxiv.org/abs/2105.12603)
-
- 

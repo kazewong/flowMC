@@ -24,7 +24,9 @@ def plot_summary(sampler: Sampler, **plotkwargs) -> None:
 
     training_sampler_state = sampler.get_sampler_state(training=True)
 
-    _loss_val_plot(training_sampler_state["loss_vals"], outdir=outdir, **plotkwargs)
+    _loss_val_plot(
+        training_sampler_state["loss_vals"], outdir=outdir, **plotkwargs
+    )
 
     production_sampler_state = sampler.get_sampler_state(training=False)
 
@@ -58,10 +60,18 @@ def _stacked_plot(
 
     fig, ax = plt.subplots(2, 1, figsize=figsize, sharex=True, sharey=True)
     ax[0].plot(
-        x_training, training_data_mean, linestyle="-", color="#3498DB", alpha=alpha
+        x_training,
+        training_data_mean,
+        linestyle="-",
+        color="#3498DB",
+        alpha=alpha,
     )
     ax[1].plot(
-        x_production, production_data_mean, linestyle="-", color="#3498DB", alpha=alpha
+        x_production,
+        production_data_mean,
+        linestyle="-",
+        color="#3498DB",
+        alpha=alpha,
     )
     ax[0].set_ylabel(f"{name} (training)")
     ax[1].set_ylabel(f"{name} (production)")

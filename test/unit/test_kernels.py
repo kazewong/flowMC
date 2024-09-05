@@ -29,14 +29,20 @@ class TestHMC:
         rng_key = jax.random.PRNGKey(42)
         rng_key, subkey = jax.random.split(rng_key)
 
-        initial_position = jax.random.normal(subkey, shape=(n_chains, n_dim)) * 1
+        initial_position = (
+            jax.random.normal(subkey, shape=(n_chains, n_dim)) * 1
+        )
         initial_PE = jax.vmap(HMC_obj.potential)(initial_position, None)
 
         # Test whether the HMC kernel is deterministic
 
         rng_key, subkey = jax.random.split(rng_key)
-        result1 = HMC_obj.kernel(subkey, initial_position[0], initial_PE[0], None)
-        result2 = HMC_obj.kernel(subkey, initial_position[0], initial_PE[0], None)
+        result1 = HMC_obj.kernel(
+            subkey, initial_position[0], initial_PE[0], None
+        )
+        result2 = HMC_obj.kernel(
+            subkey, initial_position[0], initial_PE[0], None
+        )
 
         assert jnp.allclose(result1[0], result2[0])
         assert result1[1] == result2[1]
@@ -56,7 +62,9 @@ class TestHMC:
 
         rng_key = jax.random.PRNGKey(42)
         rng_key, subkey = jax.random.split(rng_key)
-        initial_position = jax.random.normal(subkey, shape=(n_chains, n_dim)) * 1
+        initial_position = (
+            jax.random.normal(subkey, shape=(n_chains, n_dim)) * 1
+        )
         initial_PE = jax.vmap(HMC_obj.potential, in_axes=(0, None))(
             initial_position, None
         )
@@ -93,7 +101,9 @@ class TestHMC:
         rng_key = jax.random.PRNGKey(42)
         rng_key, subkey = jax.random.split(rng_key)
 
-        initial_position = jax.random.normal(subkey, shape=(n_chains, n_dim)) * 1
+        initial_position = (
+            jax.random.normal(subkey, shape=(n_chains, n_dim)) * 1
+        )
         initial_PE = -jax.vmap(HMC_obj.potential)(initial_position, None)
 
         rng_key, subkey = jax.random.split(rng_key)
@@ -116,7 +126,9 @@ class TestHMC:
         rng_key = jax.random.PRNGKey(42)
         rng_key, subkey = jax.random.split(rng_key)
 
-        initial_position = jax.random.normal(subkey, shape=(n_chains, n_dim)) * 1
+        initial_position = (
+            jax.random.normal(subkey, shape=(n_chains, n_dim)) * 1
+        )
         HMC_obj.precompilation(n_chains, n_dim, 10000, None)
 
         rng_key, subkey = jax.random.split(rng_key)
@@ -138,12 +150,18 @@ class TestMALA:
         rng_key = jax.random.PRNGKey(42)
         rng_key, subkey = jax.random.split(rng_key)
 
-        initial_position = jax.random.normal(subkey, shape=(n_chains, n_dim)) * 1
+        initial_position = (
+            jax.random.normal(subkey, shape=(n_chains, n_dim)) * 1
+        )
         initial_logp = log_posterior(initial_position, None)
 
         rng_key, subkey = jax.random.split(rng_key)
-        result1 = MALA_obj.kernel(subkey, initial_position[0], initial_logp, None)
-        result2 = MALA_obj.kernel(subkey, initial_position[0], initial_logp, None)
+        result1 = MALA_obj.kernel(
+            subkey, initial_position[0], initial_logp, None
+        )
+        result2 = MALA_obj.kernel(
+            subkey, initial_position[0], initial_logp, None
+        )
 
         assert jnp.allclose(result1[0], result2[0])
         assert result1[1] == result2[1]
@@ -159,12 +177,16 @@ class TestMALA:
         rng_key = jax.random.PRNGKey(42)
         rng_key, subkey = jax.random.split(rng_key)
 
-        initial_position = jax.random.normal(subkey, shape=(n_chains, n_dim)) * 1
+        initial_position = (
+            jax.random.normal(subkey, shape=(n_chains, n_dim)) * 1
+        )
         initial_logp = jax.vmap(log_posterior)(initial_position, None)
 
         rng_key, subkey = jax.random.split(rng_key)
         subkey = jax.random.split(subkey, n_chains)
-        result = MALA_obj.kernel_vmap(subkey, initial_position, initial_logp, None)
+        result = MALA_obj.kernel_vmap(
+            subkey, initial_position, initial_logp, None
+        )
 
         assert result[2].all()
 
@@ -176,7 +198,9 @@ class TestMALA:
         rng_key = jax.random.PRNGKey(42)
         rng_key, subkey = jax.random.split(rng_key)
 
-        initial_position = jax.random.normal(subkey, shape=(n_chains, n_dim)) * 1
+        initial_position = (
+            jax.random.normal(subkey, shape=(n_chains, n_dim)) * 1
+        )
         MALA_obj.precompilation(n_chains, n_dim, 30000, None)
 
         rng_key, subkey = jax.random.split(rng_key)
@@ -195,12 +219,18 @@ class TestGRW:
         rng_key = jax.random.PRNGKey(42)
         rng_key, subkey = jax.random.split(rng_key)
 
-        initial_position = jax.random.normal(subkey, shape=(n_chains, n_dim)) * 1
+        initial_position = (
+            jax.random.normal(subkey, shape=(n_chains, n_dim)) * 1
+        )
         initial_logp = log_posterior(initial_position)
 
         rng_key, subkey = jax.random.split(rng_key)
-        result1 = GRW_obj.kernel(subkey, initial_position[0], initial_logp, None)
-        result2 = GRW_obj.kernel(subkey, initial_position[0], initial_logp, None)
+        result1 = GRW_obj.kernel(
+            subkey, initial_position[0], initial_logp, None
+        )
+        result2 = GRW_obj.kernel(
+            subkey, initial_position[0], initial_logp, None
+        )
 
         assert jnp.allclose(result1[0], result2[0])
         assert result1[1] == result2[1]
@@ -216,12 +246,16 @@ class TestGRW:
         rng_key = jax.random.PRNGKey(42)
         rng_key, subkey = jax.random.split(rng_key)
 
-        initial_position = jax.random.normal(subkey, shape=(n_chains, n_dim)) * 1
+        initial_position = (
+            jax.random.normal(subkey, shape=(n_chains, n_dim)) * 1
+        )
         initial_logp = jax.vmap(log_posterior)(initial_position)
 
         rng_key, subkey = jax.random.split(rng_key)
         subkey = jax.random.split(subkey, n_chains)
-        result = GRW_obj.kernel_vmap(subkey, initial_position, initial_logp, None)
+        result = GRW_obj.kernel_vmap(
+            subkey, initial_position, initial_logp, None
+        )
 
         assert result[2].all()
 
@@ -233,7 +267,9 @@ class TestGRW:
         rng_key = jax.random.PRNGKey(42)
         rng_key, subkey = jax.random.split(rng_key)
 
-        initial_position = jax.random.normal(subkey, shape=(n_chains, n_dim)) * 1
+        initial_position = (
+            jax.random.normal(subkey, shape=(n_chains, n_dim)) * 1
+        )
         GRW_obj.precompilation(n_chains, n_dim, 30000, None)
 
         rng_key, subkey = jax.random.split(rng_key)
@@ -246,7 +282,6 @@ class TestGRW:
 
 class TestNF:
     def test_NF_kernel(self):
-
         key1, rng, init_rng = jax.random.split(jax.random.PRNGKey(0), 3)
         data = jax.random.normal(key1, (100, 2))
 
@@ -267,14 +302,17 @@ class TestNF:
         optim = optax.adam(learning_rate, momentum)
         state = optim.init(eqx.filter(model, eqx.is_array))
 
-
         rng, subkey = jax.random.split(rng)
-        key, model, state, loss = model.train(rng, data, optim, state, num_epochs, batch_size, verbose=True)
+        key, model, state, loss = model.train(
+            rng, data, optim, state, num_epochs, batch_size, verbose=True
+        )
         key1, rng, init_rng = jax.random.split(jax.random.PRNGKey(1), 3)
 
         n_dim = 2
         n_chains = 1
         NF_obj = NFProposal(log_posterior, True, model)
 
-        initial_position = jax.random.normal(init_rng, shape=(n_chains, n_dim)) * 1
+        initial_position = (
+            jax.random.normal(init_rng, shape=(n_chains, n_dim)) * 1
+        )
         NF_obj.sample(rng, 100, initial_position, None)

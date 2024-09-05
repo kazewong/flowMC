@@ -4,12 +4,10 @@ from typing import List, Tuple
 import equinox as eqx
 import jax
 import jax.numpy as jnp
-import numpy as np
-import optax
 from jaxtyping import Array, Float, PRNGKeyArray
 
 from flowMC.nfmodel.base import Distribution, NFModel
-from flowMC.nfmodel.common import MLP, Gaussian, MaskedCouplingLayer, MLPAffine
+from flowMC.nfmodel.common import Gaussian, MaskedCouplingLayer, MLP, MLPAffine
 
 
 class AffineCoupling(eqx.Module):
@@ -136,7 +134,7 @@ class RealNVP(NFModel):
         n_layers: int,
         n_hidden: int,
         key: PRNGKeyArray,
-        **kwargs
+        **kwargs,
     ):
         if kwargs.get("base_dist") is not None:
             self.base_dist = kwargs.get("base_dist")  # type: ignore
@@ -162,12 +160,18 @@ class RealNVP(NFModel):
             mask = jnp.ones(n_features)
             mask = mask.at[: int(n_features / 2)].set(0)
             mask = jax.lax.cond(i % 2 == 0, lambda x: 1 - x, lambda x: x, mask)
-            scale_MLP = MLP([n_features, n_hidden, n_features], key=scale_subkey)
-            shift_MLP = MLP([n_features, n_hidden, n_features], key=shift_subkey)
+            scale_MLP = MLP(
+                [n_features, n_hidden, n_features], key=scale_subkey
+            )
+            shift_MLP = MLP(
+                [n_features, n_hidden, n_features], key=shift_subkey
+            )
             return MaskedCouplingLayer(MLPAffine(scale_MLP, shift_MLP), mask)
 
         keys = jax.random.split(key, n_layers)
-        self.affine_coupling = eqx.filter_vmap(make_layer)(jnp.arange(n_layers), keys)
+        self.affine_coupling = eqx.filter_vmap(make_layer)(
+            jnp.arange(n_layers), keys
+        )
 
     def __call__(self, x: Array) -> Tuple[Array, Float]:
         return self.forward(x)

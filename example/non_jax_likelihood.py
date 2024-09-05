@@ -8,8 +8,9 @@ from flowMC.proposal.Gaussian_random_walk import GaussianRandomWalk
 from flowMC.Sampler import Sampler
 from flowMC.utils.PythonFunctionWrap import wrap_python_log_prob_fn
 
+
 """
-The purpose of this example is to demonstate this is doable with the code, but here are some honest warnings:
+The purpose of this example is to demonstrate this is doable with the code, but here are some honest warnings:
 1. It is probably not going to be as fast as you think/hope it to be, because of the communication between host and device.
 2. You cannot jit and grad through the likelihood function, so only random walks gaussian proposal is supported.
 3. Making this work with other parallelization scheme such as MPI may be tricky because of Jax.
@@ -26,8 +27,11 @@ If the answer to any of these two questions is yes, then you should probably do 
 @wrap_python_log_prob_fn
 def neal_funnel(x):
     y_pdf = norm.logpdf(x["params"][0], loc=0, scale=3)
-    x_pdf = norm.logpdf(x["params"][1:], loc=0, scale=np.exp(x["params"][0] / 2))
+    x_pdf = norm.logpdf(
+        x["params"][1:], loc=0, scale=np.exp(x["params"][0] / 2)
+    )
     return y_pdf + np.sum(x_pdf)
+
 
 print("Using minimal settings for demonstration purposes.")
 n_dim = 5
@@ -94,6 +98,7 @@ loss_vals = np.array(loss_vals)
 import corner
 import matplotlib.pyplot as plt
 
+
 # Plot one chain to show the jump
 plt.figure(figsize=(6, 6))
 axs = [plt.subplot(2, 2, i + 1) for i in range(4)]
@@ -124,7 +129,8 @@ plt.savefig("temp_nonjaxlikelihood.png")
 
 # Plot all chains
 figure = corner.corner(
-    chains.reshape(-1, n_dim), labels=["$x_1$", "$x_2$", "$x_3$", "$x_4$", "$x_5$"]
+    chains.reshape(-1, n_dim),
+    labels=["$x_1$", "$x_2$", "$x_3$", "$x_4$", "$x_5$"],
 )
 figure.set_size_inches(7, 7)
 figure.suptitle("Visualize samples")
@@ -132,7 +138,9 @@ plt.show(block=False)
 plt.savefig("temp_nonjaxlikelihood_1.png")
 
 # Plot Nf samples
-figure = corner.corner(nf_samples, labels=["$x_1$", "$x_2$", "$x_3$", "$x_4$", "$x_5$"])
+figure = corner.corner(
+    nf_samples, labels=["$x_1$", "$x_2$", "$x_3$", "$x_4$", "$x_5$"]
+)
 figure.set_size_inches(7, 7)
 figure.suptitle("Visualize NF samples")
 plt.show(block=False)

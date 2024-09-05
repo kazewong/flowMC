@@ -11,6 +11,7 @@ from flowMC.nfmodel.base import NFModel
 from flowMC.proposal.HMC import HMC
 from flowMC.proposal.NF_proposal import NFProposal
 
+
 ###################################
 # This is not in production yet
 ###################################
@@ -34,13 +35,23 @@ class flowHMC(HMC, NFProposal):
         n_sample_max: int = 10000,
         condition_matrix: Float[Array, "n_dim n_dim"] | Float = 1,
     ):
-        super().__init__(logpdf, jit, condition_matrix=condition_matrix, model=model, n_sample_max=n_sample_max)
+        super().__init__(
+            logpdf,
+            jit,
+            condition_matrix=condition_matrix,
+            model=model,
+            n_sample_max=n_sample_max,
+        )
         self.kinetic = lambda p, M: 0.5 * (p @ M @ p)
         self.grad_kinetic = jax.grad(self.kinetic)
         self.model = model
         self.n_sample_max = n_sample_max
         self.production_covariance = condition_matrix
-        self.update_vmap = jax.vmap(self.update, in_axes=(None, (0, 0, 0, 0, 0, 0, None)), out_axes=(0, 0, 0, 0, 0, 0, None))
+        self.update_vmap = jax.vmap(
+            self.update,
+            in_axes=(None, (0, 0, 0, 0, 0, 0, None)),
+            out_axes=(0, 0, 0, 0, 0, 0, None),
+        )
         if self.jit is True:
             self.update_vmap = jax.jit(self.update_vmap)
 
@@ -56,24 +67,30 @@ class flowHMC(HMC, NFProposal):
     def kernel(
         self,
         rng_key: PRNGKeyArray,
-        position: Float[Array, "ndim"],
+        position: Float[Array, "ndim"],  # noqa: F821
         log_prob: Float[Array, "1"],
-        flow_position: Float[Array, "ndim"],
+        flow_position: Float[Array, "ndim"],  # noqa: F821
         flow_cov: Float[Array, "ndim ndim"],
         data: PyTree,
-    ) -> tuple[Float[Array, "ndim"], Float[Array, "1"], Int[Array, "1"]]:
-
+    ) -> tuple[
+        Float[Array, "ndim"],  # noqa: F821
+        Float[Array, "1"],
+        Int[Array, "1"],
+    ]:
         key1, key2 = jax.random.split(rng_key)
 
-        noise = jnp.abs(flow_cov).min()*0.1*jnp.eye(flow_cov.shape[0]) # Add small jitter to avoid numerical issues
+        noise = (
+            jnp.abs(flow_cov).min() * 0.1 * jnp.eye(flow_cov.shape[0])
+        )  # Add small jitter to avoid numerical issues
 
         momentum = jnp.dot(
             jax.random.normal(key1, shape=position.shape),
-            jnp.linalg.cholesky(flow_cov + noise).T)
+            jnp.linalg.cholesky(flow_cov + noise).T,
+        )
         mass_matrix = jnp.linalg.inv(flow_cov + noise)
 
         # TODO: Double check whether I can compute the hamiltonian before the map
-        initial_Ham = - log_prob + self.kinetic(momentum, mass_matrix)
+        initial_Ham = -log_prob + self.kinetic(momentum, mass_matrix)
 
         # First HMC part
 
@@ -101,10 +118,9 @@ class flowHMC(HMC, NFProposal):
         uniform_random = jnp.log(jax.random.uniform(key2))
         do_accept = log_acc > uniform_random
 
-
         # Update position
         position = jnp.where(do_accept, final_position, position)
-        log_prob = jnp.where(do_accept, - final_PE, log_prob)
+        log_prob = jnp.where(do_accept, -final_PE, log_prob)
 
         return position, log_prob[0], do_accept[0]
 
@@ -117,7 +133,9 @@ class flowHMC(HMC, NFProposal):
         Int[Array, "n_step 1"],
         PyTree,
     ]:
-        key, positions, potential, acceptance, flow_position, flow_cov, data = state
+        key, positions, potential, acceptance, flow_position, flow_cov, data = (
+            state
+        )
         key, subkey = random.split(key)
         new_position, new_log_prob, do_accept = self.kernel(
             subkey,
@@ -130,7 +148,15 @@ class flowHMC(HMC, NFProposal):
         positions = positions.at[i].set(new_position)
         potential = potential.at[i].set(new_log_prob)
         acceptance = acceptance.at[i].set(do_accept)
-        return (key, positions, potential, acceptance, flow_position, flow_cov, data)
+        return (
+            key,
+            positions,
+            potential,
+            acceptance,
+            flow_position,
+            flow_cov,
+            data,
+        )
 
     def sample(
         self,
@@ -145,7 +171,6 @@ class flowHMC(HMC, NFProposal):
         Float[Array, "n_chains n_steps 1"],
         Int[Array, "n_chains n_steps 1"],
     ]:
-
         n_chains = initial_position.shape[0]
         n_dim = initial_position.shape[-1]
         log_prob_initial = self.logpdf_vmap(initial_position, data)
@@ -230,7 +255,9 @@ class flowHMC(HMC, NFProposal):
                     self.covariance_estimate(proposal_position[i])
                 )
 
-            proposal_position = proposal_position.reshape(-1, n_dim)[:total_size]
+            proposal_position = proposal_position.reshape(-1, n_dim)[
+                :total_size
+            ]
             proposal_covariance = proposal_covariance.reshape(-1, n_dim, n_dim)[
                 :total_size
             ]
@@ -244,10 +271,7 @@ class flowHMC(HMC, NFProposal):
             n_chains, n_steps, n_dim, n_dim
         )
 
-        return (
-            proposal_position,
-            proposal_covariance,
-        )
+        return (proposal_position, proposal_covariance)
 
     def tree_flatten(self):
         children, aux_data = super().tree_flatten()

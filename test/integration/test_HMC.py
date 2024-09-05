@@ -11,7 +11,7 @@ def dual_moon_pe(x: Float[Array, "n_dim"], data: dict):
     Term 2 and 3 separate the distribution and smear it along the first and second dimension
     """
     print("compile count")
-    term1 = 0.5 * ((jnp.linalg.norm(x - data['data']) - 2) / 0.1) ** 2
+    term1 = 0.5 * ((jnp.linalg.norm(x - data["data"]) - 2) / 0.1) ** 2
     term2 = -0.5 * ((x[:1] + jnp.array([-3.0, 3.0])) / 0.8) ** 2
     term3 = -0.5 * ((x[1:2] + jnp.array([-3.0, 3.0])) / 0.6) ** 2
     return -(term1 - logsumexp(term2) - logsumexp(term3))
@@ -23,7 +23,7 @@ n_local_steps = 30
 step_size = 0.1
 n_leapfrog = 10
 
-data = {'data':jnp.arange(5)}
+data = {"data": jnp.arange(5)}
 
 rng_key = jax.random.PRNGKey(42)
 rng_key, subkey = jax.random.split(rng_key)
@@ -62,6 +62,7 @@ state = HMC_sampler.sample(subkey, n_local_steps, initial_position[:, 0], data)
 
 from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
 from flowMC.Sampler import Sampler
+
 
 n_dim = 5
 n_chains = 2

@@ -33,7 +33,9 @@ MALA_Sampler = MALA(dual_moon_pe, True, step_size=step_size)
 
 initial_position = jnp.repeat(initial_position[:, None], n_local_steps, 1)
 initial_logp = jnp.repeat(
-    jax.vmap(dual_moon_pe, in_axes=(0, None))(initial_position[:, 0], data)[:, None],
+    jax.vmap(dual_moon_pe, in_axes=(0, None))(initial_position[:, 0], data)[
+        :, None
+    ],
     n_local_steps,
     1,
 )[..., None]
@@ -64,6 +66,7 @@ state = MALA_Sampler.sample(subkey, n_local_steps, initial_position[:, 0], data)
 
 from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
 from flowMC.Sampler import Sampler
+
 
 n_dim = 5
 n_chains = 2

@@ -8,7 +8,6 @@ from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
 
 
 def test_realNVP():
-
     key1, rng, init_rng = jax.random.split(jax.random.PRNGKey(0), 3)
     data = jax.random.normal(key1, (100, 2))
 
@@ -21,12 +20,14 @@ def test_realNVP():
     optim = optax.adam(learning_rate, momentum)
     state = optim.init(eqx.filter(model, eqx.is_array))
 
-    rng, best_model, state, loss_values = model.train(init_rng, data, optim, state, num_epochs, batch_size, verbose=True)
+    rng, best_model, state, loss_values = model.train(
+        init_rng, data, optim, state, num_epochs, batch_size, verbose=True
+    )
     rng_key_nf = jax.random.PRNGKey(124098)
     model.sample(rng_key_nf, 10000)
 
-def test_rqSpline():
 
+def test_rqSpline():
     n_dim = 2
     num_epochs = 5
     batch_size = 100
@@ -52,6 +53,8 @@ def test_rqSpline():
     optim = optax.adam(learning_rate, momentum)
     state = optim.init(eqx.filter(model, eqx.is_array))
 
-    rng, best_model, state, loss_values = model.train(init_rng, data, optim, state, num_epochs, batch_size, verbose=True)
+    rng, best_model, state, loss_values = model.train(
+        init_rng, data, optim, state, num_epochs, batch_size, verbose=True
+    )
     rng_key_nf = jax.random.PRNGKey(124098)
     model.sample(rng_key_nf, 10000)

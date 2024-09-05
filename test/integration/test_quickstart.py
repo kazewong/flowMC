@@ -7,10 +7,10 @@ from flowMC.Sampler import Sampler
 
 
 def log_posterior(x, data: dict):
-    return -0.5 * jnp.sum((x - data['data']) ** 2)
+    return -0.5 * jnp.sum((x - data["data"]) ** 2)
 
 
-data = {'data':jnp.arange(5)}
+data = {"data": jnp.arange(5)}
 
 n_dim = 1
 n_chains = 10
@@ -38,4 +38,6 @@ nf_sampler = Sampler(
 )
 
 nf_sampler.sample(initial_position, data)
-chains, log_prob, local_accs, global_accs = nf_sampler.get_sampler_state().values()
+chains, log_prob, local_accs, global_accs = (
+    nf_sampler.get_sampler_state().values()
+)

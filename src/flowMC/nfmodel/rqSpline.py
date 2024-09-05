@@ -6,8 +6,12 @@ import jax.numpy as jnp
 from jaxtyping import Array, Float, PRNGKeyArray
 
 from flowMC.nfmodel.base import Bijection, Distribution, NFModel
-from flowMC.nfmodel.common import (MLP, Gaussian, MaskedCouplingLayer,
-                                   ScalarAffine)
+from flowMC.nfmodel.common import (
+    Gaussian,
+    MaskedCouplingLayer,
+    MLP,
+    ScalarAffine,
+)
 
 
 @partial(jax.vmap, in_axes=(0, None, None))
@@ -27,7 +31,9 @@ def _normalize_knot_slopes(
     """Make knot slopes be no less than `min_knot_slope`."""
     # The offset is such that the normalized knot slope will be equal to 1
     # whenever the unnormalized knot slope is equal to 0.
-    min_knot_slope = jnp.array(min_knot_slope, dtype=unnormalized_knot_slopes.dtype)
+    min_knot_slope = jnp.array(
+        min_knot_slope, dtype=unnormalized_knot_slopes.dtype
+    )
     offset = jnp.log(jnp.exp(1.0 - min_knot_slope) - 1.0)
     return jax.nn.softplus(unnormalized_knot_slopes + offset) + min_knot_slope
 
@@ -112,7 +118,9 @@ def _rational_quadratic_spline_fwd(
     # If x is outside the spline range, we default to a linear transformation.
     y = jnp.where(below_range, (x - x_pos[0]) * knot_slopes[0] + y_pos[0], y)
     y = jnp.where(
-        above_range, (x - x_pos[-1]) * knot_slopes[-1] + y_pos[-1], y  # type: ignore
+        above_range,
+        (x - x_pos[-1]) * knot_slopes[-1] + y_pos[-1],
+        y,  # type: ignore
     )
     logdet = jnp.where(below_range, jnp.log(knot_slopes[0]), logdet)
     logdet = jnp.where(above_range, jnp.log(knot_slopes[-1]), logdet)
@@ -221,7 +229,9 @@ def _rational_quadratic_spline_inv(
     # If y is outside the spline range, we default to a linear transformation.
     x = jnp.where(below_range, (y - y_pos[0]) / knot_slopes[0] + x_pos[0], x)
     x = jnp.where(
-        above_range, (y - y_pos[-1]) / knot_slopes[-1] + x_pos[-1], x  # type: ignore
+        above_range,
+        (y - y_pos[-1]) / knot_slopes[-1] + x_pos[-1],
+        x,  # type: ignore
     )
     logdet = jnp.where(below_range, -jnp.log(knot_slopes[0]), logdet)
     logdet = jnp.where(above_range, -jnp.log(knot_slopes[-1]), logdet)
@@ -293,18 +303,24 @@ class RQSpline(Bijection):
         self._range_max = range_max
         self._min_bin_size = min_bin_size
         self._min_knot_slope = min_knot_slope
-        self._num_bins = int(conditioner.n_output / conditioner.n_input - 1) // 3
+        self._num_bins = (
+            int(conditioner.n_output / conditioner.n_input - 1) // 3
+        )
 
         self.conditioner = conditioner
 
     def get_params(
         self, x: Float[Array, " n_condition"]
     ) -> tuple[
-        Float[Array, " n_param"], Float[Array, " n_param"], Float[Array, " n_param"]
+        Float[Array, " n_param"],
+        Float[Array, " n_param"],
+        Float[Array, " n_param"],
     ]:
         params = self.conditioner(x).reshape(-1, self._num_bins * 3 + 1)
         unnormalized_bin_widths = params[:, : self._num_bins]
-        unnormalized_bin_heights = params[:, self._num_bins : 2 * self._num_bins]
+        unnormalized_bin_heights = params[
+            :, self._num_bins : 2 * self._num_bins
+        ]
         unnormalized_knot_slopes = params[:, 2 * self._num_bins :]
         # Normalize bin sizes and compute bin positions on the x and y axis.
         range_size = self.range_max - self.range_min
@@ -382,7 +398,7 @@ class MaskedCouplingRQSpline(NFModel):
         num_bins: int,
         key: PRNGKeyArray,
         spline_range: tuple[float, float] = (-10.0, 10.0),
-        **kwargs
+        **kwargs,
     ):
         if kwargs.get("base_dist") is not None:
             dist = kwargs.get("base_dist")
@@ -479,7 +495,9 @@ class MaskedCouplingRQSpline(NFModel):
 
     @eqx.filter_jit
     @partial(jax.vmap, in_axes=(None, 0))
-    def log_prob(self, x: Float[Array, "n_sample n_dim"]) -> Float[Array, " n_sample"]:
+    def log_prob(
+        self, x: Float[Array, "n_sample n_dim"]
+    ) -> Float[Array, " n_sample"]:
         """From data space to latent space"""
         x = (x - self.data_mean) / jnp.sqrt(jnp.diag(self.data_cov))
         y, log_det = self.__call__(x)

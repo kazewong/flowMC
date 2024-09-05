@@ -31,11 +31,17 @@ class HMC(ProposalBase):
         step_size: Float = 0.1,
         n_leapfrog: Int = 10,
     ):
-        super().__init__(logpdf, jit, condition_matrix=condition_matrix, step_size=step_size, n_leapfrog=n_leapfrog)
+        super().__init__(
+            logpdf,
+            jit,
+            condition_matrix=condition_matrix,
+            step_size=step_size,
+            n_leapfrog=n_leapfrog,
+        )
 
-        self.potential: Callable[
-            [Float[Array, " n_dim"], PyTree], Float
-        ] = lambda x, data: -logpdf(x, data)
+        self.potential: Callable[[Float[Array, " n_dim"], PyTree], Float] = (
+            lambda x, data: -logpdf(x, data)
+        )
         self.grad_potential: Callable[
             [Float[Array, " n_dim"], PyTree], Float[Array, " n_dim"]
         ] = jax.grad(self.potential)
@@ -51,7 +57,7 @@ class HMC(ProposalBase):
 
         self.kinetic: Callable[
             [Float[Array, " n_dim"], Float[Array, " n_dim n_dim"]], Float
-        ] = (lambda p, metric: 0.5 * (p**2 * metric).sum())
+        ] = lambda p, metric: 0.5 * (p**2 * metric).sum()
         self.grad_kinetic = jax.grad(self.kinetic)
 
     def get_initial_hamiltonian(
@@ -67,7 +73,7 @@ class HMC(ProposalBase):
 
         momentum = (
             jax.random.normal(rng_key, shape=position.shape)
-            * self.condition_matrix ** -0.5
+            * self.condition_matrix**-0.5
         )
         return self.potential(position, data) + self.kinetic(
             momentum, self.condition_matrix
@@ -118,7 +124,7 @@ class HMC(ProposalBase):
 
         momentum: Float[Array, " n_dim"] = (
             jax.random.normal(key1, shape=position.shape)
-            * self.condition_matrix ** -0.5
+            * self.condition_matrix**-0.5
         )
         momentum = jnp.dot(
             jax.random.normal(key1, shape=position.shape),

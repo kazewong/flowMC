@@ -20,6 +20,7 @@ class MLP(eqx.Module):
         activation (Callable): Activation function.
         use_bias (bool): Whether to use bias.
     """
+
     layers: List
 
     def __init__(
@@ -36,9 +37,9 @@ class MLP(eqx.Module):
             layer = eqx.nn.Linear(
                 shape[i], shape[i + 1], key=subkey1, use_bias=use_bias
             )
-            weight = jax.random.normal(subkey2, (shape[i + 1], shape[i])) * jnp.sqrt(
-                scale / shape[i]
-            )
+            weight = jax.random.normal(
+                subkey2, (shape[i + 1], shape[i])
+            ) * jnp.sqrt(scale / shape[i])
             layer = eqx.tree_at(lambda l: l.weight, layer, weight)
             self.layers.append(layer)
             self.layers.append(activation)
@@ -47,7 +48,7 @@ class MLP(eqx.Module):
             eqx.nn.Linear(shape[-2], shape[-1], key=subkey, use_bias=use_bias)
         )
 
-    def __call__(self, x: Float[Array, "n_in"]) -> Float[Array, "n_out"]:
+    def __call__(self, x: Float[Array, "n_in"]) -> Float[Array, "n_out"]:  # noqa: F821
         for layer in self.layers:
             x = layer(x)
         return x
@@ -66,7 +67,6 @@ class MLP(eqx.Module):
 
 
 class MaskedCouplingLayer(Bijection):
-
     r"""Masked coupling layer.
 
     f(x) = (1-m)*b(x;c(m*x;z)) + m*x
@@ -78,25 +78,31 @@ class MaskedCouplingLayer(Bijection):
 
     """
 
-    _mask: Float[Array, "n_dim"]
+    _mask: Float[Array, "n_dim"]  # noqa: F821
     bijector: Bijection
 
     @property
-    def mask(self) -> Float[Array, "n_dim"]:
+    def mask(self) -> Float[Array, "n_dim"]:  # noqa: F821
         return jax.lax.stop_gradient(self._mask)
 
-    def __init__(self, bijector: Bijection, mask: Float[Array, "n_dim"]):
+    def __init__(self, bijector: Bijection, mask: Float[Array, "n_dim"]):  # noqa: F821
         self.bijector = bijector
         self._mask = mask
 
-    def forward(self, x: Float[Array, "n_dim"]) -> Tuple[Float[Array, "n_dim"], Float[Array, "n_dim"]]:
-        y, log_det = self.bijector(x, x * self.mask) # type: ignore
+    def forward(
+        self,
+        x: Float[Array, "n_dim"],  # noqa: F821
+    ) -> Tuple[Float[Array, "n_dim"], Float[Array, "n_dim"]]:  # noqa: F821
+        y, log_det = self.bijector(x, x * self.mask)  # type: ignore
         y = (1 - self.mask) * y + self.mask * x
         log_det = ((1 - self.mask) * log_det).sum()
         return y, log_det
 
-    def inverse(self, x: Float[Array, "n_dim"]) -> Tuple[Float[Array, "n_dim"], Float[Array, "n_dim"]]:
-        y, log_det = self.bijector.inverse(x, x * self.mask) # type: ignore
+    def inverse(
+        self,
+        x: Float[Array, "n_dim"],  # noqa: F821
+    ) -> Tuple[Float[Array, "n_dim"], Float[Array, "n_dim"]]:  # noqa: F821
+        y, log_det = self.bijector.inverse(x, x * self.mask)  # type: ignore
         y = (1 - self.mask) * y + self.mask * x
         log_det = ((1 - self.mask) * log_det).sum()
         return y, log_det
@@ -112,10 +118,18 @@ class MLPAffine(Bijection):
         self.shift_MLP = shift_MLP
         self.dt = dt
 
-    def __call__(self, x: Float[Array, "n_dim"], condition_x: Float[Array, "n_cond"]) -> Tuple[Float[Array, "n_dim"], Float]:
+    def __call__(
+        self,
+        x: Float[Array, "n_dim"],  # noqa: F821
+        condition_x: Float[Array, "n_cond"],  # noqa: F821
+    ) -> Tuple[Float[Array, "n_dim"], Float]:  # noqa: F821
         return self.forward(x, condition_x)
 
-    def forward(self, x: Float[Array, "n_dim"], condition_x: Float[Array, "n_cond"]) -> Tuple[Float[Array, "n_dim"], Float]:
+    def forward(
+        self,
+        x: Float[Array, "n_dim"],  # noqa: F821
+        condition_x: Float[Array, "n_cond"],  # noqa: F821
+    ) -> Tuple[Float[Array, "n_dim"], Float]:  # noqa: F821
         # Note that this note output log_det as an array instead of a number.
         # This is because we need to sum over the log_det in the masked coupling layer.
         scale = jnp.tanh(self.scale_MLP(condition_x)) * self.dt
@@ -124,7 +138,11 @@ class MLPAffine(Bijection):
         y = (x + shift) * jnp.exp(scale)
         return y, log_det
 
-    def inverse(self, x: Float[Array, "n_dim"], condition_x: Float[Array, "n_cond"]) -> Tuple[Float[Array, "n_dim"], Float]:
+    def inverse(
+        self,
+        x: Float[Array, "n_dim"],  # noqa: F821
+        condition_x: Float[Array, "n_cond"],  # noqa: F821
+    ) -> Tuple[Float[Array, "n_dim"], Float]:  # noqa: F821
         scale = jnp.tanh(self.scale_MLP(condition_x)) * self.dt
         shift = self.shift_MLP(condition_x) * self.dt
         log_det = -scale
@@ -140,22 +158,33 @@ class ScalarAffine(Bijection):
         self.scale = jnp.array(scale)
         self.shift = jnp.array(shift)
 
-    def __call__(self, x: Float[Array, "n_dim"], condition_x: Float[Array, "n_cond"]) -> Tuple[Float[Array, "n_dim"], Float]:
+    def __call__(
+        self,
+        x: Float[Array, "n_dim"],  # noqa: F821
+        condition_x: Float[Array, "n_cond"],  # noqa: F821
+    ) -> Tuple[Float[Array, "n_dim"], Float]:  # noqa: F821
         return self.forward(x, condition_x)
 
-    def forward(self, x: Float[Array, "n_dim"], condition_x: Float[Array, "n_cond"]) -> Tuple[Float[Array, "n_dim"], Float]:
+    def forward(
+        self,
+        x: Float[Array, "n_dim"],  # noqa: F821
+        condition_x: Float[Array, "n_cond"],  # noqa: F821
+    ) -> Tuple[Float[Array, "n_dim"], Float]:  # noqa: F821
         y = (x + self.shift) * jnp.exp(self.scale)
         log_det = self.scale
         return y, log_det
 
-    def inverse(self, x: Float[Array, "n_dim"], condition_x: Float[Array, "n_cond"]) -> Tuple[Float[Array, "n_dim"], Float]:
+    def inverse(
+        self,
+        x: Float[Array, "n_dim"],  # noqa: F821
+        condition_x: Float[Array, "n_cond"],  # noqa: F821
+    ) -> Tuple[Float[Array, "n_dim"], Float]:  # noqa: F821
         y = x * jnp.exp(-self.scale) - self.shift
         log_det = -self.scale
         return y, log_det
 
 
 class Gaussian(Distribution):
-
     r"""Multivariate Gaussian distribution.
 
     Args:
@@ -168,12 +197,12 @@ class Gaussian(Distribution):
         cov (Array): Covariance matrix.
     """
 
-    _mean: Float[Array, "n_dim"]
+    _mean: Float[Array, "n_dim"]  # noqa: F821
     _cov: Float[Array, "n_dim n_dim"]
     learnable: bool = False
 
     @property
-    def mean(self) -> Float[Array, "n_dim"]:
+    def mean(self) -> Float[Array, "n_dim"]:  # noqa: F821
         if self.learnable:
             return self._mean
         else:
@@ -186,20 +215,30 @@ class Gaussian(Distribution):
         else:
             return jax.lax.stop_gradient(self._cov)
 
-    def __init__(self, mean: Float[Array, "n_dim"], cov: Float[Array, "n_dim n_dim"], learnable: bool = False):
+    def __init__(
+        self,
+        mean: Float[Array, "n_dim"],  # noqa: F821
+        cov: Float[Array, "n_dim n_dim"],
+        learnable: bool = False,
+    ):
         self._mean = mean
         self._cov = cov
         self.learnable = learnable
 
-    def log_prob(self, x: Float[Array, "n_dim"]) -> Float:
-        return jax.scipy.stats.multivariate_normal.logpdf(x, self.mean, self.cov)
+    def log_prob(self, x: Float[Array, "n_dim"]) -> Float:  # noqa: F821
+        return jax.scipy.stats.multivariate_normal.logpdf(
+            x, self.mean, self.cov
+        )
 
-    def sample(self, key: PRNGKeyArray, n_samples: int = 1) -> Float[Array, "n_samples n_dim"]:
-        return jax.random.multivariate_normal(key, self.mean, self.cov, (n_samples,))
+    def sample(
+        self, key: PRNGKeyArray, n_samples: int = 1
+    ) -> Float[Array, "n_samples n_dim"]:
+        return jax.random.multivariate_normal(
+            key, self.mean, self.cov, (n_samples,)
+        )
 
 
 class Composable(Distribution):
-
     distributions: list[Distribution]
     partitions: dict[str, tuple[int, int]]
 
@@ -207,13 +246,17 @@ class Composable(Distribution):
         self.distributions = distributions
         self.partitions = partitions
 
-    def log_prob(self, x: Float[Array, "n_dim"]) -> Float:
+    def log_prob(self, x: Float[Array, "n_dim"]) -> Float:  # noqa: F821
         log_prob = 0
-        for dist, (_, ranges) in zip(self.distributions, self.partitions.items()):
+        for dist, (_, ranges) in zip(
+            self.distributions, self.partitions.items()
+        ):
             log_prob += dist.log_prob(x[ranges[0] : ranges[1]])
         return log_prob
 
-    def sample(self, rng_key: PRNGKeyArray, n_samples: int) -> dict[str, Float[Array, "n_samples n_dim"]]:
+    def sample(
+        self, rng_key: PRNGKeyArray, n_samples: int
+    ) -> dict[str, Float[Array, "n_samples n_dim"]]:
         samples = {}
         for dist, (key, _) in zip(self.distributions, self.partitions.items()):
             rng_key, sub_key = jax.random.split(rng_key)

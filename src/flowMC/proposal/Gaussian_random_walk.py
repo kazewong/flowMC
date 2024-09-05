@@ -10,7 +10,7 @@ from flowMC.proposal.base import ProposalBase
 
 class GaussianRandomWalk(ProposalBase):
     """
-    Gaussian random walk sampler class builiding the rw_sampler method
+    Gaussian random walk sampler class building the rw_sampler method
 
     Args:
         logpdf: target logpdf function
@@ -22,7 +22,7 @@ class GaussianRandomWalk(ProposalBase):
 
     def __init__(
         self,
-        logpdf: Callable[[Float[Array, "n_dim"], PyTree], Float],
+        logpdf: Callable[[Float[Array, "n_dim"], PyTree], Float],  # noqa: F821
         jit: bool,
         step_size: Float,
     ):
@@ -33,10 +33,10 @@ class GaussianRandomWalk(ProposalBase):
     def kernel(
         self,
         rng_key: PRNGKeyArray,
-        position: Float[Array, "n_dim"],
+        position: Float[Array, "n_dim"],  # noqa: F821
         log_prob: Float[Array, "1"],
         data: PyTree,
-    ) -> tuple[Float[Array, "n_dim"], Float[Array, "1"], Int[Array, "1"]]:
+    ) -> tuple[Float[Array, "n_dim"], Float[Array, "1"], Int[Array, "1"]]:  # noqa: F821
         """
         Random walk gaussian kernel.
         This is a kernel that only evolve a single chain.
@@ -54,12 +54,12 @@ class GaussianRandomWalk(ProposalBase):
         """
 
         key1, key2 = jax.random.split(rng_key)
-        move_proposal: Float[Array, "n_dim"] = (
+        move_proposal: Float[Array, "n_dim"] = (  # noqa: F821
             jax.random.normal(key1, shape=position.shape) * self.step_size
         )
 
         proposal = position + move_proposal
-        proposal_log_prob: Float[Array, "n_dim"] = self.logpdf(proposal, data)
+        proposal_log_prob: Float[Array, "n_dim"] = self.logpdf(proposal, data)  # noqa: F821
 
         log_uniform = jnp.log(jax.random.uniform(key2))
         do_accept = log_uniform < proposal_log_prob - log_prob
@@ -68,7 +68,9 @@ class GaussianRandomWalk(ProposalBase):
         log_prob = jnp.where(do_accept, proposal_log_prob, log_prob)
         return position, log_prob, do_accept
 
-    def update(self, i, state) -> tuple[
+    def update(
+        self, i, state
+    ) -> tuple[
         PRNGKeyArray,
         Float[Array, "nstep n_dim"],
         Float[Array, "nstep 1"],

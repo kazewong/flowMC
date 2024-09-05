@@ -11,7 +11,6 @@ from flowMC.strategy.base import Strategy
 
 
 class GlobalTuning(Strategy):
-
     optim: optax.GradientTransformation
     optim_state: optax.OptState
 
@@ -202,7 +201,6 @@ class GlobalTuning(Strategy):
 
 
 class GlobalSampling(Strategy):
-
     n_dim: int
     n_chains: int
     n_local_steps: int
@@ -239,7 +237,6 @@ class GlobalSampling(Strategy):
         NFProposal,
         PyTree,
     ]:
-
         summary = {}
         summary["chains"] = jnp.empty((self.n_chains, 0, self.n_dim))
         summary["log_prob"] = jnp.empty((self.n_chains, 0))
@@ -318,4 +315,10 @@ class GlobalSampling(Strategy):
 
             current_position = summary["chains"][:, -1]
 
-        return rng_key, summary['chains'][:, -1], local_sampler, global_sampler, summary
+        return (
+            rng_key,
+            summary["chains"][:, -1],
+            local_sampler,
+            global_sampler,
+            summary,
+        )

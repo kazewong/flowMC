@@ -129,7 +129,9 @@ class Sampler:
         self.optim = optax.chain(
             optax.clip(1.0), optax.adamw(self.learning_rate, self.momentum)
         )
-        self.optim_state = self.optim.init(eqx.filter(self.nf_model, eqx.is_array))
+        self.optim_state = self.optim.init(
+            eqx.filter(self.nf_model, eqx.is_array)
+        )
 
         default_strategies = [
             GlobalTuning(
@@ -169,11 +171,13 @@ class Sampler:
                 else:
                     self.strategies.append(strategy)
         else:
-            self.strategies = default_strategies 
+            self.strategies = default_strategies
 
         self.summary = {}
 
-    def sample(self, initial_position: Float[Array, "n_chains n_dim"], data: dict):
+    def sample(
+        self, initial_position: Float[Array, "n_chains n_dim"], data: dict
+    ):
         """
         Sample from the posterior using the local sampler.
 
@@ -191,7 +195,7 @@ class Sampler:
         # Note that auto-tune function needs to have the same number of steps
         # as the actual sampling loop to avoid recompilation.
 
-        initial_position = jnp.atleast_2d(initial_position) # type: ignore
+        initial_position = jnp.atleast_2d(initial_position)  # type: ignore
         rng_key = self.rng_key
         last_step = initial_position
         for strategy in self.strategies:
@@ -202,7 +206,11 @@ class Sampler:
                 self.global_sampler,
                 summary,
             ) = strategy(
-                rng_key, self.local_sampler, self.global_sampler, last_step, data
+                rng_key,
+                self.local_sampler,
+                self.global_sampler,
+                last_step,
+                data,
             )
             self.summary[strategy.__name__] = summary
 
@@ -242,7 +250,7 @@ class Sampler:
 
     def evalulate_flow(
         self, samples: Float[Array, "n_samples n_dim"]
-    ) -> Float[Array, "n_samples"]:
+    ) -> Float[Array, "n_samples"]:  # noqa: F821
         """
         Evaluate the log probability of the normalizing flow.
 
@@ -301,8 +309,9 @@ class Sampler:
             jnp.histogram(
                 global_accs[
                     :,
-                    i
-                    * (self.n_global_steps // self.output_thinning - 1) : (i + 1)
+                    i * (self.n_global_steps // self.output_thinning - 1) : (
+                        i + 1
+                    )
                     * (self.n_global_steps // self.output_thinning - 1),
                 ].mean(axis=1),
                 bins=n_bins,
@@ -334,8 +343,9 @@ class Sampler:
             jnp.histogram(
                 local_accs[
                     :,
-                    i
-                    * (self.n_local_steps // self.output_thinning - 1) : (i + 1)
+                    i * (self.n_local_steps // self.output_thinning - 1) : (
+                        i + 1
+                    )
                     * (self.n_local_steps // self.output_thinning - 1),
                 ].mean(axis=1),
                 bins=n_bins,
@@ -367,8 +377,9 @@ class Sampler:
             jnp.histogram(
                 log_prob[
                     :,
-                    i
-                    * (self.n_local_steps // self.output_thinning - 1) : (i + 1)
+                    i * (self.n_local_steps // self.output_thinning - 1) : (
+                        i + 1
+                    )
                     * (self.n_local_steps // self.output_thinning - 1),
                 ].mean(axis=1),
                 bins=n_bins,
