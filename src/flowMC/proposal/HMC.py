@@ -83,25 +83,28 @@ class HMC(ProposalBase):
 
     def leapfrog_kernel(self, carry, extras):
         position, momentum, data, metric, index = carry
-        grad_kinetic_val = self.grad_kinetic(momentum, metric)
-        grad_potential_val = self.grad_potential(position, data)
 
+        grad_kinetic_val = self.grad_kinetic(momentum, metric)
         debug.flush(
             "HMC.leapfrog_kernel: grad_kinetic_val={grad_kinetic_val}",
             grad_kinetic_val=grad_kinetic_val,
-        )
-        debug.flush(
-            "HMC.leapfrog_kernel: grad_potential={grad_potential_val}",
-            grad_potential_val=grad_potential_val,
         )
 
         position = (
             position + self.step_size * self.leapfrog_coefs[index][0] * grad_kinetic_val
         )
+
+        grad_potential_val = self.grad_potential(position, data)
+        debug.flush(
+            "HMC.leapfrog_kernel: grad_potential={grad_potential_val}",
+            grad_potential_val=grad_potential_val,
+        )
+
         momentum = (
             momentum
             - self.step_size * self.leapfrog_coefs[index][1] * grad_potential_val
         )
+
         index = index + 1
         return (position, momentum, data, metric, index), extras
 
