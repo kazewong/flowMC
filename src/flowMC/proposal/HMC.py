@@ -7,6 +7,8 @@ from tqdm import tqdm
 
 from flowMC.proposal.base import ProposalBase
 
+from ..utils import debug
+
 
 class HMC(ProposalBase):
     """
@@ -31,11 +33,17 @@ class HMC(ProposalBase):
         step_size: Float = 0.1,
         n_leapfrog: Int = 10,
     ):
-        super().__init__(logpdf, jit, condition_matrix=condition_matrix, step_size=step_size, n_leapfrog=n_leapfrog)
+        super().__init__(
+            logpdf,
+            jit,
+            condition_matrix=condition_matrix,
+            step_size=step_size,
+            n_leapfrog=n_leapfrog,
+        )
 
-        self.potential: Callable[
-            [Float[Array, " n_dim"], PyTree], Float
-        ] = lambda x, data: -logpdf(x, data)
+        self.potential: Callable[[Float[Array, " n_dim"], PyTree], Float] = (
+            lambda x, data: -logpdf(x, data)
+        )
         self.grad_potential: Callable[
             [Float[Array, " n_dim"], PyTree], Float[Array, " n_dim"]
         ] = jax.grad(self.potential)
@@ -51,7 +59,7 @@ class HMC(ProposalBase):
 
         self.kinetic: Callable[
             [Float[Array, " n_dim"], Float[Array, " n_dim n_dim"]], Float
-        ] = (lambda p, metric: 0.5 * (p**2 * metric).sum())
+        ] = lambda p, metric: 0.5 * (p**2 * metric).sum()
         self.grad_kinetic = jax.grad(self.kinetic)
 
     def get_initial_hamiltonian(
@@ -67,7 +75,7 @@ class HMC(ProposalBase):
 
         momentum = (
             jax.random.normal(rng_key, shape=position.shape)
-            * self.condition_matrix ** -0.5
+            * self.condition_matrix**-0.5
         )
         return self.potential(position, data) + self.kinetic(
             momentum, self.condition_matrix
@@ -75,12 +83,25 @@ class HMC(ProposalBase):
 
     def leapfrog_kernel(self, carry, extras):
         position, momentum, data, metric, index = carry
-        position = position + self.step_size * self.leapfrog_coefs[index][
-            0
-        ] * self.grad_kinetic(momentum, metric)
-        momentum = momentum - self.step_size * self.leapfrog_coefs[index][
-            1
-        ] * self.grad_potential(position, data)
+        grad_kinetic_val = self.grad_kinetic(momentum, metric)
+        grad_potential_val = self.grad_potential(position, data)
+
+        debug.flush(
+            "HMC.leapfrog_kernel: grad_kinetic_val={grad_kinetic_val}",
+            grad_kinetic_val=grad_kinetic_val,
+        )
+        debug.flush(
+            "HMC.leapfrog_kernel: grad_potential={grad_potential_val}",
+            grad_potential_val=grad_potential_val,
+        )
+
+        position = (
+            position + self.step_size * self.leapfrog_coefs[index][0] * grad_kinetic_val
+        )
+        momentum = (
+            momentum
+            - self.step_size * self.leapfrog_coefs[index][1] * grad_potential_val
+        )
         index = index + 1
         return (position, momentum, data, metric, index), extras
 
@@ -117,8 +138,7 @@ class HMC(ProposalBase):
         key1, key2 = jax.random.split(rng_key)
 
         momentum: Float[Array, " n_dim"] = (
-            jax.random.normal(key1, shape=position.shape)
-            * self.condition_matrix ** -0.5
+            jax.random.normal(key1, shape=position.shape) * self.condition_matrix**-0.5
         )
         momentum = jnp.dot(
             jax.random.normal(key1, shape=position.shape),
@@ -180,24 +200,10 @@ class HMC(ProposalBase):
         n_chains = rng_key.shape[0]
         acceptance = jnp.zeros((n_chains, n_steps))
         all_positions = (
-            jnp.zeros(
-                (
-                    n_chains,
-                    n_steps,
-                )
-                + initial_position.shape[-1:]
-            )
+            jnp.zeros((n_chains, n_steps) + initial_position.shape[-1:])
             + initial_position[:, None]
         )
-        all_logp = (
-            jnp.zeros(
-                (
-                    n_chains,
-                    n_steps,
-                )
-            )
-            + logp[:, None]
-        )
+        all_logp = jnp.zeros((n_chains, n_steps)) + logp[:, None]
         state = (rng_key, all_positions, all_logp, acceptance, data)
 
         if verbose:

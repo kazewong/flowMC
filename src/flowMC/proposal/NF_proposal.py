@@ -135,34 +135,17 @@ class NFProposal(ProposalBase):
             jax.random.split(subkeys[1], n_chains),
             jnp.zeros((n_chains, n_steps, n_dim)) + initial_position[:, None],
             proposal_position,
-            jnp.zeros(
-                (
-                    n_chains,
-                    n_steps,
-                )
-            )
-            + log_prob_initial,
+            jnp.zeros((n_chains, n_steps)) + log_prob_initial,
             log_prob_proposal,
-            jnp.zeros(
-                (
-                    n_chains,
-                    n_steps,
-                )
-            )
-            + log_prob_nf_initial,
+            jnp.zeros((n_chains, n_steps)) + log_prob_nf_initial,
             log_prob_nf_proposal,
-            jnp.zeros(
-                (
-                    n_chains,
-                    n_steps,
-                )
-            ),
+            jnp.zeros((n_chains, n_steps)),
         )
         if verbose:
             iterator_loop = tqdm(
                 range(1, n_steps),
                 desc="Sampling Globally",
-                miniters=int(n_steps / 10),
+                miniters=int(n_steps / 10)
             )
         else:
             iterator_loop = range(1, n_steps)
