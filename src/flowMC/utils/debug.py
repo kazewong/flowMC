@@ -3,7 +3,6 @@
 
 import jax.debug
 
-
 DEBUG_VERBOSE = False
 
 
@@ -23,9 +22,9 @@ def flush(fmt_str: str, **kwargs) -> None:
 
     .. code:: python
         >>> flush("Hello, {x}!", x=10)
-        flowMC: Hello, 10!
+        flowMC.Hello, 10!
 
     :param fmt_str: The format string for the debug message.
     """
     if DEBUG_VERBOSE:
-        jax.debug.print("\033[1;30;42mflowMC:\033[0m " + fmt_str, **kwargs)
+        jax.debug.print("\033[1;30;42mflowMC.\033[0m" + fmt_str, **kwargs)

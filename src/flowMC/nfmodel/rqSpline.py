@@ -6,8 +6,8 @@ import jax.numpy as jnp
 from jaxtyping import Array, Float, PRNGKeyArray
 
 from flowMC.nfmodel.base import Bijection, Distribution, NFModel
-from flowMC.nfmodel.common import (MLP, Gaussian, MaskedCouplingLayer,
-                                   ScalarAffine)
+from flowMC.nfmodel.common import MLP, Gaussian, MaskedCouplingLayer, ScalarAffine
+from flowMC.utils.debug import flush
 
 
 @partial(jax.vmap, in_axes=(0, None, None))
@@ -112,7 +112,9 @@ def _rational_quadratic_spline_fwd(
     # If x is outside the spline range, we default to a linear transformation.
     y = jnp.where(below_range, (x - x_pos[0]) * knot_slopes[0] + y_pos[0], y)
     y = jnp.where(
-        above_range, (x - x_pos[-1]) * knot_slopes[-1] + y_pos[-1], y  # type: ignore
+        above_range,
+        (x - x_pos[-1]) * knot_slopes[-1] + y_pos[-1],
+        y,  # type: ignore
     )
     logdet = jnp.where(below_range, jnp.log(knot_slopes[0]), logdet)
     logdet = jnp.where(above_range, jnp.log(knot_slopes[-1]), logdet)
@@ -221,7 +223,9 @@ def _rational_quadratic_spline_inv(
     # If y is outside the spline range, we default to a linear transformation.
     x = jnp.where(below_range, (y - y_pos[0]) / knot_slopes[0] + x_pos[0], x)
     x = jnp.where(
-        above_range, (y - y_pos[-1]) / knot_slopes[-1] + x_pos[-1], x  # type: ignore
+        above_range,
+        (y - y_pos[-1]) / knot_slopes[-1] + x_pos[-1],
+        x,  # type: ignore
     )
     logdet = jnp.where(below_range, -jnp.log(knot_slopes[0]), logdet)
     logdet = jnp.where(above_range, -jnp.log(knot_slopes[-1]), logdet)
@@ -382,7 +386,7 @@ class MaskedCouplingRQSpline(NFModel):
         num_bins: int,
         key: PRNGKeyArray,
         spline_range: tuple[float, float] = (-10.0, 10.0),
-        **kwargs
+        **kwargs,
     ):
         if kwargs.get("base_dist") is not None:
             dist = kwargs.get("base_dist")
@@ -484,4 +488,7 @@ class MaskedCouplingRQSpline(NFModel):
         x = (x - self.data_mean) / jnp.sqrt(jnp.diag(self.data_cov))
         y, log_det = self.__call__(x)
         log_det = log_det + self.base_dist.log_prob(y)
+        flush(
+            "nfmodel.MaskedCouplingRQSpline.log_prob={log_det_val}", log_det_val=log_det
+        )
         return log_det

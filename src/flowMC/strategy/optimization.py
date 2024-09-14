@@ -1,12 +1,14 @@
+from typing import Callable
+
 import jax
 import jax.numpy as jnp
 import optax
 from jaxtyping import Array, Float, PRNGKeyArray, PyTree
-from typing import Callable
 
 from flowMC.proposal.base import ProposalBase
 from flowMC.proposal.NF_proposal import NFProposal
 from flowMC.strategy.base import Strategy
+from flowMC.utils.debug import flush
 
 
 class optimization_Adam(Strategy):
@@ -71,14 +73,15 @@ class optimization_Adam(Strategy):
             grad = grad_fn(params) * (1 + jax.random.normal(subkey) * self.noise_level)
             updates, opt_state = self.solver.update(grad, opt_state, params)
             params = optax.apply_updates(params, updates)
-            params = optax.projections.projection_box(params, self.bounds[:, 0], self.bounds[:, 1])
+            params = optax.projections.projection_box(
+                params, self.bounds[:, 0], self.bounds[:, 1]
+            )
             return (key, params, opt_state), None
 
         def _single_optimize(
             key: PRNGKeyArray,
             initial_position: Float[Array, " n_dim"],
         ) -> Float[Array, " n_dim"]:
-
             opt_state = self.solver.init(initial_position)
 
             (key, params, opt_state), _ = jax.lax.scan(
@@ -89,7 +92,7 @@ class optimization_Adam(Strategy):
 
             return params  # type: ignore
 
-        print("Using Adam optimization")
+        flush("Using Adam optimization")
         rng_key, subkey = jax.random.split(rng_key)
         keys = jax.random.split(subkey, initial_position.shape[0])
         optimized_positions = jax.vmap(_single_optimize, in_axes=(0, 0))(
@@ -142,7 +145,6 @@ class optimization_Adam(Strategy):
             key: PRNGKeyArray,
             initial_position: Float[Array, " n_dim"],
         ) -> Float[Array, " n_dim"]:
-
             opt_state = self.solver.init(initial_position)
 
             (key, params, opt_state), _ = jax.lax.scan(
@@ -174,8 +176,8 @@ class optimization_Adam(Strategy):
 
         return rng_key, optimized_positions, summary
 
-class Evosax_CMA_ES(Strategy):
 
+class Evosax_CMA_ES(Strategy):
     def __init__(
         self,
         **kwargs,

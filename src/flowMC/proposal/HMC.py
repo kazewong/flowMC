@@ -6,8 +6,7 @@ from jaxtyping import Array, Float, Int, PRNGKeyArray, PyTree
 from tqdm import tqdm
 
 from flowMC.proposal.base import ProposalBase
-
-from ..utils import debug
+from flowMC.utils.debug import flush
 
 
 class HMC(ProposalBase):
@@ -85,8 +84,8 @@ class HMC(ProposalBase):
         position, momentum, data, metric, index = carry
 
         grad_kinetic_val = self.grad_kinetic(momentum, metric)
-        debug.flush(
-            "HMC.leapfrog_kernel: grad_kinetic_val={grad_kinetic_val}",
+        flush(
+            "proposal.HMC.leapfrog_kernel.grad_kinetic_val={grad_kinetic_val}",
             grad_kinetic_val=grad_kinetic_val,
         )
 
@@ -95,8 +94,8 @@ class HMC(ProposalBase):
         )
 
         grad_potential_val = self.grad_potential(position, data)
-        debug.flush(
-            "HMC.leapfrog_kernel: grad_potential={grad_potential_val}",
+        flush(
+            "proposal.HMC.leapfrog_kernel.grad_potential={grad_potential_val}",
             grad_potential_val=grad_potential_val,
         )
 

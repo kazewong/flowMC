@@ -8,14 +8,13 @@ from jaxtyping import Array, Bool, Float, Int, PRNGKeyArray, PyTree
 from tqdm import tqdm
 
 from flowMC.proposal.base import ProposalBase
-
-from ..utils import debug
+from flowMC.utils.debug import flush
 
 
 class MALA(ProposalBase):
     """
-    Metropolis-adjusted Langevin algorithm sampler clas
-    builiding the mala_sampler method
+    Metropolis-adjusted Langevin algorithm sampler class building the mala_sampler
+    method
 
     Args:
         logpdf: target logpdf function
@@ -45,11 +44,11 @@ class MALA(ProposalBase):
         tuple[Float[Array, " n_dim"], float, dict],
         tuple[Float[Array, " n_dim"], Float[Array, "1"], Float[Array, " n_dim"]],
     ]:
-        debug.flush("Compiling MALA body")
+        flush("Compiling MALA body")
         this_position, dt, data = carry
         dt2 = dt * dt
         this_log_prob, this_d_log = jax.value_and_grad(self.logpdf)(this_position, data)
-        debug.flush("MALA.body: this_d_log={this_d_log}", this_d_log=this_d_log)
+        flush("proposal.MALA.body: this_d_log={this_d_log}", this_d_log=this_d_log)
         proposal = this_position + jnp.dot(dt2, this_d_log) * 0.5
         proposal += jnp.dot(dt, jax.random.normal(this_key, shape=this_position.shape))
         return (proposal, dt, data), (proposal, this_log_prob, this_d_log)

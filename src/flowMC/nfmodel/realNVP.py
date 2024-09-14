@@ -4,12 +4,11 @@ from typing import List, Tuple
 import equinox as eqx
 import jax
 import jax.numpy as jnp
-import numpy as np
-import optax
 from jaxtyping import Array, Float, PRNGKeyArray
 
 from flowMC.nfmodel.base import Distribution, NFModel
 from flowMC.nfmodel.common import MLP, Gaussian, MaskedCouplingLayer, MLPAffine
+from flowMC.utils.debug import flush
 
 
 class AffineCoupling(eqx.Module):
@@ -131,12 +130,7 @@ class RealNVP(NFModel):
         return jax.lax.stop_gradient(jnp.atleast_2d(self._data_cov))
 
     def __init__(
-        self,
-        n_features: int,
-        n_layers: int,
-        n_hidden: int,
-        key: PRNGKeyArray,
-        **kwargs
+        self, n_features: int, n_layers: int, n_hidden: int, key: PRNGKeyArray, **kwargs
     ):
         if kwargs.get("base_dist") is not None:
             self.base_dist = kwargs.get("base_dist")  # type: ignore
@@ -215,4 +209,5 @@ class RealNVP(NFModel):
         log_det = log_det + jax.scipy.stats.multivariate_normal.logpdf(
             y, jnp.zeros(self.n_features), jnp.eye(self.n_features)
         )
+        flush("nfmodel.RealNVP.log_prob={log_det_val}", log_det_val=log_det)
         return log_det
