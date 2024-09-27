@@ -1,15 +1,19 @@
 # Copyright (c) 2022 Kaze Wong & contributor
 
 
+import os
+
 import jax.debug
 
 DEBUG_VERBOSE = False
 
 
-def enable_debug_verbose() -> None:
+def enable_debug_verbose(verbose=True) -> None:
     r"""Enables verbose in debugging mode."""
+    if not verbose:
+        verbose = os.getenv("FLOWMC_DEBUG_VERBOSE", 0)
     global DEBUG_VERBOSE
-    DEBUG_VERBOSE = True
+    DEBUG_VERBOSE = bool(verbose)
 
 
 def get_mode() -> bool:
