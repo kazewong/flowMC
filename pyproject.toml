@@ -30,13 +30,13 @@ Documentation = "https://github.com/kazewong/flowMC"
 
 [project.optional-dependencies]
 docs = [
-    "mkdocs-gen-files",
-    "mkdocs-jupyter",
-    "mkdocs-literate-nav",
-    "mkdocs-material",
-    "mkdocs",
-    "mkdocstrings[python]",
-    "pymdown-extensions",
+    "mkdocs-gen-files==0.5.0",
+    "mkdocs-jupyter==0.25.1",
+    "mkdocs-literate-nav==0.6.1",
+    "mkdocs-material==9.5.47",
+    "mkdocs==1.6.1",
+    "mkdocstrings[python]==0.27.0",
+    "pymdown-extensions==10.12",
 ]
 
 [dependency-groups]
