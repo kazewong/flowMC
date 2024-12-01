@@ -1,3 +1,63 @@
+[project]
+name = "flowMC"
+version = "0.3.4"
+description = "Normalizing flow exhanced sampler in jax"
+authors = [
+    { name = "Kaze Wong", email = "kazewong.physics@gmail.com"},
+    { name = "Marylou Gabrié"},
+    { name = "Dan Foreman-Mackey"}
+]
+readme = "README.md"
+requires-python = ">=3.10"
+keywords = ["sampling", "inference", "machine learning", "normalizing", "autodiff", "jax"]
+dependencies = [
+    "corner>=2.2.3",
+    "equinox>=0.11.9",
+    "jax[cuda12]>=0.4.35",
+    "jaxtyping>=0.2.36",
+    "optax>=0.2.4",
+    "pre-commit==4.0.1",
+    "pyright==1.1.389",
+    "pytest==8.3.3",
+    "ruff==0.8.0",
+    "tqdm>=4.67.1",
+]
+license = { file = "LICENSE" }
+
+[project.urls]
+Documentation = "https://github.com/kazewong/flowMC"
+
+
+[project.optional-dependencies]
+docs = [
+    "mkdocs-gen-files",
+    "mkdocs-jupyter",
+    "mkdocs-literate-nav",
+    "mkdocs-material",
+    "mkdocs",
+    "mkdocstrings[python]",
+    "pymdown-extensions",
+]
+
+[dependency-groups]
+dev = [
+    "pythonpackagetemplate",
+]
+
+[tool.uv.sources]
+pythonpackagetemplate = { workspace = true }
+
+
 [build-system]
-requires = ["setuptools","wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+
+[tool.pyright]
+include = [
+    "src",
+    "tests",
+]
+exclude = [
+    "docs"
+]

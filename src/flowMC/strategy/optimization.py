@@ -173,25 +173,3 @@ class optimization_Adam(Strategy):
             print("Warning: Optimization accessed infinite or NaN log-probabilities.")
 
         return rng_key, optimized_positions, summary
-
-class Evosax_CMA_ES(Strategy):
-
-    def __init__(
-        self,
-        **kwargs,
-    ):
-        class_keys = list(self.__class__.__annotations__.keys())
-        for key, value in kwargs.items():
-            if key in class_keys:
-                if not key.startswith("__"):
-                    setattr(self, key, value)
-
-    def __call__(
-        self,
-        rng_key: PRNGKeyArray,
-        local_sampler: ProposalBase,
-        global_sampler: NFProposal,
-        initial_position: Array,
-        data: dict,
-    ) -> tuple[PRNGKeyArray, Array, ProposalBase, NFProposal, PyTree]:
-        raise NotImplementedError
