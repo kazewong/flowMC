@@ -22,3 +22,24 @@ class Resource(ABC):
         Function to print the tunable parameters of the resource.
         """
         raise NotImplementedError
+    
+    @abstractmethod
+    def save_resource(self, path: str):
+        """
+        Function to save the resource.
+        
+        Args:
+            path (str): Path to save the resource.
+        """
+        raise NotImplementedError
+    
+    @abstractmethod
+    def load_resource(self, path: str):
+        """
+        Function to load the resource.
+        
+        Args:
+            path (str): Path to load the resource.
+        """
+        raise NotImplementedError
+    

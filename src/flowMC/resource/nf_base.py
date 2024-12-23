@@ -8,9 +8,9 @@ import optax
 from jaxtyping import Array, Float, PRNGKeyArray
 from tqdm import tqdm, trange
 from typing_extensions import Self
+from flowMC.resource.base import Resource
 
-
-class NFModel(eqx.Module):
+class NFModel(eqx.Module, Resource):
     """
     Base class for normalizing flow models.
 

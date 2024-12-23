@@ -23,7 +23,7 @@ class Strategy(ABC):
         rng_key: PRNGKeyArray,
         resources: list[Resource],
         initial_position: Float[Array, "n_chains n_dim"],
-        data: dict,
+        data: PyTree,
     ) -> tuple[
         PRNGKeyArray,
         list[Resource],
