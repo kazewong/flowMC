@@ -477,6 +477,7 @@ name = "flowmc"
 version = "0.3.4"
 source = { editable = "." }
 dependencies = [
+    { name = "chex" },
     { name = "corner" },
     { name = "equinox" },
     { name = "jax", extra = ["cuda12"] },
@@ -508,6 +509,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "chex", specifier = ">=0.1.87" },
     { name = "corner", specifier = ">=2.2.3" },
     { name = "equinox", specifier = ">=0.11.9" },
     { name = "jax", extras = ["cuda12"], specifier = ">=0.4.35" },

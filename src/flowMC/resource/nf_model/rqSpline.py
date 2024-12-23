@@ -1,4 +1,5 @@
 from functools import partial
+from typing import Optional
 
 import equinox as eqx
 import jax
@@ -327,15 +328,27 @@ class RQSpline(Bijection):
         )
         return x_pos, y_pos, knot_slopes
 
-    def __call__(self, x: Array, condition_x: Array) -> tuple[Array, Array]:
-        return self.forward(x, condition_x)
+    def __call__(
+        self,
+        x: Float[Array, "n_dim"],
+        condition: Float[Array, "n_condition"],
+    ) -> tuple[Float[Array, "n_dim"], Float]:
+        return self.forward(x, condition)
 
-    def forward(self, x: Array, condition_x: Array) -> tuple[Array, Array]:
-        x_pos, y_pos, knot_slopes = self.get_params(condition_x)
+    def forward(
+        self,
+        x: Float[Array, "n_dim"],
+        condition: Float[Array, "n_condition"],
+    ) -> tuple[Float[Array, "n_dim"], Float]:
+        x_pos, y_pos, knot_slopes = self.get_params(condition)
         return _rational_quadratic_spline_fwd(x, x_pos, y_pos, knot_slopes)
 
-    def inverse(self, x: Array, condition_x: Array) -> tuple[Array, Array]:
-        x_pos, y_pos, knot_slopes = self.get_params(condition_x)
+    def inverse(
+        self,
+        x: Float[Array, "n_dim"],
+        condition: Float[Array, "n_condition"],
+    ) -> tuple[Float[Array, "n_dim"], Float]:
+        x_pos, y_pos, knot_slopes = self.get_params(condition)
         return _rational_quadratic_spline_inv(x, x_pos, y_pos, knot_slopes)
 
 
@@ -433,7 +446,7 @@ class MaskedCouplingRQSpline(NFModel):
         return self.forward(x)
 
     def forward(
-        self, x: Float[Array, " n_dim"]
+        self, x: Float[Array, "n_dim"], key: Optional[PRNGKeyArray] = None
     ) -> tuple[Float[Array, " n_dim"], Float]:
         log_det = 0.0
         dynamics, statics = eqx.partition(self.layers, eqx.is_array)
@@ -441,15 +454,14 @@ class MaskedCouplingRQSpline(NFModel):
         def f(carry, data):
             x, log_det = carry
             layers = eqx.combine(data, statics)
-            x, log_det_i = layers[0](x)
+            x, log_det_i = layers[0](x, None)
             log_det += log_det_i
-            x, log_det_i = layers[1](x)
+            x, log_det_i = layers[1](x, None)
             return (x, log_det + log_det_i), None
 
         (x, log_det), _ = jax.lax.scan(f, (x, log_det), dynamics)
         return x, log_det
 
-    @partial(jax.vmap, in_axes=(None, 0))
     def inverse(
         self, x: Float[Array, " n_dim"]
     ) -> tuple[Float[Array, " n_dim"], Float]:
@@ -460,28 +472,28 @@ class MaskedCouplingRQSpline(NFModel):
         def f(carry, data):
             x, log_det = carry
             layers = eqx.combine(data, statics)
-            x, log_det_i = layers[0].inverse(x)
+            x, log_det_i = layers[0].inverse(x, None)
             log_det += log_det_i
-            x, log_det_i = layers[1].inverse(x)
+            x, log_det_i = layers[1].inverse(x, None)
             return (x, log_det + log_det_i), None
 
         (x, log_det), _ = jax.lax.scan(f, (x, log_det), dynamics, reverse=True)
         return x, log_det
 
-    @eqx.filter_jit
     def sample(
         self, rng_key: PRNGKeyArray, n_samples: int
     ) -> Float[Array, "n_samples n_dim"]:
         samples = self.base_dist.sample(rng_key, n_samples)
-        samples = self.inverse(samples)[0]
+        samples = jax.vmap(self.inverse)(samples)[0]
         samples = samples * jnp.sqrt(jnp.diag(self.data_cov)) + self.data_mean
         return samples
 
-    @eqx.filter_jit
-    @partial(jax.vmap, in_axes=(None, 0))
     def log_prob(self, x: Float[Array, "n_sample n_dim"]) -> Float[Array, " n_sample"]:
         """From data space to latent space"""
         x = (x - self.data_mean) / jnp.sqrt(jnp.diag(self.data_cov))
         y, log_det = self.__call__(x)
         log_det = log_det + self.base_dist.log_prob(y)
         return log_det
+
+    def print_parameters(self):
+        print("RQSpline parameters:")

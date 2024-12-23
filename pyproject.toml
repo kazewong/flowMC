@@ -11,6 +11,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 keywords = ["sampling", "inference", "machine learning", "normalizing", "autodiff", "jax"]
 dependencies = [
+    "chex>=0.1.87",
     "corner>=2.2.3",
     "equinox>=0.11.9",
     "jax[cuda12]>=0.4.35",

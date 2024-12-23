@@ -10,6 +10,7 @@ from tqdm import tqdm, trange
 from typing_extensions import Self
 from flowMC.resource.base import Resource
 
+
 class NFModel(eqx.Module, Resource):
     """
     Base class for normalizing flow models.
@@ -103,7 +104,7 @@ class NFModel(eqx.Module, Resource):
             opt_state (optax.OptState): Updated optimizer state.
         """
         loss, grads = model.loss_fn(x)
-        updates, state = optim.update(grads, state, model) # type: ignore
+        updates, state = optim.update(grads, state, model)  # type: ignore
         model = eqx.apply_updates(model, updates)
         return loss, model, state
 
@@ -203,15 +204,24 @@ class NFModel(eqx.Module, Resource):
             eqx.Module: Model with parameters converted to the given precision.
         """
 
-        precisions_dict  = {"float16": jnp.float16, "bfloat16": jnp.bfloat16, "float32": jnp.float32, "float64": jnp.float64}
+        precisions_dict = {
+            "float16": jnp.float16,
+            "bfloat16": jnp.bfloat16,
+            "float32": jnp.float32,
+            "float64": jnp.float64,
+        }
         try:
             precision_format = precisions_dict[precision.lower()]
         except KeyError:
-            raise ValueError(f"Precision {precision} not supported. Choose from {precisions_dict.keys()}")
+            raise ValueError(
+                f"Precision {precision} not supported. Choose from {precisions_dict.keys()}"
+            )
         dynamic_model, static_model = eqx.partition(self, eqx.is_array)
-        dynamic_model = jax.tree.map(lambda x: x.astype(precision_format), dynamic_model)
+        dynamic_model = jax.tree.map(
+            lambda x: x.astype(precision_format), dynamic_model
+        )
         return eqx.combine(dynamic_model, static_model)
-    
+
     save_resource = save_model
     load_resource = load_model
 
@@ -227,16 +237,26 @@ class Bijection(eqx.Module):
         return NotImplemented
 
     def __call__(
-        self, x: Array, key: Optional[PRNGKeyArray] = None
-    ) -> tuple[Array, Array]:
-        return self.forward(x)
+        self,
+        x: Float[Array, "n_dim"],
+        condition: Float[Array, "n_condition"],
+    ) -> tuple[Float[Array, "n_dim"], Float]:
+        return self.forward(x, condition)
 
     @abstractmethod
-    def forward(self, x: Array) -> tuple[Array, Array]:
+    def forward(
+        self,
+        x: Float[Array, "n_dim"],
+        condition: Float[Array, "n_condition"],
+    ) -> tuple[Float[Array, "n_dim"], Float]:
         return NotImplemented
 
     @abstractmethod
-    def inverse(self, x: Array) -> tuple[Array, Array]:
+    def inverse(
+        self,
+        x: Float[Array, "n_dim"],
+        condition: Float[Array, "n_condition"],
+    ) -> tuple[Float[Array, "n_dim"], Float]:
         return NotImplemented
 
 
