@@ -4,10 +4,10 @@ from typing import Callable
 import jax
 import jax.numpy as jnp
 from jaxtyping import Array, Float, Int, PRNGKeyArray, PyTree
-
+from flowMC.resource.base import Resource
 
 @jax.tree_util.register_pytree_node_class
-class ProposalBase:
+class ProposalBase(Resource):
     def __init__(
         self,
         logpdf: Callable[[Float[Array, " n_dim"], PyTree], Float],

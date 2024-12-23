@@ -211,6 +211,9 @@ class NFModel(eqx.Module, Resource):
         dynamic_model, static_model = eqx.partition(self, eqx.is_array)
         dynamic_model = jax.tree.map(lambda x: x.astype(precision_format), dynamic_model)
         return eqx.combine(dynamic_model, static_model)
+    
+    save_resource = save_model
+    load_resource = load_model
 
 
 class Bijection(eqx.Module):

@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 
 from jaxtyping import Array, Float, PRNGKeyArray, PyTree
+from typing_extensions import Self
 
 
 class Resource(ABC):
@@ -34,7 +35,7 @@ class Resource(ABC):
         raise NotImplementedError
     
     @abstractmethod
-    def load_resource(self, path: str):
+    def load_resource(self, path: str) -> Self:
         """
         Function to load the resource.
         
