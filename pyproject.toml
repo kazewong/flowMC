@@ -41,11 +41,11 @@ docs = [
 
 [dependency-groups]
 dev = [
-    "pythonpackagetemplate",
+    "flowMC",
 ]
 
 [tool.uv.sources]
-pythonpackagetemplate = { workspace = true }
+flowMC = { workspace = true }
 
 
 [build-system]
