@@ -1,22 +1,17 @@
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 
 from jaxtyping import Array, Float, PRNGKeyArray, PyTree
 
-from flowMC.proposal.base import ProposalBase
-from flowMC.proposal.NF_proposal import NFProposal
+from flowMC.resource.base import Resource
 
 
-class Strategy:
+class Strategy(ABC):
     """
     Base class for strategies, which are basically wrapper blocks that modify the state of the sampler
 
     This is an abstract template that should not be directly used.
     
     """
-
-    @abstractmethod
-    def __name__(self):
-        raise NotImplementedError
 
     @abstractmethod
     def __init__(self):
@@ -26,15 +21,13 @@ class Strategy:
     def __call__(
         self,
         rng_key: PRNGKeyArray,
-        local_sampler: ProposalBase,
-        global_sampler: NFProposal,
+        resources: list[Resource],
         initial_position: Float[Array, "n_chains n_dim"],
         data: dict,
     ) -> tuple[
         PRNGKeyArray,
+        list[Resource],
         Float[Array, "n_chains n_dim"],
-        ProposalBase,
-        NFProposal,
         PyTree,
     ]:
         raise NotImplementedError

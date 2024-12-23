@@ -1,5 +1,6 @@
 import corner
 import jax
+
 print(jax.devices())
 import jax.numpy as jnp  # JAX NumPy
 import matplotlib.pyplot as plt

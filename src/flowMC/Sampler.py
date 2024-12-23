@@ -50,7 +50,7 @@ class Sampler:
     n_dim: int
     rng_key: PRNGKeyArray
     data: dict
-    local_sampler: ProposalBase
+    resources: list[Resource]
     strategies: list[Strategy]
 
     # Sampling hyperparameters

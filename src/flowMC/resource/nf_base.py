@@ -89,7 +89,7 @@ class NFModel(eqx.Module):
         x: Float[Array, "n_batch n_dim"],
         optim: optax.GradientTransformation,
         state: optax.OptState,
-    ) -> tuple[Float, Self, optax.OptState]:
+    ) -> tuple[Float[Array, " 1"], Self, optax.OptState]:
         """Train for a single step.
 
         Args:
@@ -116,6 +116,7 @@ class NFModel(eqx.Module):
         batch_size: Float,
     ) -> tuple[Float, Self, optax.OptState]:
         """Train for a single epoch."""
+        value = 1e9
         model = self
         train_ds_size = len(data)
         steps_per_epoch = train_ds_size // batch_size

@@ -1,8 +1,9 @@
+from typing import Callable
+
 import jax
 import jax.numpy as jnp
 import optax
 from jaxtyping import Array, Float, PRNGKeyArray, PyTree
-from typing import Callable
 
 from flowMC.proposal.base import ProposalBase
 from flowMC.proposal.NF_proposal import NFProposal
