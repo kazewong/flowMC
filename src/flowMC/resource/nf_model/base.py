@@ -69,7 +69,7 @@ class NFModel(eqx.Module, Resource):
         """
         return NotImplemented
 
-    @abstractmethod
+    @property
     def n_features(self) -> int:
         return NotImplemented
 
@@ -80,8 +80,8 @@ class NFModel(eqx.Module, Resource):
         return eqx.tree_deserialise_leaves(path + ".eqx", self)
 
     @eqx.filter_value_and_grad
-    def loss_fn(self, x):
-        return -jnp.mean(self.log_prob(x))
+    def loss_fn(self, x: Float[Array, "n_batch n_dim"]) -> Float:
+        return -jnp.mean(jax.vmap(self.log_prob)(x))
 
     @eqx.filter_jit
     def train_step(

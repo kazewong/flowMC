@@ -20,6 +20,7 @@ dependencies = [
     "pyright==1.1.389",
     "pytest==8.3.3",
     "ruff==0.8.0",
+    "scikit-learn>=1.6.0",
     "tqdm>=4.67.1",
 ]
 license = { file = "LICENSE" }
@@ -42,6 +43,7 @@ docs = [
 [dependency-groups]
 dev = [
     "flowMC",
+    "ipykernel>=6.29.5",
 ]
 
 [tool.uv.sources]
