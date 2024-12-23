@@ -4,6 +4,7 @@ import equinox as eqx
 import jax.numpy as jnp
 import optax
 from jaxtyping import Array, Float, Int, PRNGKeyArray
+from typing import Callable
 
 from flowMC.strategy.base import Strategy
 from flowMC.resource.base import Resource
@@ -84,18 +85,19 @@ class Sampler:
     def __init__(
         self,
         n_dim: int,
+        logpdf: Callable[[Float[Array, " n_dim"], dict], Float],
         rng_key: PRNGKeyArray,
-        data: dict,
-        local_sampler: ProposalBase,
-        nf_model: NFModel,
+        resources: list[Resource] = [],
+        strategies: list[Strategy] = [],
         **kwargs,
     ):
         # Copying input into the model
 
         self.n_dim = n_dim
+        self.logpdf = logpdf
         self.rng_key = rng_key
-        self.data = data
-        self.local_sampler = local_sampler
+        self.resources = resources
+        self.strategies = strategies
 
         # Set and override any given hyperparameters
         class_keys = list(self.__class__.__dict__.keys())

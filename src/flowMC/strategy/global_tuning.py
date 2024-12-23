@@ -5,10 +5,8 @@ import optax
 from jaxtyping import Array, Float, PRNGKeyArray, PyTree
 from tqdm import tqdm
 
-from flowMC.proposal.base import ProposalBase
-from flowMC.proposal.NF_proposal import NFProposal
 from flowMC.strategy.base import Strategy
-
+from flowMC.resource.base import Resource
 
 class GlobalTuning(Strategy):
 
@@ -28,8 +26,7 @@ class GlobalTuning(Strategy):
     n_max_examples: int
     verbose: bool
 
-    @property
-    def __name__(self):
+    def __str__(self):
         return "GlobalTuning"
 
     def __init__(
@@ -45,15 +42,13 @@ class GlobalTuning(Strategy):
     def __call__(
         self,
         rng_key: PRNGKeyArray,
-        local_sampler: ProposalBase,
-        global_sampler: NFProposal,
+        resources: list[Resource],
         initial_position: Float[Array, "n_chains n_dim"],
         data: dict,
     ) -> tuple[
         PRNGKeyArray,
+        list[Resource],
         Float[Array, "n_chains n_dim"],
-        ProposalBase,
-        NFProposal,
         PyTree,
     ]:
         """

@@ -23,11 +23,11 @@ class Strategy(ABC):
         rng_key: PRNGKeyArray,
         resources: list[Resource],
         initial_position: Float[Array, "n_chains n_dim"],
-        data: PyTree,
+        data: dict,
     ) -> tuple[
         PRNGKeyArray,
         list[Resource],
         Float[Array, "n_chains n_dim"],
-        PyTree,
+        dict,
     ]:
         raise NotImplementedError
