@@ -490,6 +490,7 @@ class MaskedCouplingRQSpline(NFModel):
 
     def log_prob(self, x: Float[Array, "n_sample n_dim"]) -> Float[Array, " n_sample"]:
         """From data space to latent space"""
+        # TODO: Check if taking away vmap hurts accuracy.
         x = (x - self.data_mean) / jnp.sqrt(jnp.diag(self.data_cov))
         y, log_det = self.__call__(x)
         log_det = log_det + self.base_dist.log_prob(y)
