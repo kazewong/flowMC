@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 
 from jaxtyping import Array, Float, PRNGKeyArray, PyTree
-from typing_extensions import Self
+from typing import Self
 
 
 class Resource(ABC):

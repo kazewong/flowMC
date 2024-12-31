@@ -8,7 +8,7 @@ authors = [
     { name = "Dan Foreman-Mackey"}
 ]
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 keywords = ["sampling", "inference", "machine learning", "normalizing", "autodiff", "jax"]
 dependencies = [
     "chex>=0.1.87",
