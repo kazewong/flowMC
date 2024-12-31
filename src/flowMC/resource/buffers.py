@@ -7,15 +7,23 @@ TBuffer = TypeVar("TBuffer", bound="Buffer")
 class Buffer(Resource):
 
     name: str
-    n_chains: int
-    n_steps: int
-    n_dims: int
+    buffer: np.ndarray
+
+    @property
+    def n_chains(self) -> int:
+        return self.buffer.shape[0]
+    
+    @property
+    def n_steps(self) -> int:
+        return self.buffer.shape[1]
+    
+    @property
+    def n_dims(self) -> int:
+        return self.buffer.shape[2]
 
     def __init__(self, name: str, n_chains: int, n_steps: int, n_dims: int):
         self.name = name
-        self.n_chains = n_chains
-        self.n_steps = n_steps
-        self.n_dims = n_dims
+        self.buffer = np.zeros((n_chains, n_steps, n_dims))
 
     def print_parameters(self):
         print(
@@ -26,11 +34,12 @@ class Buffer(Resource):
         np.savez(
             path + self.name,
             name=self.name,
-            n_chains=self.n_chains,
-            n_steps=self.n_steps,
-            n_dims=self.n_dims,
+            buffer=self.buffer,
         )
 
     def load_resource(self: TBuffer, path: str) -> TBuffer:
         data = np.load(path)
-        return Buffer(data["name"], data["n_chains"], data["n_steps"], data["n_dims"]) # type: ignore
+        buffer = data["buffer"]
+        result = Buffer(data["name"], buffer.shape[0], buffer.shape[1], buffer.shape[2])
+        result.buffer = buffer
+        return result # type: ignore
