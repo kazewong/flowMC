@@ -47,33 +47,33 @@ class Sampler:
 
     # Essential parameters
     n_dim: int
+    n_chains: int
     rng_key: PRNGKeyArray
+    logpdf: Callable[[Float[Array, "n_dim"], dict], Float]
     data: dict
     resources: list[Resource]
     strategies: list[Strategy]
 
     # Sampling hyperparameters
-    n_chains: int = 20
-    n_local_steps: int = 50
-    n_global_steps: int = 50
-    n_loop_training: int = 3
-    n_loop_production: int = 3
-    train_thinning: int = 1
-    output_thinning: int = 1
-    local_autotune: bool = False
+    # n_local_steps: int = 50
+    # n_global_steps: int = 50
+    # n_loop_training: int = 3
+    # n_loop_production: int = 3
+    # train_thinning: int = 1
+    # output_thinning: int = 1
+    # local_autotune: bool = False
 
     # Normalizing flow hyperparameters
-    global_sampler: NFProposal
-    use_global: bool = True
-    batch_size: int = 10000
-    n_epochs: int = 30
-    learning_rate: float = 0.001
-    momentum: float = 0.9
-    n_max_examples: int = 10000
-    n_flow_sample: int = 10000
+    # global_sampler: NFProposal
+    # use_global: bool = True
+    # batch_size: int = 10000
+    # n_epochs: int = 30
+    # learning_rate: float = 0.001
+    # momentum: float = 0.9
+    # n_max_examples: int = 10000
+    # n_flow_sample: int = 10000
 
     # Logging hyperparameters
-    precompile: bool = False
     verbose: bool = False
     logging: bool = True
     outdir: str = "./outdir/"
@@ -109,13 +109,6 @@ class Sampler:
         # Initialized local and global samplers
 
         self.local_sampler = local_sampler
-        if self.precompile:
-            self.local_sampler.precompilation(
-                n_chains=self.n_chains,
-                n_dims=n_dim,
-                n_step=self.n_local_steps,
-                data=data,
-            )
 
         self.global_sampler = NFProposal(
             self.local_sampler.logpdf,

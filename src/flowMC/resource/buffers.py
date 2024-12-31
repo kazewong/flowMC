@@ -25,6 +25,9 @@ class Buffer(Resource):
         self.name = name
         self.buffer = np.zeros((n_chains, n_steps, n_dims))
 
+    def update_buffer(self, buffer: np.ndarray, start: int = 0):
+        self.buffer[:, start:] = buffer
+
     def print_parameters(self):
         print(
             f"Buffer: {self.n_chains} chains, {self.n_steps} steps, {self.n_dims} dimensions"
