@@ -21,7 +21,7 @@ class MALA(ProposalBase):
 
     step_size: Float
 
-    def __str__(self):
+    def __repr__(self):
         return "MALA with step size " + str(self.step_size)
 
     def __init__(

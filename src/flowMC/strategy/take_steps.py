@@ -17,7 +17,7 @@ class TakeLocalSteps(Strategy):
     thinning: int
     verbose: bool
 
-    def __str__(self):
+    def __repr__(self):
         return "Take " + str(self.n_steps) + " local steps with " + self.kernel.__str__() + " kernel"
 
     def __init__(
