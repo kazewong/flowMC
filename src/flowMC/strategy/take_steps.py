@@ -1,5 +1,4 @@
 from flowMC.resource.base import Resource
-from flowMC.resource.log_pdf import LogPDF
 from flowMC.resource.local_kernel.base import ProposalBase
 from flowMC.resource.buffers import Buffer
 from flowMC.strategy.base import Strategy

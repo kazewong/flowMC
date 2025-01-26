@@ -5,7 +5,6 @@ import jax.numpy as jnp
 # from flowMC.resource.nf_model.NF_proposal import NFProposal
 from flowMC.resource.local_kernel.MALA import MALA
 from flowMC.resource.buffers import Buffer
-from flowMC.resource.log_pdf import LogPDF
 # from flowMC.strategy.optimization import optimization_Adam
 from flowMC.strategy.take_steps import TakeLocalSteps
 
@@ -49,12 +48,10 @@ class TestStrategies:
     #     assert vmapped_logp(optimized_positions).mean() > vmapped_logp(initial_position).mean()
 
     def test_take_local_MALA_step(self):
-        PDF_resource = LogPDF(log_posterior)
         buffer_resource = Buffer("test_buffer", 5, 10, 2)
         kernel = MALA(1.0)
 
         resources = {
-            "LogPDF": PDF_resource,
             "test_buffer": buffer_resource,
             "MALA": kernel,
         }
