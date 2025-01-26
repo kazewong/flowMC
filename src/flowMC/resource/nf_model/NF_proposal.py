@@ -7,8 +7,8 @@ from jax import random
 from jaxtyping import Array, Float, Int, PRNGKeyArray, PyTree
 from tqdm import tqdm
 
-from flowMC.nfmodel.base import NFModel
-from flowMC.proposal.base import ProposalBase
+from flowMC.resource.nf_model.base import NFModel
+from flowMC.resource.local_kernel.base import ProposalBase
 
 
 @jax.tree_util.register_pytree_node_class

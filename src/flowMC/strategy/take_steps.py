@@ -9,25 +9,25 @@ import equinox as eqx
 
 class TakeLocalSteps(Strategy):
 
-    kernel_resource: str
-    buffer_resource: str
+    kernel_name: str
+    buffer_name: str
     n_steps: int
     thinning: int
     verbose: bool
 
     def __str__(self):
-        return "Take " + str(self.n_steps) + " local steps with " + self.kernel_resource
+        return "Take " + str(self.n_steps) + " local steps with " + self.kernel_name
 
     def __init__(
         self,
-        kernel_resource: str,
-        buffer_resource: str,
+        kernel_name: str,
+        buffer_name: str,
         n_steps: int,
         thinning: int = 1,
         verbose: bool = False,
     ):
-        self.kernel_resource = kernel_resource
-        self.buffer_resource = buffer_resource
+        self.kernel_name = kernel_name
+        self.buffer_name = buffer_name
         self.n_steps = n_steps
         self.thinning = thinning
         self.verbose = verbose
@@ -46,9 +46,9 @@ class TakeLocalSteps(Strategy):
         logpdf = resources['LogPDF']
         assert isinstance(logpdf, LogPDF), "LogPDF resource must be a LogPDF"
         logpdf = logpdf.logpdf
-        kernel = resources[self.kernel_resource]
+        kernel = resources[self.kernel_name]
         assert isinstance(kernel, ProposalBase), "Kernel resource must be a ProposalBase"
-        buffer = resources[self.buffer_resource]
+        buffer = resources[self.buffer_name]
         assert isinstance(buffer, Buffer), "Buffer resource must be a Buffer"
 
         def body(carry, data):
@@ -60,8 +60,9 @@ class TakeLocalSteps(Strategy):
             (last_key, last_position, last_log_prob), (positions, log_probs, do_accepts) = jax.lax.scan(body, (rng_key, initial_position, logpdf(initial_position, data)), length=self.n_steps)
             return positions, log_probs, do_accepts
 
-        positions, log_probs, do_accepts = eqx.filter_jit(sample)(rng_key, initial_position, data)
+        positions, log_probs, do_accepts = eqx.filter_jit(eqx.filter_vmap(sample, in_axes=(0, 0, None)))(rng_key, initial_position, data)
 
-        buffer.update_buffer
+        buffer.update_buffer(positions, self.n_steps, buffer.current_position)
+
   
-        return rng_key, resources, position
+        return rng_key, resources, positions

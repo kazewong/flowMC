@@ -23,10 +23,10 @@ class LogPDF(Resource):
         return self.logpdf(position, data)
     
     def print_parameters(self):
-        pass
+        raise NotImplementedError
 
     def save_resource(self, path):
-        pass
+        raise NotImplementedError
 
     def load_resource(self, path) -> Self:
         raise NotImplementedError

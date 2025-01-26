@@ -1,6 +1,7 @@
 from flowMC.resource.base import Resource
 from typing import TypeVar
 import numpy as np
+from jaxtyping import Array, Float
 
 TBuffer = TypeVar("TBuffer", bound="Buffer")
 
@@ -8,6 +9,7 @@ class Buffer(Resource):
 
     name: str
     buffer: np.ndarray
+    current_position: int = 0
 
     @property
     def n_chains(self) -> int:
@@ -24,9 +26,11 @@ class Buffer(Resource):
     def __init__(self, name: str, n_chains: int, n_steps: int, n_dims: int):
         self.name = name
         self.buffer = np.zeros((n_chains, n_steps, n_dims))
+        self.current_position = 0
 
-    def update_buffer(self, buffer: np.ndarray, start: int = 0):
-        self.buffer[:, start:] = buffer
+    def update_buffer(self, updates: Array, length: int, start: int = 0):
+        self.buffer[:, start: start + length] = updates
+        self.current_position = start + length
 
     def print_parameters(self):
         print(
