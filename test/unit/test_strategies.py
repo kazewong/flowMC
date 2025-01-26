@@ -59,7 +59,9 @@ class TestStrategies:
             "MALA": kernel,
         }
 
-        strategy = TakeLocalSteps("MALA", "test_buffer", 3, 1)
+        strategy = TakeLocalSteps(log_posterior, kernel, "test_buffer", 5)
         strategy(rng_key=jax.random.split(jax.random.PRNGKey(42),5), resources=resources, initial_position=jax.random.normal(jax.random.PRNGKey(42), shape=(5, 2)), data={})
 
+        new_kernel = MALA(0.5)
+        strategy.update_kernel(new_kernel)
         strategy(rng_key=jax.random.split(jax.random.PRNGKey(42),5), resources=resources, initial_position=jax.random.normal(jax.random.PRNGKey(42), shape=(5, 2)), data={})
