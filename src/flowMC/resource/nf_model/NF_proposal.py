@@ -14,16 +14,16 @@ from flowMC.resource.local_kernel.base import ProposalBase
 @jax.tree_util.register_pytree_node_class
 class NFProposal(ProposalBase):
     model: NFModel
+    n_flow_sample: int
+
+    def __repr__(self):
+        return "NF proposal with " + self.model.__str__()
 
     def __init__(
-        self, logpdf: Callable, jit: bool, model: NFModel, n_flow_sample: int = 10000
+        self,  model: NFModel, n_flow_sample: int = 10000
     ):
-        super().__init__(logpdf, jit)
         self.model = model
         self.n_flow_sample = n_flow_sample
-        self.update_vmap = jax.vmap(self.update, in_axes=(None, (0)))
-        if self.jit is True:
-            self.update_vmap = jax.jit(self.update_vmap)
 
     def kernel(
         self,

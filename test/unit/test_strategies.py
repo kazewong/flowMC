@@ -6,7 +6,7 @@ import jax.numpy as jnp
 from flowMC.resource.local_kernel.MALA import MALA
 from flowMC.resource.buffers import Buffer
 # from flowMC.strategy.optimization import optimization_Adam
-from flowMC.strategy.take_steps import TakeLocalSteps
+from flowMC.strategy.take_steps import TakeSerialSteps
 
 def log_posterior(x, data={}):
     return -0.5 * jnp.sum(x**2)
@@ -48,9 +48,15 @@ class TestStrategies:
     #     assert vmapped_logp(optimized_positions).mean() > vmapped_logp(initial_position).mean()
 
     def test_take_local_MALA_step(self):
-        test_position = Buffer("test_position", 5, 10, 2)
-        test_log_prob = Buffer("test_log_prob", 5, 10, 1)
-        test_acceptance = Buffer("test_acceptance", 5, 10, 1)
+
+        n_chains = 5
+        n_steps = 25
+        n_dims = 2
+        n_batch = 5
+
+        test_position = Buffer("test_position", n_chains, n_steps, n_dims)
+        test_log_prob = Buffer("test_log_prob", n_chains, n_steps, 1)
+        test_acceptance = Buffer("test_acceptance", n_chains, n_steps, 1)
         kernel = MALA(1.0)
 
         resources = {
@@ -60,14 +66,22 @@ class TestStrategies:
             "MALA": kernel,
         }
 
-        strategy = TakeLocalSteps(log_posterior, kernel, "test", 5)
+        test_log_prob.update_buffer(log_posterior(jnp.zeros((n_chains, n_steps, 1))), n_steps)
+        strategy = TakeSerialSteps(log_posterior, kernel, "test", n_batch)
         key = jax.random.PRNGKey(42)
-        key, subkey1, subkey2 = jax.random.split(key,3)
-        strategy(rng_key=jax.random.split(subkey1,5), resources=resources,
-        initial_position=jax.random.normal(subkey2, shape=(5, 2)), data={})
+        positions = jnp.array(test_position.buffer[:,0])
+
+        for i in range(n_batch):
+            key, subkey1, subkey2 = jax.random.split(key,3)
+            _, resources, positions = strategy(rng_key=jax.random.split(subkey1, n_chains), resources=resources,
+            initial_position=positions, data={})
+
+            # print(test_acceptance.buffer[:,:,0])
+            # print(test_log_prob.buffer[:,:,0])
+
 
         new_kernel = MALA(0.5)
         strategy.update_kernel(new_kernel)
         key, subkey1, subkey2 = jax.random.split(key,3)
-        strategy(rng_key=jax.random.split(subkey1,5), resources=resources,
-        initial_position=jax.random.normal(subkey2, shape=(5, 2)), data={})
+        _, resources, positions = strategy(rng_key=jax.random.split(subkey1, n_chains), resources=resources,
+        initial_position=positions, data={})

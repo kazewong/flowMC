@@ -10,13 +10,9 @@ from flowMC.resource.local_kernel.base import ProposalBase
 
 class MALA(ProposalBase):
     """
-    Metropolis-adjusted Langevin algorithm sampler clas
-    builiding the mala_sampler method
+    Metropolis-adjusted Langevin algorithm sampler class.
 
-    Args:
-        logpdf: target logpdf function
-        jit: whether to jit the sampler
-        params: dictionary of parameters for the sampler
+    
     """
 
     step_size: Float
