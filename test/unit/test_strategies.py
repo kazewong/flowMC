@@ -83,5 +83,6 @@ class TestStrategies:
         new_kernel = MALA(0.5)
         strategy.update_kernel(new_kernel)
         key, subkey1, subkey2 = jax.random.split(key,3)
+        strategy.set_current_position(0)
         _, resources, positions = strategy(rng_key=jax.random.split(subkey1, n_chains), resources=resources,
         initial_position=positions, data={})

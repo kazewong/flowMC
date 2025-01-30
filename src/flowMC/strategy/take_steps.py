@@ -90,17 +90,12 @@ class TakeSteps(Strategy):
 
 
 class TakeSerialSteps(TakeSteps):
-
-    def __init__(
-        self,
-        logpdf: Callable[[Float[Array, " n_dim"], dict], Float],
-        kernel: ProposalBase,
-        buffer: str,
-        n_steps: int,
-        thinning: int = 1,
-        verbose: bool = False,
-    ):
-        super().__init__(logpdf, kernel, buffer, n_steps, thinning, verbose)
+    
+    """
+    TakeSerialSteps is a strategy that takes a number of steps in a serial manner, i.e. one after the other.
+    This uses jax.lax.scan to iterate over the steps and apply the kernel to the current position.
+    This is intended to be used for most local kernels that are dependent on the previous step.
+    """
 
     def body(self, carry, data):
         key, position, log_prob = carry
@@ -123,3 +118,19 @@ class TakeSerialSteps(TakeSteps):
             )
         )
         return positions, log_probs, do_accepts
+
+class TakeGroupSteps(TakeSteps):
+
+    """
+    TakeGroupSteps is a strategy that takes a number of steps in a group manner, i.e. all steps are taken at once.
+    This is intended to be used for kernels such as normalizing flow, which proposal steps are independent of each other,
+    and benefit from being computed in parallel.
+    """
+
+    def sample(
+        self,
+        rng_key: PRNGKeyArray,
+        initial_position: Float[Array, " n_dim"],
+        data: dict,
+    ):
+        raise NotImplementedError
