@@ -28,7 +28,8 @@ class Buffer(Resource):
         self.buffer = np.zeros((n_chains, n_steps, n_dims))
         self.current_position = 0
 
-    def update_buffer(self, updates: Array, length: int, start: int = 0):
+    def update_buffer(self, updates: Array, length: int):
+        start = self.current_position
         self.buffer[:, start: start + length] = updates
         self.current_position = start + length
 
