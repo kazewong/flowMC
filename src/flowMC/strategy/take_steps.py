@@ -60,18 +60,18 @@ class TakeLocalSteps(Strategy):
         assert isinstance(position_buffer, Buffer), "Position buffer resource must be a Buffer"
         log_prob_buffer = resources[self.buffer + '_log_prob']
         assert isinstance(log_prob_buffer, Buffer), "Log probability buffer resource must be a Buffer"
-        accept_buffer = resources[self.buffer + '_accept']
-        assert isinstance(accept_buffer, Buffer), "Accept buffer resource must be a Buffer"
+        acceptance_buffer = resources[self.buffer + '_acceptance']
+        assert isinstance(acceptance_buffer, Buffer), "Acceptance buffer resource must be a Buffer"
         
         positions, log_probs, do_accepts = eqx.filter_jit(eqx.filter_vmap(self.sample, in_axes=(0, 0, None)))(rng_key, initial_position, data)
 
         positions = positions[:, :: self.thinning]
-        log_probs = log_probs[:, :: self.thinning]
-        do_accepts = do_accepts[:, :: self.thinning]
+        log_probs = log_probs[:, :: self.thinning][...,None]
+        do_accepts = do_accepts[:, :: self.thinning][...,None]
 
-        position_buffer.update_buffer(positions, self.n_steps // positions)  
-        log_prob_buffer.update_buffer(log_probs, self.n_steps // positions)
-        accept_buffer.update_buffer(do_accepts, self.n_steps // positions)
+        position_buffer.update_buffer(positions, self.n_steps // self.thinning)  
+        log_prob_buffer.update_buffer(log_probs, self.n_steps // self.thinning)
+        acceptance_buffer.update_buffer(do_accepts, self.n_steps // self.thinning)
         return rng_key, resources, positions
 
     def update_kernel(self, kernel: ProposalBase):

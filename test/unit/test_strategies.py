@@ -48,17 +48,26 @@ class TestStrategies:
     #     assert vmapped_logp(optimized_positions).mean() > vmapped_logp(initial_position).mean()
 
     def test_take_local_MALA_step(self):
-        buffer_resource = Buffer("test_buffer", 5, 10, 2)
+        test_position = Buffer("test_position", 5, 10, 2)
+        test_log_prob = Buffer("test_log_prob", 5, 10, 1)
+        test_acceptance = Buffer("test_acceptance", 5, 10, 1)
         kernel = MALA(1.0)
 
         resources = {
-            "test_buffer": buffer_resource,
+            "test_position": test_position,
+            "test_log_prob": test_log_prob,
+            "test_acceptance": test_acceptance,
             "MALA": kernel,
         }
 
-        strategy = TakeLocalSteps(log_posterior, kernel, "test_buffer", 5)
-        strategy(rng_key=jax.random.split(jax.random.PRNGKey(42),5), resources=resources, initial_position=jax.random.normal(jax.random.PRNGKey(42), shape=(5, 2)), data={})
+        strategy = TakeLocalSteps(log_posterior, kernel, "test", 5)
+        key = jax.random.PRNGKey(42)
+        key, subkey1, subkey2 = jax.random.split(key,3)
+        strategy(rng_key=jax.random.split(subkey1,5), resources=resources,
+        initial_position=jax.random.normal(subkey2, shape=(5, 2)), data={})
 
         new_kernel = MALA(0.5)
         strategy.update_kernel(new_kernel)
-        strategy(rng_key=jax.random.split(jax.random.PRNGKey(42),5), resources=resources, initial_position=jax.random.normal(jax.random.PRNGKey(42), shape=(5, 2)), data={})
+        key, subkey1, subkey2 = jax.random.split(key,3)
+        strategy(rng_key=jax.random.split(subkey1,5), resources=resources,
+        initial_position=jax.random.normal(subkey2, shape=(5, 2)), data={})
