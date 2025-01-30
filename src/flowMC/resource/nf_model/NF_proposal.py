@@ -22,6 +22,7 @@ class NFProposal(ProposalBase):
     def __init__(
         self,  model: NFModel, n_flow_sample: int = 10000
     ):
+        super().__init__()
         self.model = model
         self.n_flow_sample = n_flow_sample
 
