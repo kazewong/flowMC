@@ -133,4 +133,7 @@ class TakeGroupSteps(TakeSteps):
         initial_position: Float[Array, " n_dim"],
         data: dict,
     ):
-        raise NotImplementedError
+        (positions, log_probs, do_accepts) = self.kernel.kernel(
+            rng_key, self.logpdf, initial_position, self.logpdf(initial_position, data), {**data, 'n_steps': self.n_steps}
+        )
+        return positions, log_probs, do_accepts
