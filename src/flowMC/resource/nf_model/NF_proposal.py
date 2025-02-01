@@ -19,9 +19,7 @@ class NFProposal(ProposalBase):
     def __repr__(self):
         return "NF proposal with " + self.model.__str__()
 
-    def __init__(
-        self,  model: NFModel, n_flow_sample: int = 1000
-    ):
+    def __init__(self, model: NFModel, n_flow_sample: int = 1000):
         super().__init__()
         self.model = model
         self.n_flow_sample = n_flow_sample
@@ -33,17 +31,65 @@ class NFProposal(ProposalBase):
         position: Float[Array, " n_dim"],
         log_prob: Float[Array, "1"],
         data: PyTree,
-    ) -> tuple[Float[Array, " n_dim"], Float[Array, "1"], Int[Array, "1"]]:
-        
+    ) -> tuple[
+        Float[Array, "n_step n_dim"], Float[Array, "n_step 1"], Int[Array, "n_step 1"]
+    ]:
+
         n_steps = data["n_steps"]
         n_dims = position.shape[-1]
-        
+
         rng_key, subkey = random.split(rng_key)
 
+        # nf_current is size (1, n_dim)
+        log_prob_nf_current = self.model.log_prob(position)
+
+        # All these are size (n_steps, n_dim)
         proposal_position = self.sample_flow(subkey, n_steps, n_dims)
-        log_prob_proposal = jax.vmap(log_pdf, in_axes=(0, None))(proposal_position, data)
-        log_prob_nf_proposal = jax.vmap(self.model.log_prob)(proposal_position)
-        
+        log_prob_proposed = jax.vmap(log_pdf, in_axes=(0, None))(
+            proposal_position, data
+        )
+        log_prob_nf_proposed = jax.vmap(self.model.log_prob)(proposal_position)
+
+        def body(carry, data):
+            (
+                rng_key,
+                position_current,
+                log_prob_current,
+                log_prob_nf_current,
+            ) = carry
+            (position_proposed, log_prob_proposal, log_prob_nf_proposal) = data
+
+            rng_key, subkey = random.split(rng_key)
+            ratio = (log_prob_proposal - log_prob_current) - (
+                log_prob_nf_proposal - log_prob_nf_current
+            )
+            uniform_random = jnp.log(jax.random.uniform(subkey))
+            do_accept = uniform_random < ratio
+            position_current = jnp.where(do_accept, position_proposed, position_current)
+            log_prob_current = jnp.where(do_accept, log_prob_proposal, log_prob_current)
+            log_prob_nf_current = jnp.where(
+                do_accept, log_prob_nf_proposal, log_prob_nf_current
+            )
+
+            return (rng_key, position_current, log_prob_current, log_prob_nf_current), (
+                position_current,
+                log_prob_current,
+                do_accept,
+            )
+
+        _, (positions, log_prob, do_accept) = jax.lax.scan(
+            body,
+            (
+                rng_key,
+                position,
+                log_prob,
+                log_prob_nf_current,
+            ),
+            (proposal_position, log_prob_proposed, log_prob_nf_proposed),
+        )
+
+        return positions, log_prob, do_accept
+
     def sample_flow(
         self,
         rng_key: PRNGKeyArray,
@@ -55,9 +101,7 @@ class NFProposal(ProposalBase):
             rng_key = rng_key
             n_batch = ceil(total_size / self.n_flow_sample)
             n_sample = total_size // n_batch
-            proposal_position = jnp.zeros(
-                (n_batch, n_sample, n_dims)
-            )
+            proposal_position = jnp.zeros((n_batch, n_sample, n_dims))
             for i in range(n_batch):
                 rng_key, subkey = random.split(rng_key)
                 proposal_position = proposal_position.at[i].set(
@@ -73,150 +117,150 @@ class NFProposal(ProposalBase):
 
         return proposal_position
 
-    def kernel(
-        self,
-        rng_key: PRNGKeyArray,
-        initial_position: Float[Array, " n_dim"],
-        proposal_position: Float[Array, " n_dim"],
-        log_prob_initial: Float[Array, "1"],
-        log_prob_proposal: Float[Array, "1"],
-        log_prob_nf_initial: Float[Array, "1"],
-        log_prob_nf_proposal: Float[Array, "1"],
-    ) -> tuple[
-        Float[Array, " n_dim"], Float[Array, "1"], Float[Array, "1"], Int[Array, "1"]
-    ]:
-        rng_key, subkey = random.split(rng_key)
+    # def kernel(
+    #     self,
+    #     rng_key: PRNGKeyArray,
+    #     initial_position: Float[Array, " n_dim"],
+    #     proposal_position: Float[Array, " n_dim"],
+    #     log_prob_initial: Float[Array, "1"],
+    #     log_prob_proposal: Float[Array, "1"],
+    #     log_prob_nf_initial: Float[Array, "1"],
+    #     log_prob_nf_proposal: Float[Array, "1"],
+    # ) -> tuple[
+    #     Float[Array, " n_dim"], Float[Array, "1"], Float[Array, "1"], Int[Array, "1"]
+    # ]:
+    #     rng_key, subkey = random.split(rng_key)
 
-        ratio = (log_prob_proposal - log_prob_initial) - (
-            log_prob_nf_proposal - log_prob_nf_initial
-        )
-        uniform_random = jnp.log(jax.random.uniform(subkey))
-        do_accept = uniform_random < ratio
-        position = jnp.where(do_accept, proposal_position, initial_position)
-        log_prob = jnp.where(do_accept, log_prob_proposal, log_prob_initial)
-        log_prob_nf = jnp.where(do_accept, log_prob_nf_proposal, log_prob_nf_initial)
-        return position, log_prob, log_prob_nf, do_accept
+    #     ratio = (log_prob_proposal - log_prob_initial) - (
+    #         log_prob_nf_proposal - log_prob_nf_initial
+    #     )
+    #     uniform_random = jnp.log(jax.random.uniform(subkey))
+    #     do_accept = uniform_random < ratio
+    #     position = jnp.where(do_accept, proposal_position, initial_position)
+    #     log_prob = jnp.where(do_accept, log_prob_proposal, log_prob_initial)
+    #     log_prob_nf = jnp.where(do_accept, log_prob_nf_proposal, log_prob_nf_initial)
+    #     return position, log_prob, log_prob_nf, do_accept
 
-    def update(
-        self,
-        i: int,
-        state: tuple[
-            PRNGKeyArray,
-            Float[Array, "nstep  n_dim"],
-            Float[Array, "nstep  n_dim"],
-            Float[Array, "nstep 1"],
-            Float[Array, "nstep 1"],
-            Float[Array, "nstep 1"],
-            Float[Array, "nstep 1"],
-            Int[Array, "nstep 1"],
-        ],
-    ) -> tuple[
-        PRNGKeyArray,
-        Float[Array, "nstep  n_dim"],
-        Float[Array, "nstep  n_dim"],
-        Float[Array, "nstep 1"],
-        Float[Array, "nstep 1"],
-        Float[Array, "nstep 1"],
-        Float[Array, "nstep 1"],
-        Int[Array, "n_step 1"],
-    ]:
-        (
-            key,
-            positions,
-            proposal,
-            log_prob,
-            log_prob_proposal,
-            log_prob_nf,
-            log_prob_nf_proposal,
-            acceptance,
-        ) = state
-        key, subkey = jax.random.split(key)
-        new_position, new_log_prob, new_log_prob_nf, do_accept = self.kernel(
-            subkey,
-            positions[i - 1],
-            proposal[i],
-            log_prob[i - 1],
-            log_prob_proposal[i],
-            log_prob_nf[i - 1],
-            log_prob_nf_proposal[i],
-        )
-        positions = positions.at[i].set(new_position)
-        log_prob = log_prob.at[i].set(new_log_prob)
-        log_prob_nf = log_prob_nf.at[i].set(new_log_prob_nf)
-        acceptance = acceptance.at[i].set(do_accept)
-        return (
-            key,
-            positions,
-            proposal,
-            log_prob,
-            log_prob_proposal,
-            log_prob_nf,
-            log_prob_nf_proposal,
-            acceptance,
-        )
+    # def update(
+    #     self,
+    #     i: int,
+    #     state: tuple[
+    #         PRNGKeyArray,
+    #         Float[Array, "nstep  n_dim"],
+    #         Float[Array, "nstep  n_dim"],
+    #         Float[Array, "nstep 1"],
+    #         Float[Array, "nstep 1"],
+    #         Float[Array, "nstep 1"],
+    #         Float[Array, "nstep 1"],
+    #         Int[Array, "nstep 1"],
+    #     ],
+    # ) -> tuple[
+    #     PRNGKeyArray,
+    #     Float[Array, "nstep  n_dim"],
+    #     Float[Array, "nstep  n_dim"],
+    #     Float[Array, "nstep 1"],
+    #     Float[Array, "nstep 1"],
+    #     Float[Array, "nstep 1"],
+    #     Float[Array, "nstep 1"],
+    #     Int[Array, "n_step 1"],
+    # ]:
+    #     (
+    #         key,
+    #         positions,
+    #         proposal,
+    #         log_prob,
+    #         log_prob_proposal,
+    #         log_prob_nf,
+    #         log_prob_nf_proposal,
+    #         acceptance,
+    #     ) = state
+    #     key, subkey = jax.random.split(key)
+    #     new_position, new_log_prob, new_log_prob_nf, do_accept = self.kernel(
+    #         subkey,
+    #         positions[i - 1],
+    #         proposal[i],
+    #         log_prob[i - 1],
+    #         log_prob_proposal[i],
+    #         log_prob_nf[i - 1],
+    #         log_prob_nf_proposal[i],
+    #     )
+    #     positions = positions.at[i].set(new_position)
+    #     log_prob = log_prob.at[i].set(new_log_prob)
+    #     log_prob_nf = log_prob_nf.at[i].set(new_log_prob_nf)
+    #     acceptance = acceptance.at[i].set(do_accept)
+    #     return (
+    #         key,
+    #         positions,
+    #         proposal,
+    #         log_prob,
+    #         log_prob_proposal,
+    #         log_prob_nf,
+    #         log_prob_nf_proposal,
+    #         acceptance,
+    #     )
 
-    def sample(
-        self,
-        rng_key: PRNGKeyArray,
-        n_steps: int,
-        initial_position: Float[Array, "n_chains  n_dim"],
-        data: PyTree,
-        verbose: bool = False,
-    ) -> tuple[
-        PRNGKeyArray,
-        Float[Array, "n_chains n_steps  n_dim"],
-        Float[Array, "n_chains n_steps 1"],
-        Int[Array, "n_chains n_steps 1"],
-    ]:
-        rng_key, *subkeys = random.split(rng_key, 3)
+    # def sample(
+    #     self,
+    #     rng_key: PRNGKeyArray,
+    #     n_steps: int,
+    #     initial_position: Float[Array, "n_chains  n_dim"],
+    #     data: PyTree,
+    #     verbose: bool = False,
+    # ) -> tuple[
+    #     PRNGKeyArray,
+    #     Float[Array, "n_chains n_steps  n_dim"],
+    #     Float[Array, "n_chains n_steps 1"],
+    #     Int[Array, "n_chains n_steps 1"],
+    # ]:
+    #     rng_key, *subkeys = random.split(rng_key, 3)
 
-        n_chains = initial_position.shape[0]
-        n_dim = initial_position.shape[-1]
-        log_prob_initial = self.logpdf_vmap(initial_position, data)[:, None]
-        log_prob_nf_initial = self.model.log_prob(initial_position)[:, None]
+    #     n_chains = initial_position.shape[0]
+    #     n_dim = initial_position.shape[-1]
+    #     log_prob_initial = self.logpdf_vmap(initial_position, data)[:, None]
+    #     log_prob_nf_initial = self.model.log_prob(initial_position)[:, None]
 
-        proposal_position, log_prob_proposal, log_prob_nf_proposal = self.sample_flow(
-            subkeys[0], initial_position, data, n_steps
-        )
+    #     proposal_position, log_prob_proposal, log_prob_nf_proposal = self.sample_flow(
+    #         subkeys[0], initial_position, data, n_steps
+    #     )
 
-        state = (
-            jax.random.split(subkeys[1], n_chains),
-            jnp.zeros((n_chains, n_steps, n_dim)) + initial_position[:, None],
-            proposal_position,
-            jnp.zeros(
-                (
-                    n_chains,
-                    n_steps,
-                )
-            )
-            + log_prob_initial,
-            log_prob_proposal,
-            jnp.zeros(
-                (
-                    n_chains,
-                    n_steps,
-                )
-            )
-            + log_prob_nf_initial,
-            log_prob_nf_proposal,
-            jnp.zeros(
-                (
-                    n_chains,
-                    n_steps,
-                )
-            ),
-        )
-        if verbose:
-            iterator_loop = tqdm(
-                range(1, n_steps),
-                desc="Sampling Globally",
-                miniters=int(n_steps / 10),
-            )
-        else:
-            iterator_loop = range(1, n_steps)
-        for i in iterator_loop:
-            state = self.update_vmap(i, state)
-        return (rng_key, state[1], state[3], state[7])
+    #     state = (
+    #         jax.random.split(subkeys[1], n_chains),
+    #         jnp.zeros((n_chains, n_steps, n_dim)) + initial_position[:, None],
+    #         proposal_position,
+    #         jnp.zeros(
+    #             (
+    #                 n_chains,
+    #                 n_steps,
+    #             )
+    #         )
+    #         + log_prob_initial,
+    #         log_prob_proposal,
+    #         jnp.zeros(
+    #             (
+    #                 n_chains,
+    #                 n_steps,
+    #             )
+    #         )
+    #         + log_prob_nf_initial,
+    #         log_prob_nf_proposal,
+    #         jnp.zeros(
+    #             (
+    #                 n_chains,
+    #                 n_steps,
+    #             )
+    #         ),
+    #     )
+    #     if verbose:
+    #         iterator_loop = tqdm(
+    #             range(1, n_steps),
+    #             desc="Sampling Globally",
+    #             miniters=int(n_steps / 10),
+    #         )
+    #     else:
+    #         iterator_loop = range(1, n_steps)
+    #     for i in iterator_loop:
+    #         state = self.update_vmap(i, state)
+    #     return (rng_key, state[1], state[3], state[7])
 
     # def sample_flow(
     #     self,
