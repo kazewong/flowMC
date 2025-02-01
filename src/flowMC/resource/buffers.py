@@ -2,13 +2,14 @@ from flowMC.resource.base import Resource
 from typing import TypeVar
 import numpy as np
 from jaxtyping import Array, Float
+import jax.numpy as jnp
 
 TBuffer = TypeVar("TBuffer", bound="Buffer")
 
 class Buffer(Resource):
 
     name: str
-    buffer: np.ndarray
+    buffer: Float[Array, "n_chains n_steps n_dims"]
     current_position: int = 0
 
     @property
@@ -25,10 +26,10 @@ class Buffer(Resource):
 
     def __init__(self, name: str, n_chains: int, n_steps: int, n_dims: int):
         self.name = name
-        self.buffer = np.zeros((n_chains, n_steps, n_dims))
+        self.buffer = jnp.zeros((n_chains, n_steps, n_dims))
 
     def update_buffer(self, updates: Array, length: int, start: int = 0):
-        self.buffer[:, start: start + length] = updates
+        self.buffer = self.buffer.at[:, start: start + length].set(updates)
 
     def print_parameters(self):
         print(
@@ -44,7 +45,7 @@ class Buffer(Resource):
 
     def load_resource(self: TBuffer, path: str) -> TBuffer:
         data = np.load(path)
-        buffer = data["buffer"]
+        buffer: Float[Array, "n_chains n_steps n_dims"] = data["buffer"]
         result = Buffer(data["name"], buffer.shape[0], buffer.shape[1], buffer.shape[2])
         result.buffer = buffer
         return result # type: ignore
