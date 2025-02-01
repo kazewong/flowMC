@@ -371,21 +371,9 @@ class MaskedCouplingRQSpline(NFModel):
 
     base_dist: Distribution
     layers: list[Bijection]
-    _n_features: int
-    _data_mean: Float[Array, " n_dim"]
-    _data_cov: Float[Array, " n_dim n_dim"]
 
-    @property
-    def n_features(self):
-        return self._n_features
 
-    @property
-    def data_mean(self):
-        return jax.lax.stop_gradient(self._data_mean)
 
-    @property
-    def data_cov(self):
-        return jax.lax.stop_gradient(jnp.atleast_2d(self._data_cov))
 
     def __init__(
         self,
