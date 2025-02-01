@@ -5,7 +5,6 @@ from flowMC.resource.nf_model.base import NFModel
 from flowMC.resource.optimizer import Optimizer
 from jaxtyping import Array, Float, PRNGKeyArray
 import jax
-import jax.numpy as jnp
 
 
 class TrainModel(Strategy):
@@ -66,7 +65,7 @@ class TrainModel(Strategy):
         rng_key, subkey = jax.random.split(rng_key)
         (rng_key, model, optim_state, loss_values) = model.train(
             rng=subkey,
-            data=jnp.array(training_data),
+            data=training_data,
             optim=optimizer.optim,
             state=optimizer.optim_state,
             num_epochs=self.n_epochs,
