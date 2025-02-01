@@ -24,7 +24,7 @@ class TrainModel(Strategy):
 
     def __init__(
         self,
-        target_resource: str,
+        model_resource: str,
         data_resource: str,
         optimizer_resource: str,
         n_epochs: int = 100,
@@ -33,7 +33,7 @@ class TrainModel(Strategy):
         thinning: int = 1,
         verbose: bool = False,
     ):
-        self.target_resource = target_resource
+        self.model_resource = model_resource
         self.data_resource = data_resource
         self.optimizer_resource = optimizer_resource
 
@@ -54,7 +54,7 @@ class TrainModel(Strategy):
         dict[str, Resource],
         Float[Array, "n_chains n_dim"],
     ]:
-        model = resources[self.target_resource]
+        model = resources[self.model_resource]
         assert isinstance(model, NFModel), "Target resource must be a NFModel"
         data_resource = resources[self.data_resource]
         assert isinstance(data_resource, Buffer), "Data resource must be a buffer"
@@ -62,7 +62,7 @@ class TrainModel(Strategy):
         assert isinstance(
             optimizer, Optimizer
         ), "Optimizer resource must be an optimizer"
-        training_data = data_resource.buffer
+        training_data = data_resource.buffer.reshape(-1, data_resource.n_dims)
         rng_key, subkey = jax.random.split(rng_key)
         (rng_key, model, optim_state, loss_values) = model.train(
             rng=subkey,
@@ -75,6 +75,6 @@ class TrainModel(Strategy):
         )
 
         optimizer.optim_state = optim_state
-        resources[self.target_resource] = model
+        resources[self.model_resource] = model
         resources[self.optimizer_resource] = optimizer
         return rng_key, resources, initial_position

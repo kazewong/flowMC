@@ -19,3 +19,12 @@ class Optimizer(Resource):
 
     def __call__(self, params, grads):
         pass
+
+    def print_parameters(self):
+        raise NotImplementedError
+
+    def save_resource(self, path: str):
+        raise NotImplementedError
+
+    def load_resource(self, path: str):
+        raise NotImplementedError    
