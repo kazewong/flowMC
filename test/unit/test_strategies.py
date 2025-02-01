@@ -86,3 +86,13 @@ class TestStrategies:
         strategy.set_current_position(0)
         _, resources, positions = strategy(rng_key=jax.random.split(subkey1, n_chains), resources=resources,
         initial_position=positions, data={})
+
+    def test_take_NF_step(self):
+        n_chains = 5
+        n_steps = 25
+        n_dims = 2
+        n_batch = 5
+
+        test_position = Buffer("test_position", n_chains, n_steps, n_dims)
+        test_log_prob = Buffer("test_log_prob", n_chains, n_steps, 1)
+        test_acceptance = Buffer("test_acceptance", n_chains, n_steps, 1)
