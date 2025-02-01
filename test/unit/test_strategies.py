@@ -105,12 +105,14 @@ class TestNFStrategies:
 
 
     def test_training(self):
+        # TODO: Need to check for accuracy still
         rng_key, rng_subkey = jax.random.split(jax.random.PRNGKey(0), 2)
         model = MaskedCouplingRQSpline(
             self.n_features, self.n_layers, self.hidden_layes, self.n_bins, jax.random.PRNGKey(10)
         )
 
         test_data = Buffer("test_data", self.n_chains, self.n_steps, self.n_dims)
+        test_data.update_buffer(jax.random.normal(rng_subkey, shape=(self.n_chains, self.n_steps, self.n_dims)), self.n_steps)
         optimizer = Optimizer(model)
 
         resources = {
@@ -119,12 +121,13 @@ class TestNFStrategies:
             "model": model,
         }
 
-        strategy = TrainModel("model", "test_data", "optimizer", n_epochs=100, batch_size=64, n_max_examples=10000, thinning=1, verbose=False)
+        strategy = TrainModel("model", "test_data", "optimizer", n_epochs=10, batch_size=self.n_chains*self.n_steps, n_max_examples=10000, thinning=1, verbose=True)
 
         key = jax.random.PRNGKey(42)
 
+        print(resources["model"].data_mean, resources["model"].data_cov)
         key, resources, positions = strategy(key, resources, jax.random.normal(key, shape=(self.n_chains, self.n_dims)), {})
-
+        print(resources["model"].data_mean, resources["model"].data_cov)
 
     def test_take_NF_step(self):
         test_position = Buffer("test_position", self.n_chains, self.n_steps, self.n_dims)
