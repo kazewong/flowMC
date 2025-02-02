@@ -1,14 +1,10 @@
-import pickle
-
-import equinox as eqx
+import jax
 import jax.numpy as jnp
-import optax
-from jaxtyping import Array, Float, Int, PRNGKeyArray
+from jaxtyping import Array, Float, PRNGKeyArray
 from typing import Callable
 
 from flowMC.strategy.base import Strategy
 from flowMC.resource.base import Resource
-from flowMC.strategy.global_tuning import GlobalSampling, GlobalTuning
 
 
 class Sampler:
@@ -43,6 +39,7 @@ class Sampler:
     def __init__(
         self,
         n_dim: int,
+        n_chains: int,
         logpdf: Callable[[Float[Array, " n_dim"], dict], Float],
         rng_key: PRNGKeyArray,
         resources: dict[str, Resource],
@@ -52,6 +49,7 @@ class Sampler:
         # Copying input into the model
 
         self.n_dim = n_dim
+        self.n_chains = n_chains
         self.logpdf = logpdf
         self.rng_key = rng_key
         self.resources = resources
