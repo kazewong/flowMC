@@ -89,6 +89,7 @@ class GlobalTuning(Strategy):
                 initial_position,
                 data,
             )
+            # TODO: This is current wasteful since only half of local/global acceptance are populated
             self.local_stepper.set_current_position(self.global_stepper.current_position)
 
         return rng_key, resources, initial_position
