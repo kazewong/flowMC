@@ -127,6 +127,7 @@ class TestNFStrategies:
 
         print(resources["model"].data_mean, resources["model"].data_cov)
         key, resources, positions = strategy(key, resources, jax.random.normal(key, shape=(self.n_chains, self.n_dims)), {})
+        assert isinstance(resources["model"], MaskedCouplingRQSpline)
         print(resources["model"].data_mean, resources["model"].data_cov)
 
     def test_take_NF_step(self):
