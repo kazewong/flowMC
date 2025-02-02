@@ -7,8 +7,7 @@ from flowMC.resource.local_kernel.MALA import MALA
 from flowMC.resource.buffers import Buffer
 from flowMC.resource.optimizer import Optimizer
 
-from flowMC.strategy.take_steps import TakeSerialSteps, TakeGroupSteps
-from flowMC.strategy.train_model import TrainModel
+from flowMC.strategy.global_tuning import GlobalTuning
 
 from flowMC.Sampler import Sampler
 
@@ -19,7 +18,7 @@ def log_posterior(x, data: dict):
 
 
 n_dim = 2
-n_steps = 25
+n_steps = 100
 n_chains = 10
 data = {'data':jnp.arange(n_dim)}
 
@@ -46,11 +45,23 @@ resources = {
     "optimizer": optimizer,
 }
 
-local_step = TakeSerialSteps(log_posterior, local_sampler, ["positions", "log_prob", "local_accs"], n_steps)
-train_model = TrainModel("model", "positions", "optimizer", n_epochs=10, batch_size=10000)
-global_step = TakeGroupSteps(log_posterior, global_sampler, ["positions", "log_prob", "global_accs"], n_steps)
+# local_step = TakeSerialSteps(log_posterior, local_sampler, ["positions", "log_prob", "local_accs"], n_steps)
+# train_model = TrainModel("model", "positions", "optimizer", n_epochs=10, batch_size=10000)
+# global_step = TakeGroupSteps(log_posterior, global_sampler, ["positions", "log_prob", "global_accs"], n_steps)
+# # This is probably wrong now because global step and local step overwrite each other progress
 
-strategy = [local_step, train_model, global_step]
+strategy = [GlobalTuning(
+    log_posterior,
+    local_sampler,
+    global_sampler,
+    ["positions", "log_prob", "local_accs"],
+    ["model", "positions", "optimizer"],
+    ["positions", "log_prob", "global_accs"],
+    n_local_steps=10,
+    n_global_steps=10,
+    n_loop=10,
+    n_epochs=10,
+)]
 
 nf_sampler = Sampler(
     n_dim,
