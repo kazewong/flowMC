@@ -111,11 +111,20 @@ class NFProposal(ProposalBase):
             proposal_position = proposal_position.reshape(-1, n_dims)[:total_size]
 
         else:
-            proposal_position = self.model.sample(rng_key, total_size)
+            proposal_position = self.model.sample(rng_key, n_steps)
 
         proposal_position = proposal_position.reshape(n_steps, n_dims)
 
         return proposal_position
+
+    def print_parameters(self):
+        raise NotImplementedError
+    
+    def save_resource(self, path):
+        raise NotImplementedError
+    
+    def load_resource(self, path):
+        raise NotImplementedError
 
     # def kernel(
     #     self,
