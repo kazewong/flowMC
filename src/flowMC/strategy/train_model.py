@@ -62,6 +62,8 @@ class TrainModel(Strategy):
             optimizer, Optimizer
         ), "Optimizer resource must be an optimizer"
         training_data = data_resource.buffer.reshape(-1, data_resource.n_dims)
+        if training_data.shape[0] > self.n_max_examples:
+            training_data = training_data[: self.n_max_examples]
         rng_key, subkey = jax.random.split(rng_key)
         (rng_key, model, optim_state, loss_values) = model.train(
             rng=subkey,
