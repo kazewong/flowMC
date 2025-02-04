@@ -68,17 +68,9 @@ class Sampler:
 
         Args:
             initial_position (Device Array): Initial position.
+            data (dict): Data to be used by the likelihood functions
 
-        Returns:
-            chains (Device Array): Samples from the posterior.
-            nf_samples (Device Array): (n_nf_samples, n_dim)
-            local_accs (Device Array): (n_chains, n_local_steps * n_loop)
-            global_accs (Device Array): (n_chains, n_global_steps * n_loop)
-            loss_vals (Device Array): (n_epoch * n_loop,)
         """
-
-        # Note that auto-tune function needs to have the same number of steps
-        # as the actual sampling loop to avoid recompilation.
 
         initial_position = jnp.atleast_2d(initial_position) # type: ignore
         rng_key = self.rng_key
@@ -91,57 +83,6 @@ class Sampler:
             ) = strategy(
                 rng_key, self.resources, last_step, data
             )
-
-
-    # TODO: Move flow related function to flow class
-    # def sample_flow(
-    #     self, rng_key: PRNGKeyArray, n_samples: int
-    # ) -> Float[Array, "n_samples n_dim"]:
-    #     """
-    #     Sample from the normalizing flow.
-
-    #     Args:
-    #         n_samples (int): Number of samples to generate.
-
-    #     Returns:
-    #         Device Array: Samples generated using the normalizing flow.
-    #     """
-
-    #     samples = self.nf_model.sample(rng_key, n_samples)
-    #     return samples
-
-    # def evalulate_flow(
-    #     self, samples: Float[Array, "n_samples n_dim"]
-    # ) -> Float[Array, "n_samples"]:
-    #     """
-    #     Evaluate the log probability of the normalizing flow.
-
-    #     Args:
-    #         samples (Device Array): Samples to evaluate.
-
-    #     Returns:
-    #         Device Array: Log probability of the samples.
-    #     """
-    #     log_prob = self.nf_model.log_prob(samples)
-    #     return log_prob
-
-    # def save_flow(self, path: str):
-    #     """
-    #     Save the normalizing flow to a file.
-
-    #     Args:
-    #         path (str): Path to save the normalizing flow.
-    #     """
-    #     self.nf_model.save_model(path)
-
-    # def load_flow(self, path: str):
-    #     """
-    #     Save the normalizing flow to a file.
-
-    #     Args:
-    #         path (str): Path to save the normalizing flow.
-    #     """
-    #     self.global_sampler.model = self.nf_model.load_model(path)
 
     # TODO: Implement quick access and summary functions that operates on buffer
 

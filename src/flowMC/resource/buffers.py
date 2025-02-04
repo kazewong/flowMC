@@ -36,6 +36,10 @@ class Buffer(Resource):
             f"Buffer: {self.n_chains} chains, {self.n_steps} steps, {self.n_dims} dimensions"
         )
 
+    def get_distribution(self, n_bins: int = 100):
+        assert self.n_dims == 1, "Only 1D buffers are supported for now"
+        return np.histogram(self.buffer.flatten(), bins=n_bins)
+
     def save_resource(self, path: str):
         np.savez(
             path + self.name,
