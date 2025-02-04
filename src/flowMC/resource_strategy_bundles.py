@@ -26,7 +26,7 @@ class ResourceStrategyBundle(ABC):
     strategies: list[Strategy]
 
 
-class LocalGlobalNFSamplingBundle(ResourceStrategyBundle):
+class RQSpline_MALA_Bundle(ResourceStrategyBundle):
 
     def __str__(self):
         return "Local Global NF Sampling"
@@ -35,36 +35,46 @@ class LocalGlobalNFSamplingBundle(ResourceStrategyBundle):
         self,
         rng_key: PRNGKeyArray,
         n_chains: int,
-        n_steps: int,
         n_dim: int,
         logpdf: Callable[[Float[Array, " n_dim"], dict], Float],
-        local_sampler: ProposalBase,
-        global_sampler: ProposalBase,
-        local_names: list[str],
-        training_names: list[str],
-        global_names: list[str],
         n_local_steps: int,
         n_global_steps: int,
         n_training_loops: int,
         n_production_loops: int,
         n_epochs: int,
+        rq_spline_hidden_units: list[int],
+        rq_spline_n_bins: int,
+        rq_spline_n_layers: int,
     ):
 
-        positions = Buffer("positions", n_chains, n_steps, n_dim)
-        log_prob = Buffer("log_prob", n_chains, n_steps, 1)
-        local_accs = Buffer("local_accs", n_chains, n_steps, 1)
-        global_accs = Buffer("global_accs", n_chains, n_steps, 1)
+        n_training_steps = n_local_steps * n_training_loops
+        n_production_steps = n_local_steps * n_production_loops
+
+        positions_training = Buffer("positions_training", n_chains, n_training_steps, n_dim)
+        log_prob_training = Buffer("log_prob_training", n_chains, n_training_steps, 1)
+        local_accs_training = Buffer("local_accs_training", n_chains, n_training_steps, 1)
+        global_accs_training = Buffer("global_accs_training", n_chains, n_training_steps, 1)
+
+        position_production = Buffer("positions_production", n_chains, n_production_steps, n_dim)
+        log_prob_production = Buffer("log_prob_production", n_chains, n_production_steps, 1)
+        local_accs_production = Buffer("local_accs_production", n_chains, n_production_steps, 1)
+        global_accs_production = Buffer("global_accs_production", n_chains, n_production_steps, 1)
+
         local_sampler = MALA(step_size=1e-1)
         rng_key, subkey = jax.random.split(rng_key)
-        model = MaskedCouplingRQSpline(n_dim, 3, [64, 64], 8, subkey)
+        model = MaskedCouplingRQSpline(n_dim, rq_spline_n_layers, rq_spline_hidden_units, rq_spline_n_bins, subkey)
         global_sampler = NFProposal(model)
         optimizer = Optimizer(model=model)
 
         self.resources = {
-            "positions": positions,
-            "log_prob": log_prob,
-            "local_accs": local_accs,
-            "global_accs": global_accs,
+            "positions_training": positions_training,
+            "log_prob_training": log_prob_training,
+            "local_accs_training": local_accs_training,
+            "global_accs_training": global_accs_training,
+            "positions_production": position_production,
+            "log_prob_production": log_prob_production,
+            "local_accs_production": local_accs_production,
+            "global_accs_production": global_accs_production,
             "model": model,
             "optimizer": optimizer,
         }
@@ -74,13 +84,27 @@ class LocalGlobalNFSamplingBundle(ResourceStrategyBundle):
                 logpdf,
                 local_sampler,
                 global_sampler,
-                local_names,
-                training_names,
-                global_names,
+                ["positions_training", "log_prob_training", "local_accs_training"],
+                ["model", "positions_training", "optimizer"],
+                ["positions_training", "log_prob_training", "global_accs_training"],
                 n_local_steps,
                 n_global_steps,
                 n_training_loops,
+                n_epochs,
+                True
+            ),
+            LocalGlobalNFSample(
+                logpdf,
+                local_sampler,
+                global_sampler,
+                ["positions_production", "log_prob_production", "local_accs_production"],
+                ["model", "positions_production", "optimizer"],
+                ["positions_production", "log_prob_production", "global_accs_production"],
+                n_local_steps,
+                n_global_steps,
                 n_production_loops,
                 n_epochs,
-            )
+                False
+            ),
+            
         ]
