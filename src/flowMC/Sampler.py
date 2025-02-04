@@ -27,7 +27,6 @@ class Sampler:
     n_dim: int
     n_chains: int
     rng_key: PRNGKeyArray
-    logpdf: Callable[[Float[Array, "n_dim"], dict], Float]
     resources: dict[str, Resource]
     strategies: list[Strategy]
 
@@ -40,7 +39,6 @@ class Sampler:
         self,
         n_dim: int,
         n_chains: int,
-        logpdf: Callable[[Float[Array, " n_dim"], dict], Float],
         rng_key: PRNGKeyArray,
         resources: dict[str, Resource],
         strategies: list[Strategy], #TODO: Set this to defult if not provided
@@ -50,7 +48,6 @@ class Sampler:
 
         self.n_dim = n_dim
         self.n_chains = n_chains
-        self.logpdf = logpdf
         self.rng_key = rng_key
         self.resources = resources
         self.strategies = strategies
