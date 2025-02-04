@@ -85,7 +85,7 @@ class TestStrategies:
         for i in range(n_batch):
             key, subkey1, subkey2 = jax.random.split(key, 3)
             _, resources, positions = strategy(
-                rng_key=jax.random.split(subkey1, n_chains),
+                rng_key=subkey1,
                 resources=resources,
                 initial_position=positions,
                 data={},
@@ -99,7 +99,7 @@ class TestStrategies:
         key, subkey1, subkey2 = jax.random.split(key, 3)
         strategy.set_current_position(0)
         _, resources, positions = strategy(
-            rng_key=jax.random.split(subkey1, n_chains),
+            rng_key=subkey1,
             resources=resources,
             initial_position=positions,
             data={},
@@ -203,7 +203,7 @@ class TestNFStrategies:
         positions = test_position.buffer[:, 0]
         print(test_position.buffer[:, :, 0])
         strategy(
-            rng_key=jax.random.split(key, self.n_chains),
+            rng_key=key,
             resources=resources,
             initial_position=positions,
             data={},
