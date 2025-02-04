@@ -15,10 +15,10 @@ n_training_loops = 3
 n_production_loops = 3
 n_epochs = 10
 n_chains = 10
-rq_spline_hidden_units = [32, 32]
+rq_spline_hidden_units = [64, 64]
 rq_spline_n_bins = 8
 rq_spline_n_layers = 3
-data = {"data": jnp.arange(n_dims)}
+data = {"data": jnp.arange(n_dims).astype(jnp.float32)}
 
 rng_key = jax.random.PRNGKey(42)
 rng_key, subkey = jax.random.split(rng_key)
@@ -26,7 +26,7 @@ initial_position = jax.random.normal(subkey, shape=(n_chains, n_dims)) * 1
 
 rng_key, subkey = jax.random.split(rng_key)
 bundle = RQSpline_MALA_Bundle(
-    rng_key,
+    subkey,
     n_chains,
     n_dims,
     log_posterior,
@@ -44,8 +44,7 @@ nf_sampler = Sampler(
     n_dims,
     n_chains,
     rng_key,
-    bundle.resources,
-    bundle.strategies,
+    resource_strategy_bundles=bundle,
 )
 
 nf_sampler.sample(initial_position, data)

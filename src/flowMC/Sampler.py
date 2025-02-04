@@ -59,8 +59,8 @@ class Sampler:
         else:
             print("Resources or strategies not provided. Using resource strategy bundles.")
             assert resource_strategy_bundles is not None, "Resource strategy bundles must be provided if resources and strategies are not."
-            resources = resource_strategy_bundles.resources
-            strategies = resource_strategy_bundles.strategies
+            self.resources = resource_strategy_bundles.resources
+            self.strategies = resource_strategy_bundles.strategies
 
         # Set and override any given hyperparameters
         class_keys = list(self.__class__.__dict__.keys())
