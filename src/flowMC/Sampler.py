@@ -5,6 +5,7 @@ from typing import Callable
 
 from flowMC.strategy.base import Strategy
 from flowMC.resource.base import Resource
+from flowMC.resource_strategy_bundles import ResourceStrategyBundle
 
 
 class Sampler:
@@ -40,8 +41,9 @@ class Sampler:
         n_dim: int,
         n_chains: int,
         rng_key: PRNGKeyArray,
-        resources: dict[str, Resource],
-        strategies: list[Strategy], #TODO: Set this to defult if not provided
+        resources: None | dict[str, Resource] = None,
+        strategies: None | list[Strategy] = None,
+        resource_strategy_bundles: None | ResourceStrategyBundle = None,
         **kwargs,
     ):
         # Copying input into the model
@@ -49,8 +51,16 @@ class Sampler:
         self.n_dim = n_dim
         self.n_chains = n_chains
         self.rng_key = rng_key
-        self.resources = resources
-        self.strategies = strategies
+
+        if resources is not None and strategies is not None:
+            print("Resources and strategies provided. Ignoring resource strategy bundles.")
+            self.resources = resources
+            self.strategies = strategies
+        else:
+            print("Resources or strategies not provided. Using resource strategy bundles.")
+            assert resource_strategy_bundles is not None, "Resource strategy bundles must be provided if resources and strategies are not."
+            resources = resource_strategy_bundles.resources
+            strategies = resource_strategy_bundles.strategies
 
         # Set and override any given hyperparameters
         class_keys = list(self.__class__.__dict__.keys())
