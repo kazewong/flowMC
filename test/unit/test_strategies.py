@@ -135,9 +135,9 @@ class TestNFStrategies:
     n_dims = 2
     n_batch = 5
 
-    n_features = 2
-    hidden_layes = [10, 10]
-    n_layers = 2
+    n_features = n_dims
+    hidden_layes = [16, 16]
+    n_layers = 3
     n_bins = 8
 
     def test_training(self):

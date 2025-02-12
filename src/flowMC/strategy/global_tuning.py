@@ -84,6 +84,7 @@ class LocalGlobalNFSample(Strategy):
                     initial_position,
                     data,
                 )
+                resources['global_sampler'].model = resources['model'] # type: ignore
             rng_key, resources, initial_position = self.global_stepper(
                 rng_key,
                 resources,

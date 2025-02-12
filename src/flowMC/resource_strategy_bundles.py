@@ -75,6 +75,8 @@ class RQSpline_MALA_Bundle(ResourceStrategyBundle):
             "log_prob_production": log_prob_production,
             "local_accs_production": local_accs_production,
             "global_accs_production": global_accs_production,
+            "local_sampler": local_sampler,
+            "global_sampler": global_sampler,
             "model": model,
             "optimizer": optimizer,
         }

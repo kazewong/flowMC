@@ -11,9 +11,7 @@ from flowMC.resource.nf_model.base import NFModel
 from flowMC.resource.local_kernel.base import ProposalBase
 
 
-@jax.tree_util.register_pytree_node_class
 class NFProposal(ProposalBase):
-    model: NFModel
     n_flow_sample: int
 
     def __repr__(self):
@@ -128,9 +126,3 @@ class NFProposal(ProposalBase):
     def load_resource(self, path):
         # TODO: Implement this
         raise NotImplementedError
-
-    def tree_flatten(self):
-        children, aux_data = super().tree_flatten()
-        aux_data["model"] = self.model # type: ignore
-        aux_data["n_sample_max"] = self.n_flow_sample # type: ignore
-        return (children, aux_data)

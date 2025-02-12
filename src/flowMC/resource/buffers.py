@@ -26,7 +26,7 @@ class Buffer(Resource):
 
     def __init__(self, name: str, n_chains: int, n_steps: int, n_dims: int):
         self.name = name
-        self.buffer = jnp.zeros((n_chains, n_steps, n_dims)) - jnp.inf
+        self.buffer = jnp.zeros((n_chains, n_steps, n_dims))
 
     def update_buffer(self, updates: Array, length: int, start: int = 0):
         self.buffer = self.buffer.at[:, start: start + length].set(updates)
