@@ -66,6 +66,7 @@ class TestStrategies:
 
         mala_kernel = MALA(1.0)
         grw_kernel = GaussianRandomWalk(1.0)
+        hmc_kernel = HMC(jnp.eye(n_dims), 0.1, 10)
 
         resources = {
             "test_position": test_position,
@@ -73,6 +74,7 @@ class TestStrategies:
             "test_acceptance": test_acceptance,
             "MALA": mala_kernel,
             "GRW": grw_kernel,
+            "HMC": hmc_kernel,
         }
 
         test_log_prob.update_buffer(
@@ -80,7 +82,7 @@ class TestStrategies:
         )
         strategy = TakeSerialSteps(
             log_posterior,
-            mala_kernel,
+            hmc_kernel,
             ["test_position", "test_log_prob", "test_acceptance"],
             n_batch,
         )
@@ -99,6 +101,18 @@ class TestStrategies:
         strategy.update_kernel(grw_kernel)
 
         key, subkey1, subkey2 = jax.random.split(key, 3)
+        strategy.set_current_position(0)
+        _, resources, positions = strategy(
+            rng_key=subkey1,
+            resources=resources,
+            initial_position=positions,
+            data={},
+        )
+
+        strategy.update_kernel(hmc_kernel)
+
+        key, subkey1, subkey2 = jax.random.split(key, 3)
+        print(strategy.kernel)
         strategy.set_current_position(0)
         _, resources, positions = strategy(
             rng_key=subkey1,

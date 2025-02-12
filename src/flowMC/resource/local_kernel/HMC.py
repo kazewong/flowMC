@@ -34,26 +34,10 @@ class HMC(ProposalBase):
 
     def __init__(
         self,
-        logpdf: Callable[[Float[Array, " n_dim"], PyTree], Float],
-        jit: bool,
         condition_matrix: Float[Array, " n_dim n_dim"] | Float = 1,
         step_size: Float = 0.1,
         n_leapfrog: Int = 10,
     ):
-        super().__init__(
-            logpdf,
-            jit,
-            condition_matrix=condition_matrix,
-            step_size=step_size,
-            n_leapfrog=n_leapfrog,
-        )
-
-        self.potential: Callable[[Float[Array, " n_dim"], PyTree], Float] = (
-            lambda x, data: -logpdf(x, data)
-        )
-        self.grad_potential: Callable[
-            [Float[Array, " n_dim"], PyTree], Float[Array, " n_dim"]
-        ] = jax.grad(self.potential)
 
         self.condition_matrix = condition_matrix
         self.step_size = step_size
@@ -64,13 +48,12 @@ class HMC(ProposalBase):
         coefs = coefs.at[-1].set(jnp.array([1, 0.5]))
         self.leapfrog_coefs = coefs
 
-        self.kinetic: Callable[
-            [Float[Array, " n_dim"], Float[Array, " n_dim n_dim"]], Float
-        ] = (lambda p, metric: 0.5 * (p**2 * metric).sum())
-        self.grad_kinetic = jax.grad(self.kinetic)
-
     def get_initial_hamiltonian(
         self,
+        potential: Callable[[Float[Array, " n_dim"], PyTree], Float[Array, "1"]],
+        kinetic: Callable[
+            [Float[Array, " n_dim"], Float[Array, " n_dim"]], Float[Array, "1"]
+        ],
         rng_key: PRNGKeyArray,
         position: Float[Array, " n_dim"],
         data: PyTree,
@@ -84,30 +67,30 @@ class HMC(ProposalBase):
             jax.random.normal(rng_key, shape=position.shape)
             * self.condition_matrix**-0.5
         )
-        return self.potential(position, data) + self.kinetic(
-            momentum, self.condition_matrix
-        )
+        return potential(position, data) + kinetic(momentum, self.condition_matrix)
 
-    def leapfrog_kernel(self, carry, extras):
+    def leapfrog_kernel(self, kinetic, potential, carry, extras):
         position, momentum, data, metric, index = carry
-        position = position + self.step_size * self.leapfrog_coefs[index][
-            0
-        ] * self.grad_kinetic(momentum, metric)
-        momentum = momentum - self.step_size * self.leapfrog_coefs[index][
-            1
-        ] * self.grad_potential(position, data)
+        position = position + self.step_size * self.leapfrog_coefs[index][0] * jax.grad(
+            kinetic
+        )(momentum, metric)
+        momentum = momentum - self.step_size * self.leapfrog_coefs[index][1] * jax.grad(
+            potential
+        )(position, data)
         index = index + 1
         return (position, momentum, data, metric, index), extras
 
     def leapfrog_step(
         self,
+        leapfrog_kernel: Callable,
         position: Float[Array, " n_dim"],
         momentum: Float[Array, " n_dim"],
         data: PyTree,
         metric: Float[Array, " n_dim n_dim"],
     ) -> tuple[Float[Array, " n_dim"], Float[Array, " n_dim"]]:
+        print("Compiling leapfrog step")
         (position, momentum, data, metric, index), _ = jax.lax.scan(
-            self.leapfrog_kernel,
+            leapfrog_kernel,
             (position, momentum, data, metric, 0),
             jnp.arange(self.n_leapfrog + 2),
         )
@@ -116,6 +99,7 @@ class HMC(ProposalBase):
     def kernel(
         self,
         rng_key: PRNGKeyArray,
+        log_pdf: Callable[[Float[Array, " n_dim"], PyTree], Float[Array, "1"]],
         position: Float[Array, " n_dim"],
         log_prob: Float[Array, "1"],
         data: PyTree,
@@ -129,6 +113,19 @@ class HMC(ProposalBase):
             position (n_chains,  n_dim): current position
             PE (n_chains, ): Potential energy of the current position
         """
+
+        potential: Callable[[Float[Array, " n_dim"], PyTree], Float[Array, "1"]] = (
+            lambda x, data: -log_pdf(x, data)
+        )
+        kinetic: Callable[
+            [Float[Array, " n_dim"], Float[Array, " n_dim"]], Float[Array, "1"]
+        ] = (lambda p, metric: 0.5 * (p**2 * metric).sum())
+
+        leapfrog_kernel = jax.tree_util.Partial(
+            self.leapfrog_kernel, kinetic, potential
+        )
+        leapfrog_step = jax.tree_util.Partial(self.leapfrog_step, leapfrog_kernel)
+
         key1, key2 = jax.random.split(rng_key)
 
         momentum: Float[Array, " n_dim"] = (
@@ -138,91 +135,30 @@ class HMC(ProposalBase):
             jax.random.normal(key1, shape=position.shape),
             jnp.linalg.cholesky(jnp.linalg.inv(self.condition_matrix)).T,
         )
-        H = -log_prob + self.kinetic(momentum, self.condition_matrix)
-        proposed_position, proposed_momentum = self.leapfrog_step(
+        H = -log_prob + kinetic(momentum, self.condition_matrix)
+        proposed_position, proposed_momentum = leapfrog_step(
             position, momentum, data, self.condition_matrix
         )
-        proposed_PE = self.potential(proposed_position, data)
-        proposed_ham = proposed_PE + self.kinetic(
-            proposed_momentum, self.condition_matrix
-        )
+        proposed_PE = potential(proposed_position, data)
+        proposed_ham = proposed_PE + kinetic(proposed_momentum, self.condition_matrix)
         log_acc = H - proposed_ham
         log_uniform = jnp.log(jax.random.uniform(key2))
 
         do_accept = log_uniform < log_acc
 
-        position = jnp.where(do_accept, proposed_position, position)
+        position = jnp.where(do_accept, proposed_position, position) # type: ignore
         log_prob = jnp.where(do_accept, -proposed_PE, log_prob)  # type: ignore
 
         return position, log_prob, do_accept
 
-    def update(self, i, state) -> tuple[
-        PRNGKeyArray,
-        Float[Array, "nstep  n_dim"],
-        Float[Array, "nstep 1"],
-        Int[Array, "n_step 1"],
-        PyTree,
-    ]:
-        key, positions, PE, acceptance, data = state
-        _, key = jax.random.split(key)
-        new_position, new_PE, do_accept = self.kernel(
-            key, positions[i - 1], PE[i - 1], data
-        )
-        positions = positions.at[i].set(new_position)
-        PE = PE.at[i].set(new_PE)
-        acceptance = acceptance.at[i].set(do_accept)
-        return (key, positions, PE, acceptance, data)
+    def print_parameters(self):
+        print("HMC parameters:")
+        print(f"step_size: {self.step_size}")
+        print(f"n_leapfrog: {self.n_leapfrog}")
+        print(f"condition_matrix: {self.condition_matrix}")
 
-    def sample(
-        self,
-        rng_key: PRNGKeyArray,
-        n_steps: int,
-        initial_position: Float[Array, "n_chains  n_dim"],
-        data: PyTree,
-        verbose: bool = False,
-    ) -> tuple[
-        PRNGKeyArray,
-        Float[Array, "n_chains n_steps  n_dim"],
-        Float[Array, "n_chains n_steps 1"],
-        Int[Array, "n_chains n_steps 1"],
-    ]:
-        keys = jax.vmap(jax.random.split)(rng_key)
-        rng_key = keys[:, 0]
-        logp = self.logpdf_vmap(initial_position, data)
-        n_chains = rng_key.shape[0]
-        acceptance = jnp.zeros((n_chains, n_steps))
-        all_positions = (
-            jnp.zeros(
-                (
-                    n_chains,
-                    n_steps,
-                )
-                + initial_position.shape[-1:]
-            )
-            + initial_position[:, None]
-        )
-        all_logp = (
-            jnp.zeros(
-                (
-                    n_chains,
-                    n_steps,
-                )
-            )
-            + logp[:, None]
-        )
-        state = (rng_key, all_positions, all_logp, acceptance, data)
+    def save_resource(self, path):
+        raise NotImplementedError
 
-        if verbose:
-            iterator_loop = tqdm(
-                range(1, n_steps),
-                desc="Sampling Locally",
-                miniters=int(n_steps / 10),
-            )
-        else:
-            iterator_loop = range(1, n_steps)
-
-        for i in iterator_loop:
-            state = self.update_vmap(i, state)
-
-        state = (state[0], state[1], state[2], state[3])
-        return state
+    def load_resource(self, path):
+        raise NotImplementedError
