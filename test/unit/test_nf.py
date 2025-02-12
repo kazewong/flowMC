@@ -35,7 +35,7 @@ def test_realnvp():
     assert y.shape == x.shape
     assert log_det.shape == (2,)
 
-    y_inv, log_det_inv = model.inverse(y)
+    y_inv, log_det_inv = jax.vmap(model.inverse)(y)
 
     assert y_inv.shape == x.shape
     assert log_det_inv.shape == (2,)
@@ -47,7 +47,7 @@ def test_realnvp():
 
     assert samples.shape == (2, 3)
 
-    log_prob = model.log_prob(samples)
+    log_prob = jax.vmap(model.log_prob)(samples)
 
     assert log_prob.shape == (2,)
 

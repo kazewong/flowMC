@@ -9,7 +9,12 @@ import optax
 from jaxtyping import Array, Float, PRNGKeyArray
 
 from flowMC.resource.nf_model.base import Distribution, NFModel
-from flowMC.resource.nf_model.common import MLP, Gaussian, MaskedCouplingLayer, MLPAffine
+from flowMC.resource.nf_model.common import (
+    MLP,
+    Gaussian,
+    MaskedCouplingLayer,
+    MLPAffine,
+)
 
 
 class AffineCoupling(eqx.Module):
@@ -115,7 +120,7 @@ class RealNVP(NFModel):
     base_dist: Distribution
     affine_coupling: List[MaskedCouplingLayer]
     _n_features: int
-    _data_mean: Float[Array, " n_dim"] 
+    _data_mean: Float[Array, " n_dim"]
     _data_cov: Float[Array, " n_dim n_dim"]
 
     @property
@@ -131,12 +136,7 @@ class RealNVP(NFModel):
         return jax.lax.stop_gradient(jnp.atleast_2d(self._data_cov))
 
     def __init__(
-        self,
-        n_features: int,
-        n_layers: int,
-        n_hidden: int,
-        key: PRNGKeyArray,
-        **kwargs
+        self, n_features: int, n_layers: int, n_hidden: int, key: PRNGKeyArray, **kwargs
     ):
         if kwargs.get("base_dist") is not None:
             self.base_dist = kwargs.get("base_dist")  # type: ignore
@@ -173,7 +173,11 @@ class RealNVP(NFModel):
         keys = jax.random.split(key, n_layers)
         self.affine_coupling = eqx.filter_vmap(make_layer)(jnp.arange(n_layers), keys)
 
-    def forward(self, x: Float[Array, "n_dim"], key: Optional[PRNGKeyArray] = None
+    def forward(
+        self,
+        x: Float[Array, "n_dim"],
+        key: Optional[PRNGKeyArray] = None,
+        condition: Optional[Float[Array, "n_condition"]] = None,
     ) -> tuple[Float[Array, "n_dim"], Float]:
         log_det = 0.0
         dynamics, statics = eqx.partition(self.affine_coupling, eqx.is_array)
@@ -181,13 +185,17 @@ class RealNVP(NFModel):
         def f(carry, data):
             x, log_det = carry
             layers = eqx.combine(data, statics)
-            x, log_det_i = layers(x)
+            x, log_det_i = layers(x, condition)
             return (x, log_det + log_det_i), None
 
         (x, log_det), _ = jax.lax.scan(f, (x, log_det), dynamics)
         return x, log_det
 
-    def inverse(self, x: Float[Array, "n_dim"]) -> tuple[Float[Array, "n_dim"], Float]:
+    def inverse(
+        self,
+        x: Float[Array, "n_dim"],
+        condition: Optional[Float[Array, "n_condition"]] = None,
+    ) -> tuple[Float[Array, "n_dim"], Float]:
         """From latent space to data space"""
         log_det = 0.0
         dynamics, statics = eqx.partition(self.affine_coupling, eqx.is_array)
@@ -195,7 +203,7 @@ class RealNVP(NFModel):
         def f(carry, data):
             x, log_det = carry
             layers = eqx.combine(data, statics)
-            x, log_det_i = layers.inverse(x)
+            x, log_det_i = layers.inverse(x, condition)
             return (x, log_det + log_det_i), None
 
         (x, log_det), _ = jax.lax.scan(f, (x, log_det), dynamics, reverse=True)

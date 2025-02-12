@@ -233,3 +233,27 @@ class TestNFStrategies:
             data={},
         )
         print(test_position.buffer[:, :, 0])
+
+    def test_training_effect(self):
+        test_position = Buffer(
+            "test_position", self.n_chains, self.n_steps, self.n_dims
+        )
+        test_log_prob = Buffer("test_log_prob", self.n_chains, self.n_steps, 1)
+        test_acceptance = Buffer("test_acceptance", self.n_chains, self.n_steps, 1)
+
+        model = MaskedCouplingRQSpline(
+            self.n_features,
+            self.n_layers,
+            self.hidden_layes,
+            self.n_bins,
+            jax.random.PRNGKey(10),
+        )
+
+        proposal = NFProposal(model)
+
+        resources = {
+            "test_position": test_position,
+            "test_log_prob": test_log_prob,
+            "test_acceptance": test_acceptance,
+            "NFProposal": proposal,
+        }
