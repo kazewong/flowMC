@@ -82,7 +82,7 @@ class TestStrategies:
         )
         strategy = TakeSerialSteps(
             log_posterior,
-            mala_kernel,
+            'MALA',
             ["test_position", "test_log_prob", "test_acceptance"],
             n_batch,
         )
@@ -98,19 +98,6 @@ class TestStrategies:
                 data={},
             )
 
-        strategy.update_kernel(grw_kernel)
-
-        key, subkey1, subkey2 = jax.random.split(key, 3)
-
-        strategy.set_current_position(0)
-        _, resources, positions = strategy(
-            rng_key=subkey1,
-            resources=resources,
-            initial_position=positions,
-            data={},
-        )
-
-        strategy.update_kernel(hmc_kernel)
 
         key, subkey1, subkey2 = jax.random.split(key, 3)
         strategy.set_current_position(0)
@@ -121,6 +108,17 @@ class TestStrategies:
             data={},
         )
 
+        key, subkey1, subkey2 = jax.random.split(key, 3)
+        strategy.kernel_name = 'GRW'
+        strategy.set_current_position(0)
+        _, resources, positions = strategy(
+            rng_key=subkey1,
+            resources=resources,
+            initial_position=positions,
+            data={},
+        )
+
+        strategy.kernel_name = 'HMC'
         _, resources, positions = strategy(
             rng_key=subkey1,
             resources=resources,
@@ -219,7 +217,7 @@ class TestNFStrategies:
 
         strategy = TakeGroupSteps(
             test_target,
-            proposal,
+            'NFProposal',
             ["test_position", "test_log_prob", "test_acceptance"],
             self.n_steps,
         )

@@ -47,8 +47,8 @@ class RQSpline_MALA_Bundle(ResourceStrategyBundle):
         rq_spline_n_layers: int,
     ):
 
-        n_training_steps = n_local_steps * n_training_loops
-        n_production_steps = n_local_steps * n_production_loops
+        n_training_steps = n_local_steps * n_training_loops + n_global_steps * n_training_loops
+        n_production_steps = n_local_steps * n_production_loops + n_global_steps * n_production_loops
 
         positions_training = Buffer("positions_training", n_chains, n_training_steps, n_dim)
         log_prob_training = Buffer("log_prob_training", n_chains, n_training_steps, 1)
@@ -82,8 +82,6 @@ class RQSpline_MALA_Bundle(ResourceStrategyBundle):
         self.strategies = [
             LocalGlobalNFSample(
                 logpdf,
-                local_sampler,
-                global_sampler,
                 ["positions_training", "log_prob_training", "local_accs_training"],
                 ["model", "positions_training", "optimizer"],
                 ["positions_training", "log_prob_training", "global_accs_training"],
@@ -95,8 +93,6 @@ class RQSpline_MALA_Bundle(ResourceStrategyBundle):
             ),
             LocalGlobalNFSample(
                 logpdf,
-                local_sampler,
-                global_sampler,
                 ["positions_production", "log_prob_production", "local_accs_production"],
                 ["model", "positions_production", "optimizer"],
                 ["positions_production", "log_prob_production", "global_accs_production"],

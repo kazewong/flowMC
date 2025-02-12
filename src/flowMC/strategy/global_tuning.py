@@ -14,8 +14,6 @@ from typing import Callable
 class LocalGlobalNFSample(Strategy):
 
     logpdf: Callable[[Float[Array, " n_dim"], dict], Float]
-    local_stepper: TakeSerialSteps
-    global_stepper: TakeGroupSteps
     training_stepper: TrainModel
 
     n_loops: int
@@ -26,8 +24,6 @@ class LocalGlobalNFSample(Strategy):
     def __init__(
         self,
         logpdf: Callable[[Float[Array, " n_dim"], dict], Float],
-        local_sampler: ProposalBase,
-        global_sampler: ProposalBase,
         local_names: list[str],
         training_names: list[str],
         global_names: list[str],
@@ -40,13 +36,13 @@ class LocalGlobalNFSample(Strategy):
         self.logpdf = logpdf
         self.local_stepper = TakeSerialSteps(
             logpdf,
-            local_sampler,
+            'local_sampler',
             local_names,
             n_local_steps,
         )
         self.global_stepper = TakeGroupSteps(
             logpdf,
-            global_sampler,
+            'global_sampler',
             global_names,
             n_global_steps,
         )

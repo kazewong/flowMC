@@ -11,7 +11,7 @@ from abc import abstractmethod
 
 class TakeSteps(Strategy):
     logpdf: Callable[[Float[Array, " n_dim"], dict], Float]
-    kernel: ProposalBase
+    kernel_name: str
     buffer_names: list[str]
     n_steps: int
     current_position: int
@@ -21,14 +21,14 @@ class TakeSteps(Strategy):
     def __init__(
         self,
         logpdf: Callable[[Float[Array, " n_dim"], dict], Float],
-        kernel: ProposalBase,
+        kernel_name: str,
         buffer_names: list[str],
         n_steps: int,
         thinning: int = 1,
         verbose: bool = False,
     ):
         self.logpdf = logpdf
-        self.kernel = kernel
+        self.kernel_name = kernel_name
         self.buffer_names = buffer_names
         self.n_steps = n_steps
         self.current_position = 0
@@ -38,6 +38,7 @@ class TakeSteps(Strategy):
     @abstractmethod
     def sample(
         self,
+        kernel: ProposalBase,
         rng_key: PRNGKeyArray,
         initial_position: Float[Array, " n_dim"],
         data: dict,
@@ -73,9 +74,11 @@ class TakeSteps(Strategy):
             acceptance_buffer, Buffer
         ), "Acceptance buffer resource must be a Buffer"
 
+        kernel = resources[self.kernel_name]
+
         # Filter jit will bypass the compilation of the function if not clearing the cache
         positions, log_probs, do_accepts = eqx.filter_jit( 
-            eqx.filter_vmap(self.sample, in_axes=(0, 0, None))
+            eqx.filter_vmap(jax.tree_util.Partial(self.sample, kernel), in_axes=(0, 0, None))
         )(subkey, initial_position, data)
 
         positions = positions[:, :: self.thinning]
@@ -88,11 +91,6 @@ class TakeSteps(Strategy):
         self.current_position += self.n_steps // self.thinning
         return rng_key, resources, positions[:,-1]
 
-    def update_kernel(self, kernel: ProposalBase):
-        self.kernel = kernel
-        eqx.clear_caches() # It would be good to see whether we can get rid of this while recompile correctly
-
-
 class TakeSerialSteps(TakeSteps):
     
     """
@@ -101,22 +99,23 @@ class TakeSerialSteps(TakeSteps):
     This is intended to be used for most local kernels that are dependent on the previous step.
     """
 
-    def body(self, carry, aux):
+    def body(self, kernel, carry, aux):
         key, position, log_prob, data = carry
-        position, log_prob, do_accept = self.kernel.kernel(
+        position, log_prob, do_accept = kernel.kernel(
             key, self.logpdf, position, log_prob, data
         )
         return (key, position, log_prob, data), (position, log_prob, do_accept)
 
     def sample(
         self,
+        kernel: ProposalBase,
         rng_key: PRNGKeyArray,
         initial_position: Float[Array, " n_dim"],
         data: dict,
     ):
         (last_key, last_position, last_log_prob, data), (positions, log_probs, do_accepts) = (
             jax.lax.scan(
-                self.body,
+                jax.tree_util.Partial(self.body, kernel),
                 (rng_key, initial_position, self.logpdf(initial_position, data), data),
                 length=self.n_steps,
             )
@@ -133,11 +132,12 @@ class TakeGroupSteps(TakeSteps):
 
     def sample(
         self,
+        kernel: ProposalBase,
         rng_key: PRNGKeyArray,
         initial_position: Float[Array, " n_dim"],
         data: dict,
     ):
-        (positions, log_probs, do_accepts) = self.kernel.kernel(
+        (positions, log_probs, do_accepts) = kernel.kernel(
             rng_key, self.logpdf, initial_position, self.logpdf(initial_position, data), {**data, 'n_steps': self.n_steps}
         )
         return positions, log_probs, do_accepts
