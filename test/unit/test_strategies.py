@@ -82,7 +82,7 @@ class TestStrategies:
         )
         strategy = TakeSerialSteps(
             log_posterior,
-            hmc_kernel,
+            mala_kernel,
             ["test_position", "test_log_prob", "test_acceptance"],
             n_batch,
         )
@@ -101,6 +101,7 @@ class TestStrategies:
         strategy.update_kernel(grw_kernel)
 
         key, subkey1, subkey2 = jax.random.split(key, 3)
+
         strategy.set_current_position(0)
         _, resources, positions = strategy(
             rng_key=subkey1,
@@ -112,7 +113,6 @@ class TestStrategies:
         strategy.update_kernel(hmc_kernel)
 
         key, subkey1, subkey2 = jax.random.split(key, 3)
-        print(strategy.kernel)
         strategy.set_current_position(0)
         _, resources, positions = strategy(
             rng_key=subkey1,
@@ -120,6 +120,14 @@ class TestStrategies:
             initial_position=positions,
             data={},
         )
+
+        _, resources, positions = strategy(
+            rng_key=subkey1,
+            resources=resources,
+            initial_position=positions,
+            data={},
+        )
+
 
 
 class TestNFStrategies:

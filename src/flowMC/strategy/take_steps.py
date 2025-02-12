@@ -73,7 +73,8 @@ class TakeSteps(Strategy):
             acceptance_buffer, Buffer
         ), "Acceptance buffer resource must be a Buffer"
 
-        positions, log_probs, do_accepts = eqx.filter_jit(
+        # Filter jit will bypass the compilation of the function if not clearing the cache
+        positions, log_probs, do_accepts = eqx.filter_jit( 
             eqx.filter_vmap(self.sample, in_axes=(0, 0, None))
         )(subkey, initial_position, data)
 
@@ -89,6 +90,7 @@ class TakeSteps(Strategy):
 
     def update_kernel(self, kernel: ProposalBase):
         self.kernel = kernel
+        eqx.clear_caches() # It would be good to see whether we can get rid of this while recompile correctly
 
 
 class TakeSerialSteps(TakeSteps):
