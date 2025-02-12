@@ -11,8 +11,6 @@ from flowMC.resource.local_kernel.base import ProposalBase
 class MALA(ProposalBase):
     """
     Metropolis-adjusted Langevin algorithm sampler class.
-
-    
     """
 
     step_size: Float

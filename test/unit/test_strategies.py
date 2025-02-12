@@ -5,6 +5,8 @@ from flowMC.resource.nf_model.rqSpline import MaskedCouplingRQSpline
 from flowMC.resource.optimizer import Optimizer
 from flowMC.resource.nf_model.NF_proposal import NFProposal
 from flowMC.resource.local_kernel.MALA import MALA
+from flowMC.resource.local_kernel.Gaussian_random_walk import GaussianRandomWalk
+from flowMC.resource.local_kernel.HMC import HMC
 from flowMC.resource.buffers import Buffer
 
 # from flowMC.strategy.optimization import optimization_Adam
@@ -51,7 +53,7 @@ class TestStrategies:
 
     #     assert vmapped_logp(optimized_positions).mean() > vmapped_logp(initial_position).mean()
 
-    def test_take_local_MALA_step(self):
+    def test_take_local_step(self):
 
         n_chains = 5
         n_steps = 25
@@ -61,13 +63,16 @@ class TestStrategies:
         test_position = Buffer("test_position", n_chains, n_steps, n_dims)
         test_log_prob = Buffer("test_log_prob", n_chains, n_steps, 1)
         test_acceptance = Buffer("test_acceptance", n_chains, n_steps, 1)
-        kernel = MALA(1.0)
+
+        mala_kernel = MALA(1.0)
+        grw_kernel = GaussianRandomWalk(1.0)
 
         resources = {
             "test_position": test_position,
             "test_log_prob": test_log_prob,
             "test_acceptance": test_acceptance,
-            "MALA": kernel,
+            "MALA": mala_kernel,
+            "GRW": grw_kernel,
         }
 
         test_log_prob.update_buffer(
@@ -75,7 +80,7 @@ class TestStrategies:
         )
         strategy = TakeSerialSteps(
             log_posterior,
-            kernel,
+            mala_kernel,
             ["test_position", "test_log_prob", "test_acceptance"],
             n_batch,
         )
@@ -91,11 +96,8 @@ class TestStrategies:
                 data={},
             )
 
-            # print(test_acceptance.buffer[:,:,0])
-            # print(test_log_prob.buffer[:,:,0])
+        strategy.update_kernel(grw_kernel)
 
-        new_kernel = MALA(0.5)
-        strategy.update_kernel(new_kernel)
         key, subkey1, subkey2 = jax.random.split(key, 3)
         strategy.set_current_position(0)
         _, resources, positions = strategy(
