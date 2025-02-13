@@ -12,6 +12,9 @@ class Buffer(Resource):
     buffer: Float[Array, "n_chains n_steps n_dims"]
     current_position: int = 0
 
+    def __repr__(self):
+        return str(self.buffer)
+
     @property
     def n_chains(self) -> int:
         return self.buffer.shape[0]
@@ -26,7 +29,7 @@ class Buffer(Resource):
 
     def __init__(self, name: str, n_chains: int, n_steps: int, n_dims: int):
         self.name = name
-        self.buffer = jnp.zeros((n_chains, n_steps, n_dims)) + jnp.nan
+        self.buffer = jnp.zeros((n_chains, n_steps, n_dims)) - jnp.inf
 
     def update_buffer(self, updates: Array, length: int, start: int = 0):
         self.buffer = self.buffer.at[:, start: start + length].set(updates)
