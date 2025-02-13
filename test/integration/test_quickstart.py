@@ -48,3 +48,4 @@ nf_sampler = Sampler(
 )
 
 nf_sampler.sample(initial_position, data)
+

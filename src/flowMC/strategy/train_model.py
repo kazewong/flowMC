@@ -78,4 +78,5 @@ class TrainModel(Strategy):
         optimizer.optim_state = optim_state
         resources[self.model_resource] = model
         resources[self.optimizer_resource] = optimizer
+
         return rng_key, resources, initial_position
