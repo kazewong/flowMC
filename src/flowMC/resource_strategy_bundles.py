@@ -45,6 +45,7 @@ class RQSpline_MALA_Bundle(ResourceStrategyBundle):
         rq_spline_hidden_units: list[int],
         rq_spline_n_bins: int,
         rq_spline_n_layers: int,
+        verbose: bool = False,
     ):
 
         n_training_steps = n_local_steps * n_training_loops + n_global_steps * n_training_loops
@@ -91,7 +92,8 @@ class RQSpline_MALA_Bundle(ResourceStrategyBundle):
                 n_global_steps,
                 n_training_loops,
                 n_epochs,
-                True
+                training=True,
+                verbose=verbose
             ),
             LocalGlobalNFSample(
                 logpdf,
@@ -102,7 +104,8 @@ class RQSpline_MALA_Bundle(ResourceStrategyBundle):
                 n_global_steps,
                 n_production_loops,
                 n_epochs,
-                False
+                training=False,
+                verbose=verbose
             ),
             
         ]

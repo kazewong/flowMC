@@ -53,6 +53,7 @@ class TrainModel(Strategy):
         dict[str, Resource],
         Float[Array, "n_chains n_dim"],
     ]:
+
         model = resources[self.model_resource]
         assert isinstance(model, NFModel), "Target resource must be a NFModel"
         data_resource = resources[self.data_resource]
@@ -65,6 +66,12 @@ class TrainModel(Strategy):
         if training_data.shape[0] > self.n_max_examples:
             training_data = training_data[: self.n_max_examples]
         rng_key, subkey = jax.random.split(rng_key)
+        if self.verbose:
+            print("Training model")
+            print(f"Training data shape: {training_data.shape}")
+            print(f"n_epochs: {self.n_epochs}")
+            print(f"batch_size: {self.batch_size}")
+            
         (rng_key, model, optim_state, loss_values) = model.train(
             rng=subkey,
             data=training_data,

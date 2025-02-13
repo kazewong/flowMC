@@ -31,7 +31,10 @@ class LocalGlobalNFSample(Strategy):
         n_global_steps: int,
         n_loops: int,
         n_epochs: int,
+        batch_size: int = 10000,
+        n_max_examples: int = 10000,
         training: bool = True,
+        verbose: bool = False,
     ):
         self.logpdf = logpdf
         self.local_stepper = TakeSerialSteps(
@@ -39,18 +42,23 @@ class LocalGlobalNFSample(Strategy):
             'local_sampler',
             local_names,
             n_local_steps,
+            verbose=verbose,
         )
         self.global_stepper = TakeGroupSteps(
             logpdf,
             'global_sampler',
             global_names,
             n_global_steps,
+            verbose=verbose,
         )
         self.training_stepper = TrainModel(
             training_names[0],
             training_names[1],
             training_names[2],
-            n_epochs,
+            n_epochs=n_epochs,
+            batch_size=batch_size,
+            n_max_examples=n_max_examples,
+            verbose=verbose,
         )
         self.n_loops = n_loops
         self.training = training
