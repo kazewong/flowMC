@@ -45,6 +45,8 @@ class RQSpline_MALA_Bundle(ResourceStrategyBundle):
         rq_spline_hidden_units: list[int],
         rq_spline_n_bins: int,
         rq_spline_n_layers: int,
+        batch_size: int = 10000,
+        n_max_examples: int = 10000,
         verbose: bool = False,
     ):
 
@@ -61,7 +63,7 @@ class RQSpline_MALA_Bundle(ResourceStrategyBundle):
         local_accs_production = Buffer("local_accs_production", n_chains, n_production_steps, 1)
         global_accs_production = Buffer("global_accs_production", n_chains, n_production_steps, 1)
 
-        local_sampler = MALA(step_size=1e-1)
+        local_sampler = MALA(step_size=0.2)
         rng_key, subkey = jax.random.split(rng_key)
         model = MaskedCouplingRQSpline(n_dim, rq_spline_n_layers, rq_spline_hidden_units, rq_spline_n_bins, subkey)
         global_sampler = NFProposal(model)
@@ -92,6 +94,8 @@ class RQSpline_MALA_Bundle(ResourceStrategyBundle):
                 n_global_steps,
                 n_training_loops,
                 n_epochs,
+                batch_size=batch_size,
+                n_max_examples=n_max_examples,
                 training=True,
                 verbose=verbose
             ),
@@ -104,6 +108,8 @@ class RQSpline_MALA_Bundle(ResourceStrategyBundle):
                 n_global_steps,
                 n_production_loops,
                 n_epochs,
+                batch_size=batch_size,
+                n_max_examples=n_max_examples,
                 training=False,
                 verbose=verbose
             ),

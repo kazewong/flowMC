@@ -5,6 +5,8 @@ from flowMC.resource.nf_model.base import NFModel
 from flowMC.resource.optimizer import Optimizer
 from jaxtyping import Array, Float, PRNGKeyArray
 import jax
+import jax.numpy as jnp
+import numpy as np
 
 
 class TrainModel(Strategy):
@@ -63,9 +65,20 @@ class TrainModel(Strategy):
             optimizer, Optimizer
         ), "Optimizer resource must be an optimizer"
         training_data = data_resource.buffer.reshape(-1, data_resource.n_dims)[:: self.thinning]
+        training_data = training_data[jnp.isfinite(training_data).all(axis=1)]
         if training_data.shape[0] > self.n_max_examples:
-            training_data = training_data[: self.n_max_examples]
+            training_data = training_data[-self.n_max_examples:]
+        elif training_data.shape[0] < self.n_max_examples:
+            rng_key, subkey = jax.random.split(rng_key)
+
+            training_data = training_data[jax.random.choice(
+                subkey,
+                jnp.arange(training_data.shape[0]),
+                shape=(self.n_max_examples,),
+                replace=True,
+            )]
         rng_key, subkey = jax.random.split(rng_key)
+
         if self.verbose:
             print("Training model")
             print(f"Training data shape: {training_data.shape}")
@@ -85,5 +98,5 @@ class TrainModel(Strategy):
         optimizer.optim_state = optim_state
         resources[self.model_resource] = model
         resources[self.optimizer_resource] = optimizer
-
+        print(f"Training loss: {loss_values}")
         return rng_key, resources, initial_position
