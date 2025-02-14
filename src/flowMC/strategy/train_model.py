@@ -28,6 +28,7 @@ class TrainModel(Strategy):
         model_resource: str,
         data_resource: str,
         optimizer_resource: str,
+        loss_buffer_name: str = "",
         n_epochs: int = 100,
         batch_size: int = 64,
         n_max_examples: int = 10000,
@@ -37,6 +38,7 @@ class TrainModel(Strategy):
         self.model_resource = model_resource
         self.data_resource = data_resource
         self.optimizer_resource = optimizer_resource
+        self.loss_buffer_name = loss_buffer_name
 
         self.n_epochs = n_epochs
         self.batch_size = batch_size
@@ -64,19 +66,19 @@ class TrainModel(Strategy):
         assert isinstance(
             optimizer, Optimizer
         ), "Optimizer resource must be an optimizer"
-        training_data = data_resource.buffer.reshape(-1, data_resource.n_dims)[:: self.thinning]
+        training_data = data_resource.buffer.reshape(-1, data_resource.n_dims)[
+            :: self.thinning
+        ]
         training_data = training_data[jnp.isfinite(training_data).all(axis=1)]
-        if training_data.shape[0] > self.n_max_examples:
-            training_data = training_data[-self.n_max_examples:]
-        elif training_data.shape[0] < self.n_max_examples:
-            rng_key, subkey = jax.random.split(rng_key)
-
-            training_data = training_data[jax.random.choice(
+        subkey, rng_key = jax.random.split(rng_key)
+        training_data = training_data[
+            jax.random.choice(
                 subkey,
                 jnp.arange(training_data.shape[0]),
                 shape=(self.n_max_examples,),
                 replace=True,
-            )]
+            )
+        ]
         rng_key, subkey = jax.random.split(rng_key)
 
         if self.verbose:
@@ -84,7 +86,7 @@ class TrainModel(Strategy):
             print(f"Training data shape: {training_data.shape}")
             print(f"n_epochs: {self.n_epochs}")
             print(f"batch_size: {self.batch_size}")
-            
+
         (rng_key, model, optim_state, loss_values) = model.train(
             rng=subkey,
             data=training_data,
@@ -95,8 +97,22 @@ class TrainModel(Strategy):
             verbose=self.verbose,
         )
 
+        if self.loss_buffer_name != "":
+
+            loss_buffer = resources[self.loss_buffer_name]
+            assert isinstance(
+                loss_buffer, Buffer
+            ), "Loss buffer resource must be a buffer"
+            loss_buffer.update_buffer(
+                jnp.array(loss_values)[None, :, None],
+                len(loss_values),
+                start=loss_buffer.current_position,
+            )
+            loss_buffer.current_position += len(loss_values)
+            resources[self.loss_buffer_name] = loss_buffer
+
         optimizer.optim_state = optim_state
         resources[self.model_resource] = model
         resources[self.optimizer_resource] = optimizer
-        print(f"Training loss: {loss_values}")
+        # print(f"Training loss: {loss_values}")
         return rng_key, resources, initial_position
