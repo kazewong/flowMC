@@ -35,9 +35,9 @@ bundle = RQSpline_MALA_Bundle(
     n_training_loops,
     n_production_loops,
     n_epochs,
-    rq_spline_hidden_units,
-    rq_spline_n_bins,
-    rq_spline_n_layers,
+    rq_spline_hidden_units=rq_spline_hidden_units,
+    rq_spline_n_bins=rq_spline_n_bins,
+    rq_spline_n_layers=rq_spline_n_layers,
 )
 
 nf_sampler = Sampler(
