@@ -3,8 +3,8 @@ import jax
 import jax.numpy as jnp  # JAX NumPy
 import optax  # Optimizers
 
-from flowMC.nfmodel.realNVP import RealNVP
-from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
+from flowMC.resource.nf_model.realNVP import RealNVP
+from flowMC.resource.nf_model.rqSpline import MaskedCouplingRQSpline
 
 
 def test_realNVP():

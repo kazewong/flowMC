@@ -1,41 +1,41 @@
-import jax
-import jax.numpy as jnp
-from jax.scipy.special import logsumexp
-from jaxtyping import Array, Float
+# import jax
+# import jax.numpy as jnp
+# from jax.scipy.special import logsumexp
+# from jaxtyping import Array, Float
 
-from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
-from flowMC.proposal.flowHMC import flowHMC
-from flowMC.proposal.MALA import MALA
-from flowMC.Sampler import Sampler
-
-
-def log_posterior(x, data):
-    """
-    Term 2 and 3 separate the distribution and smear it along the first and second dimension
-    """
-    print("compile count")
-    term1 = 0.5 * ((jnp.linalg.norm(x - data['data']) - 2) / 0.1) ** 2
-    term2 = -0.5 * ((x[:1] + jnp.array([-3.0, 3.0])) / 0.8) ** 2
-    term3 = -0.5 * ((x[1:2] + jnp.array([-3.0, 3.0])) / 0.6) ** 2
-    return -(term1 - logsumexp(term2) - logsumexp(term3))
+# from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
+# from flowMC.proposal.flowHMC import flowHMC
+# from flowMC.proposal.MALA import MALA
+# from flowMC.Sampler import Sampler
 
 
-n_dim = 8
-n_chains = 15
-n_local_steps = 30
-step_size = 0.1
-n_leapfrog = 3
+# def log_posterior(x, data):
+#     """
+#     Term 2 and 3 separate the distribution and smear it along the first and second dimension
+#     """
+#     print("compile count")
+#     term1 = 0.5 * ((jnp.linalg.norm(x - data['data']) - 2) / 0.1) ** 2
+#     term2 = -0.5 * ((x[:1] + jnp.array([-3.0, 3.0])) / 0.8) ** 2
+#     term3 = -0.5 * ((x[1:2] + jnp.array([-3.0, 3.0])) / 0.6) ** 2
+#     return -(term1 - logsumexp(term2) - logsumexp(term3))
 
-data = {'data':jnp.arange(n_dim)}
 
-rng_key = jax.random.PRNGKey(42)
-rng_key, subkey = jax.random.split(rng_key)
-initial_position = jax.random.normal(subkey, shape=(n_chains, n_dim)) * 1
+# n_dim = 8
+# n_chains = 15
+# n_local_steps = 30
+# step_size = 0.1
+# n_leapfrog = 3
 
-rng_key, subkey = jax.random.split(rng_key)
-model = MaskedCouplingRQSpline(n_dim, 4, [32, 32], 4, subkey)
+# data = {'data':jnp.arange(n_dim)}
 
-local_sampler = MALA(log_posterior, True, step_size=step_size)
+# rng_key = jax.random.PRNGKey(42)
+# rng_key, subkey = jax.random.split(rng_key)
+# initial_position = jax.random.normal(subkey, shape=(n_chains, n_dim)) * 1
+
+# rng_key, subkey = jax.random.split(rng_key)
+# model = MaskedCouplingRQSpline(n_dim, 4, [32, 32], 4, subkey)
+
+# local_sampler = MALA(log_posterior, True, step_size=step_size)
 
 # step_size = 0.01
 # flowHMC_sampler = flowHMC(
