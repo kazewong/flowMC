@@ -29,6 +29,7 @@ def neal_funnel(x):
     x_pdf = norm.logpdf(x["params"][1:], loc=0, scale=np.exp(x["params"][0] / 2))
     return y_pdf + np.sum(x_pdf)
 
+
 print("Using minimal settings for demonstration purposes.")
 n_dim = 5
 n_chains = 20

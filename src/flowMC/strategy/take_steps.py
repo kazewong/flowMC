@@ -44,7 +44,7 @@ class TakeSteps(Strategy):
         data: dict,
     ):
         raise NotImplementedError
-    
+
     def set_current_position(self, current_position: int):
         self.current_position = current_position
 
@@ -77,22 +77,30 @@ class TakeSteps(Strategy):
         kernel = resources[self.kernel_name]
 
         # Filter jit will bypass the compilation of the function if not clearing the cache
-        positions, log_probs, do_accepts = eqx.filter_jit( 
-            eqx.filter_vmap(jax.tree_util.Partial(self.sample, kernel), in_axes=(0, 0, None))
+        positions, log_probs, do_accepts = eqx.filter_jit(
+            eqx.filter_vmap(
+                jax.tree_util.Partial(self.sample, kernel), in_axes=(0, 0, None)
+            )
         )(subkey, initial_position, data)
 
         positions = positions[:, :: self.thinning]
         log_probs = log_probs[:, :: self.thinning][..., None]
         do_accepts = do_accepts[:, :: self.thinning][..., None]
 
-        position_buffer.update_buffer(positions, self.n_steps // self.thinning, self.current_position)
-        log_prob_buffer.update_buffer(log_probs, self.n_steps // self.thinning, self.current_position)
-        acceptance_buffer.update_buffer(do_accepts, self.n_steps // self.thinning, self.current_position)
+        position_buffer.update_buffer(
+            positions, self.n_steps // self.thinning, self.current_position
+        )
+        log_prob_buffer.update_buffer(
+            log_probs, self.n_steps // self.thinning, self.current_position
+        )
+        acceptance_buffer.update_buffer(
+            do_accepts, self.n_steps // self.thinning, self.current_position
+        )
         self.current_position += self.n_steps // self.thinning
-        return rng_key, resources, positions[:,-1]
+        return rng_key, resources, positions[:, -1]
+
 
 class TakeSerialSteps(TakeSteps):
-    
     """
     TakeSerialSteps is a strategy that takes a number of steps in a serial manner, i.e. one after the other.
     This uses jax.lax.scan to iterate over the steps and apply the kernel to the current position.
@@ -114,17 +122,18 @@ class TakeSerialSteps(TakeSteps):
         initial_position: Float[Array, " n_dim"],
         data: dict,
     ):
-        (last_key, last_position, last_log_prob, data), (positions, log_probs, do_accepts) = (
-            jax.lax.scan(
-                jax.tree_util.Partial(self.body, kernel),
-                (rng_key, initial_position, self.logpdf(initial_position, data), data),
-                length=self.n_steps,
-            )
+        (
+            (last_key, last_position, last_log_prob, data),
+            (positions, log_probs, do_accepts),
+        ) = jax.lax.scan(
+            jax.tree_util.Partial(self.body, kernel),
+            (rng_key, initial_position, self.logpdf(initial_position, data), data),
+            length=self.n_steps,
         )
         return positions, log_probs, do_accepts
 
-class TakeGroupSteps(TakeSteps):
 
+class TakeGroupSteps(TakeSteps):
     """
     TakeGroupSteps is a strategy that takes a number of steps in a group manner, i.e. all steps are taken at once.
     This is intended to be used for kernels such as normalizing flow, which proposal steps are independent of each other,
@@ -139,6 +148,10 @@ class TakeGroupSteps(TakeSteps):
         data: dict,
     ):
         (positions, log_probs, do_accepts) = kernel.kernel(
-            rng_key, self.logpdf, initial_position, self.logpdf(initial_position, data), {**data, 'n_steps': self.n_steps}
+            rng_key,
+            self.logpdf,
+            initial_position,
+            self.logpdf(initial_position, data),
+            {**data, "n_steps": self.n_steps},
         )
         return positions, log_probs, do_accepts

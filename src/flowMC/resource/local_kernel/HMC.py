@@ -3,7 +3,6 @@ from typing import Callable
 import jax
 import jax.numpy as jnp
 from jaxtyping import Array, Float, Int, PRNGKeyArray, PyTree
-from tqdm import tqdm
 
 from flowMC.resource.local_kernel.base import ProposalBase
 
@@ -38,7 +37,6 @@ class HMC(ProposalBase):
         step_size: Float = 0.1,
         n_leapfrog: Int = 10,
     ):
-
         self.condition_matrix = condition_matrix
         self.step_size = step_size
         self.n_leapfrog = n_leapfrog
@@ -119,7 +117,7 @@ class HMC(ProposalBase):
         )
         kinetic: Callable[
             [Float[Array, " n_dim"], Float[Array, " n_dim"]], Float[Array, "1"]
-        ] = (lambda p, metric: 0.5 * (p**2 * metric).sum())
+        ] = lambda p, metric: 0.5 * (p**2 * metric).sum()
 
         leapfrog_kernel = jax.tree_util.Partial(
             self.leapfrog_kernel, kinetic, potential
@@ -146,7 +144,7 @@ class HMC(ProposalBase):
 
         do_accept = log_uniform < log_acc
 
-        position = jnp.where(do_accept, proposed_position, position) # type: ignore
+        position = jnp.where(do_accept, proposed_position, position)  # type: ignore
         log_prob = jnp.where(do_accept, -proposed_PE, log_prob)  # type: ignore
 
         return position, log_prob, do_accept

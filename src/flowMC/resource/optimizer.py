@@ -2,15 +2,17 @@ from flowMC.resource.base import Resource
 import optax
 import equinox as eqx
 
-class Optimizer(Resource):
 
+class Optimizer(Resource):
     optim: optax.GradientTransformation
     optim_state: optax.OptState
 
-    def __init__(self,
-                model: eqx.Module,
-                learning_rate: float = 1e-3,
-                momentum: float = 0.9,):
+    def __init__(
+        self,
+        model: eqx.Module,
+        learning_rate: float = 1e-3,
+        momentum: float = 0.9,
+    ):
         self.optim = optax.chain(
             optax.clip_by_global_norm(1.0),
             optax.adamw(learning_rate=learning_rate, b1=momentum),
@@ -27,4 +29,4 @@ class Optimizer(Resource):
         raise NotImplementedError
 
     def load_resource(self, path: str):
-        raise NotImplementedError    
+        raise NotImplementedError

@@ -7,8 +7,12 @@ import jax.numpy as jnp
 from jaxtyping import Array, Float, PRNGKeyArray
 
 from flowMC.resource.nf_model.base import Bijection, Distribution, NFModel
-from flowMC.resource.nf_model.common import (MLP, Gaussian, MaskedCouplingLayer,
-                                   ScalarAffine)
+from flowMC.resource.nf_model.common import (
+    MLP,
+    Gaussian,
+    MaskedCouplingLayer,
+    ScalarAffine,
+)
 
 
 @partial(jax.vmap, in_axes=(0, None, None))
@@ -113,7 +117,9 @@ def _rational_quadratic_spline_fwd(
     # If x is outside the spline range, we default to a linear transformation.
     y = jnp.where(below_range, (x - x_pos[0]) * knot_slopes[0] + y_pos[0], y)
     y = jnp.where(
-        above_range, (x - x_pos[-1]) * knot_slopes[-1] + y_pos[-1], y  # type: ignore
+        above_range,
+        (x - x_pos[-1]) * knot_slopes[-1] + y_pos[-1],
+        y,  # type: ignore
     )
     logdet = jnp.where(below_range, jnp.log(knot_slopes[0]), logdet)
     logdet = jnp.where(above_range, jnp.log(knot_slopes[-1]), logdet)
@@ -222,7 +228,9 @@ def _rational_quadratic_spline_inv(
     # If y is outside the spline range, we default to a linear transformation.
     x = jnp.where(below_range, (y - y_pos[0]) / knot_slopes[0] + x_pos[0], x)
     x = jnp.where(
-        above_range, (y - y_pos[-1]) / knot_slopes[-1] + x_pos[-1], x  # type: ignore
+        above_range,
+        (y - y_pos[-1]) / knot_slopes[-1] + x_pos[-1],
+        x,  # type: ignore
     )
     logdet = jnp.where(below_range, -jnp.log(knot_slopes[0]), logdet)
     logdet = jnp.where(above_range, -jnp.log(knot_slopes[-1]), logdet)
@@ -372,9 +380,6 @@ class MaskedCouplingRQSpline(NFModel):
     base_dist: Distribution
     layers: list[Bijection]
 
-
-
-
     def __init__(
         self,
         n_features: int,
@@ -383,7 +388,7 @@ class MaskedCouplingRQSpline(NFModel):
         num_bins: int,
         key: PRNGKeyArray,
         spline_range: tuple[float, float] = (-10.0, 10.0),
-        **kwargs
+        **kwargs,
     ):
         if kwargs.get("base_dist") is not None:
             dist = kwargs.get("base_dist")
@@ -434,7 +439,10 @@ class MaskedCouplingRQSpline(NFModel):
         return self.forward(x)
 
     def forward(
-        self, x: Float[Array, "n_dim"], key: Optional[PRNGKeyArray] = None, condition: Optional[Float[Array, "n_condition"]] = None
+        self,
+        x: Float[Array, "n_dim"],
+        key: Optional[PRNGKeyArray] = None,
+        condition: Optional[Float[Array, "n_condition"]] = None,
     ) -> tuple[Float[Array, " n_dim"], Float]:
         log_det = 0.0
         dynamics, statics = eqx.partition(self.layers, eqx.is_array)
@@ -451,8 +459,9 @@ class MaskedCouplingRQSpline(NFModel):
         return x, log_det
 
     def inverse(
-        self, x: Float[Array, " n_dim"],
-        condition: Optional[Float[Array, "n_condition"]] = None
+        self,
+        x: Float[Array, " n_dim"],
+        condition: Optional[Float[Array, "n_condition"]] = None,
     ) -> tuple[Float[Array, " n_dim"], Float]:
         """From latent space to data space"""
         log_det = 0.0

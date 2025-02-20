@@ -10,7 +10,6 @@ from flowMC.resource.local_kernel.MALA import MALA
 from flowMC.resource.nf_model.NF_proposal import NFProposal
 from flowMC.strategy.take_steps import TakeSerialSteps
 from flowMC.resource.buffers import Buffer
-from flowMC.Sampler import Sampler
 
 
 def log_posterior(x, data=None):
@@ -178,7 +177,6 @@ class TestMALA:
         assert result[2].all()
 
     def test_MALA_close_gaussian(self):
-
         n_dims = 2
         n_chains = 1
         n_local_steps = 30000
@@ -262,7 +260,6 @@ class TestGRW:
         assert result[2].all()
 
     def test_Gaussian_random_walk_close_gaussian(self):
-
         n_dims = 2
         n_chains = 1
         n_local_steps = 50000
@@ -310,7 +307,6 @@ class TestGRW:
 
 class TestNF:
     def test_NF_kernel(self):
-
         key1, rng, init_rng = jax.random.split(jax.random.PRNGKey(0), 3)
         data = jax.random.normal(key1, (100, 2))
 

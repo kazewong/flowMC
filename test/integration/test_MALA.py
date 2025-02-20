@@ -8,6 +8,7 @@ from flowMC.strategy.take_steps import TakeSerialSteps
 from flowMC.resource.buffers import Buffer
 from flowMC.Sampler import Sampler
 
+
 def dual_moon_pe(x: Float[Array, "n_dims"], data: dict):
     """
     Term 2 and 3 separate the distribution and smear it along the first and second dimension
@@ -46,7 +47,12 @@ resource = {
 
 # Defining strategy
 
-strategy = TakeSerialSteps(logpdf=dual_moon_pe, kernel_name="MALA", buffer_names=["positions", "log_prob", "acceptance"], n_steps=n_local_steps)
+strategy = TakeSerialSteps(
+    logpdf=dual_moon_pe,
+    kernel_name="MALA",
+    buffer_names=["positions", "log_prob", "acceptance"],
+    n_steps=n_local_steps,
+)
 
 nf_sampler = Sampler(
     n_dim=n_dims,

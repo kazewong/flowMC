@@ -34,13 +34,23 @@ class flowHMC(HMC, NFProposal):
         n_sample_max: int = 10000,
         condition_matrix: Float[Array, "n_dim n_dim"] | Float = 1,
     ):
-        super().__init__(logpdf, jit, condition_matrix=condition_matrix, model=model, n_sample_max=n_sample_max)
+        super().__init__(
+            logpdf,
+            jit,
+            condition_matrix=condition_matrix,
+            model=model,
+            n_sample_max=n_sample_max,
+        )
         self.kinetic = lambda p, M: 0.5 * (p @ M @ p)
         self.grad_kinetic = jax.grad(self.kinetic)
         self.model = model
         self.n_sample_max = n_sample_max
         self.production_covariance = condition_matrix
-        self.update_vmap = jax.vmap(self.update, in_axes=(None, (0, 0, 0, 0, 0, 0, None)), out_axes=(0, 0, 0, 0, 0, 0, None))
+        self.update_vmap = jax.vmap(
+            self.update,
+            in_axes=(None, (0, 0, 0, 0, 0, 0, None)),
+            out_axes=(0, 0, 0, 0, 0, 0, None),
+        )
         if self.jit is True:
             self.update_vmap = jax.jit(self.update_vmap)
 
@@ -62,18 +72,20 @@ class flowHMC(HMC, NFProposal):
         flow_cov: Float[Array, "ndim ndim"],
         data: PyTree,
     ) -> tuple[Float[Array, "ndim"], Float[Array, "1"], Int[Array, "1"]]:
-
         key1, key2 = jax.random.split(rng_key)
 
-        noise = jnp.abs(flow_cov).min()*0.1*jnp.eye(flow_cov.shape[0]) # Add small jitter to avoid numerical issues
+        noise = (
+            jnp.abs(flow_cov).min() * 0.1 * jnp.eye(flow_cov.shape[0])
+        )  # Add small jitter to avoid numerical issues
 
         momentum = jnp.dot(
             jax.random.normal(key1, shape=position.shape),
-            jnp.linalg.cholesky(flow_cov + noise).T)
+            jnp.linalg.cholesky(flow_cov + noise).T,
+        )
         mass_matrix = jnp.linalg.inv(flow_cov + noise)
 
         # TODO: Double check whether I can compute the hamiltonian before the map
-        initial_Ham = - log_prob + self.kinetic(momentum, mass_matrix)
+        initial_Ham = -log_prob + self.kinetic(momentum, mass_matrix)
 
         # First HMC part
 
@@ -101,10 +113,9 @@ class flowHMC(HMC, NFProposal):
         uniform_random = jnp.log(jax.random.uniform(key2))
         do_accept = log_acc > uniform_random
 
-
         # Update position
         position = jnp.where(do_accept, final_position, position)
-        log_prob = jnp.where(do_accept, - final_PE, log_prob)
+        log_prob = jnp.where(do_accept, -final_PE, log_prob)
 
         return position, log_prob[0], do_accept[0]
 
@@ -145,7 +156,6 @@ class flowHMC(HMC, NFProposal):
         Float[Array, "n_chains n_steps 1"],
         Int[Array, "n_chains n_steps 1"],
     ]:
-
         n_chains = initial_position.shape[0]
         n_dim = initial_position.shape[-1]
         log_prob_initial = self.logpdf_vmap(initial_position, data)

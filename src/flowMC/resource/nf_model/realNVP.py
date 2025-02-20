@@ -1,11 +1,8 @@
-from functools import partial
 from typing import List, Optional, Tuple
 
 import equinox as eqx
 import jax
 import jax.numpy as jnp
-import numpy as np
-import optax
 from jaxtyping import Array, Float, PRNGKeyArray
 
 from flowMC.resource.nf_model.base import Distribution, NFModel

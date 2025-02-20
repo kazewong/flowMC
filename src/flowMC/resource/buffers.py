@@ -6,8 +6,8 @@ import jax.numpy as jnp
 
 TBuffer = TypeVar("TBuffer", bound="Buffer")
 
-class Buffer(Resource):
 
+class Buffer(Resource):
     name: str
     buffer: Float[Array, "n_chains n_steps n_dims"]
     current_position: int = 0
@@ -18,11 +18,11 @@ class Buffer(Resource):
     @property
     def n_chains(self) -> int:
         return self.buffer.shape[0]
-    
+
     @property
     def n_steps(self) -> int:
         return self.buffer.shape[1]
-    
+
     @property
     def n_dims(self) -> int:
         return self.buffer.shape[2]
@@ -33,9 +33,9 @@ class Buffer(Resource):
 
     def __call__(self):
         return self.buffer
-    
+
     def update_buffer(self, updates: Array, length: int, start: int = 0):
-        self.buffer = self.buffer.at[:, start: start + length].set(updates)
+        self.buffer = self.buffer.at[:, start : start + length].set(updates)
 
     def print_parameters(self):
         print(
@@ -58,4 +58,4 @@ class Buffer(Resource):
         buffer: Float[Array, "n_chains n_steps n_dims"] = data["buffer"]
         result = Buffer(data["name"], buffer.shape[0], buffer.shape[1], buffer.shape[2])
         result.buffer = buffer
-        return result # type: ignore
+        return result  # type: ignore

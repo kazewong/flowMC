@@ -1,18 +1,14 @@
-import equinox as eqx
-import jax
-import jax.numpy as jnp
-from jaxtyping import Array, Float, PRNGKeyArray, PyTree
+from jaxtyping import Array, Float, PRNGKeyArray
 from tqdm import tqdm
 
 from flowMC.strategy.base import Strategy
 from flowMC.resource.base import Resource
-from flowMC.resource.local_kernel.base import ProposalBase
 from flowMC.strategy.take_steps import TakeSerialSteps, TakeGroupSteps
 from flowMC.strategy.train_model import TrainModel
 from typing import Callable
 
-class LocalGlobalNFSample(Strategy):
 
+class LocalGlobalNFSample(Strategy):
     logpdf: Callable[[Float[Array, " n_dim"], dict], Float]
     training_stepper: TrainModel
 
@@ -88,7 +84,9 @@ class LocalGlobalNFSample(Strategy):
                 initial_position,
                 data,
             )
-            self.global_stepper.set_current_position(self.local_stepper.current_position)
+            self.global_stepper.set_current_position(
+                self.local_stepper.current_position
+            )
             if self.training is True:
                 rng_key, resources, initial_position = self.training_stepper(
                     rng_key,
@@ -96,14 +94,15 @@ class LocalGlobalNFSample(Strategy):
                     initial_position,
                     data,
                 )
-                resources['global_sampler'].model = resources['model'] # type: ignore
+                resources["global_sampler"].model = resources["model"]  # type: ignore
             rng_key, resources, initial_position = self.global_stepper(
                 rng_key,
                 resources,
                 initial_position,
                 data,
             )
-            self.local_stepper.set_current_position(self.global_stepper.current_position)
+            self.local_stepper.set_current_position(
+                self.global_stepper.current_position
+            )
 
         return rng_key, resources, initial_position
-

@@ -2,9 +2,9 @@ from abc import abstractmethod
 from typing import Callable
 
 import jax
-import jax.numpy as jnp
 from jaxtyping import Array, Float, Int, PRNGKeyArray, PyTree
 from flowMC.resource.base import Resource
+
 
 @jax.tree_util.register_pytree_node_class
 class ProposalBase(Resource):

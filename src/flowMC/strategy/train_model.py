@@ -6,11 +6,9 @@ from flowMC.resource.optimizer import Optimizer
 from jaxtyping import Array, Float, PRNGKeyArray
 import jax
 import jax.numpy as jnp
-import numpy as np
 
 
 class TrainModel(Strategy):
-
     model_resource: str
     data_resource: str
     optimizer_resource: str
@@ -57,7 +55,6 @@ class TrainModel(Strategy):
         dict[str, Resource],
         Float[Array, "n_chains n_dim"],
     ]:
-
         model = resources[self.model_resource]
         assert isinstance(model, NFModel), "Target resource must be a NFModel"
         data_resource = resources[self.data_resource]
@@ -98,7 +95,6 @@ class TrainModel(Strategy):
         )
 
         if self.loss_buffer_name != "":
-
             loss_buffer = resources[self.loss_buffer_name]
             assert isinstance(
                 loss_buffer, Buffer

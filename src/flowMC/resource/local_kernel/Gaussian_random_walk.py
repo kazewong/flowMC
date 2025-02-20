@@ -3,7 +3,6 @@ from typing import Callable
 import jax
 import jax.numpy as jnp
 from jaxtyping import Array, Float, Int, PRNGKeyArray, PyTree
-from tqdm import tqdm
 
 from flowMC.resource.local_kernel.base import ProposalBase
 
@@ -51,12 +50,12 @@ class GaussianRandomWalk(ProposalBase):
         """
 
         key1, key2 = jax.random.split(rng_key)
-        move_proposal: Float[Array, "n_dim"] = (
+        move_proposal: Float[Array, " n_dim"] = (
             jax.random.normal(key1, shape=position.shape) * self.step_size
         )
 
         proposal = position + move_proposal
-        proposal_log_prob: Float[Array, "n_dim"] = log_pdf(proposal, data)
+        proposal_log_prob: Float[Array, " n_dim"] = log_pdf(proposal, data)
 
         log_uniform = jnp.log(jax.random.uniform(key2))
         do_accept = log_uniform < proposal_log_prob - log_prob
@@ -69,9 +68,8 @@ class GaussianRandomWalk(ProposalBase):
         print("Gaussian Random Walk parameters:")
         print("Step size: ", self.step_size)
 
-    
     def save_resource(self, path):
         pass
-    
+
     def load_resource(self, path):
         raise NotImplementedError

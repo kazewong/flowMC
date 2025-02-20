@@ -10,6 +10,7 @@ Do not use this optimizer
 
 """
 
+
 class EvolutionaryOptimizer:
     """
     A wrapper class for the evosax package.

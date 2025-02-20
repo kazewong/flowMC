@@ -1,7 +1,5 @@
-import jax
 import jax.numpy as jnp
 from jaxtyping import Array, Float, PRNGKeyArray
-from typing import Callable
 
 from flowMC.strategy.base import Strategy
 from flowMC.resource.base import Resource
@@ -53,12 +51,18 @@ class Sampler:
         self.rng_key = rng_key
 
         if resources is not None and strategies is not None:
-            print("Resources and strategies provided. Ignoring resource strategy bundles.")
+            print(
+                "Resources and strategies provided. Ignoring resource strategy bundles."
+            )
             self.resources = resources
             self.strategies = strategies
         else:
-            print("Resources or strategies not provided. Using resource strategy bundles.")
-            assert resource_strategy_bundles is not None, "Resource strategy bundles must be provided if resources and strategies are not."
+            print(
+                "Resources or strategies not provided. Using resource strategy bundles."
+            )
+            assert (
+                resource_strategy_bundles is not None
+            ), "Resource strategy bundles must be provided if resources and strategies are not."
             self.resources = resource_strategy_bundles.resources
             self.strategies = resource_strategy_bundles.strategies
 
@@ -79,7 +83,7 @@ class Sampler:
 
         """
 
-        initial_position = jnp.atleast_2d(initial_position) # type: ignore
+        initial_position = jnp.atleast_2d(initial_position)  # type: ignore
         rng_key = self.rng_key
         last_step = initial_position
         for strategy in self.strategies:
@@ -87,9 +91,7 @@ class Sampler:
                 rng_key,
                 self.resources,
                 last_step,
-            ) = strategy(
-                rng_key, self.resources, last_step, data
-            )
+            ) = strategy(rng_key, self.resources, last_step, data)
 
     # TODO: Implement quick access and summary functions that operates on buffer
 

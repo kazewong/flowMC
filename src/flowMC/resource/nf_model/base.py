@@ -180,12 +180,8 @@ class NFModel(eqx.Module, Resource):
         best_model = model = self
         best_state = state
         best_loss = 1e9
-        model = eqx.tree_at(
-            lambda m: m._data_mean, model, jnp.mean(data, axis=0)
-        )
-        model = eqx.tree_at(
-            lambda m: m._data_cov, model, jnp.cov(data.T)
-        )
+        model = eqx.tree_at(lambda m: m._data_mean, model, jnp.mean(data, axis=0))
+        model = eqx.tree_at(lambda m: m._data_cov, model, jnp.cov(data.T))
         for epoch in pbar:
             # Use a separate PRNG key to permute image data during shuffling
             rng, input_rng = jax.random.split(rng)

@@ -5,7 +5,6 @@ import jax
 import jax.numpy as jnp
 from jax import random
 from jaxtyping import Array, Float, Int, PRNGKeyArray, PyTree
-from tqdm import tqdm
 
 from flowMC.resource.nf_model.base import NFModel
 from flowMC.resource.local_kernel.base import ProposalBase
@@ -32,7 +31,6 @@ class NFProposal(ProposalBase):
     ) -> tuple[
         Float[Array, "n_step n_dim"], Float[Array, "n_step 1"], Int[Array, "n_step 1"]
     ]:
-
         n_steps = data["n_steps"]
         n_dims = position.shape[-1]
 
@@ -118,11 +116,11 @@ class NFProposal(ProposalBase):
     def print_parameters(self):
         # TODO: Implement this
         raise NotImplementedError
-    
+
     def save_resource(self, path):
         # TODO: Implement this
         raise NotImplementedError
-    
+
     def load_resource(self, path):
         # TODO: Implement this
         raise NotImplementedError

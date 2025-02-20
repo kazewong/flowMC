@@ -72,14 +72,15 @@ class optimization_Adam(Strategy):
             grad = grad_fn(params) * (1 + jax.random.normal(subkey) * self.noise_level)
             updates, opt_state = self.solver.update(grad, opt_state, params)
             params = optax.apply_updates(params, updates)
-            params = optax.projections.projection_box(params, self.bounds[:, 0], self.bounds[:, 1])
+            params = optax.projections.projection_box(
+                params, self.bounds[:, 0], self.bounds[:, 1]
+            )
             return (key, params, opt_state), None
 
         def _single_optimize(
             key: PRNGKeyArray,
             initial_position: Float[Array, " n_dim"],
         ) -> Float[Array, " n_dim"]:
-
             opt_state = self.solver.init(initial_position)
 
             (key, params, opt_state), _ = jax.lax.scan(
@@ -143,7 +144,6 @@ class optimization_Adam(Strategy):
             key: PRNGKeyArray,
             initial_position: Float[Array, " n_dim"],
         ) -> Float[Array, " n_dim"]:
-
             opt_state = self.solver.init(initial_position)
 
             (key, params, opt_state), _ = jax.lax.scan(

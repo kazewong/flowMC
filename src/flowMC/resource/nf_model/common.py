@@ -235,7 +235,6 @@ class Gaussian(Distribution):
 
 
 class Composable(Distribution):
-
     distributions: list[Distribution]
     partitions: dict[str, tuple[int, int]]
 
@@ -256,4 +255,4 @@ class Composable(Distribution):
         for dist, (key, _) in zip(self.distributions, self.partitions.items()):
             rng_key, sub_key = jax.random.split(rng_key)
             samples[key] = dist.sample(sub_key, n_samples=n_samples)
-        return samples # type: ignore
+        return samples  # type: ignore
