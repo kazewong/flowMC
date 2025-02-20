@@ -38,7 +38,7 @@ class NFModel(eqx.Module, Resource):
     def __init__(self):
         raise NotImplementedError
 
-    def __call__(self, x: Float[Array, "n_dim"]) -> tuple[Float[Array, "n_dim"], Float]:
+    def __call__(self, x: Float[Array, " n_dim"]) -> tuple[Float[Array, " n_dim"], Float]:
         """
         Forward pass of the model.
 
@@ -51,7 +51,7 @@ class NFModel(eqx.Module, Resource):
         return self.forward(x)
 
     @abstractmethod
-    def log_prob(self, x: Float[Array, "n_dim"]) -> Float:
+    def log_prob(self, x: Float[Array, " n_dim"]) -> Float:
         return NotImplemented
 
     @abstractmethod
@@ -60,8 +60,8 @@ class NFModel(eqx.Module, Resource):
 
     @abstractmethod
     def forward(
-        self, x: Float[Array, "n_dim"], key: Optional[PRNGKeyArray] = None
-    ) -> tuple[Float[Array, "n_dim"], Float]:
+        self, x: Float[Array, " n_dim"], key: Optional[PRNGKeyArray] = None
+    ) -> tuple[Float[Array, " n_dim"], Float]:
         """
         Forward pass of the model.
 
@@ -74,7 +74,7 @@ class NFModel(eqx.Module, Resource):
         return NotImplemented
 
     @abstractmethod
-    def inverse(self, x: Float[Array, "n_dim"]) -> tuple[Float[Array, "n_dim"], Float]:
+    def inverse(self, x: Float[Array, " n_dim"]) -> tuple[Float[Array, " n_dim"], Float]:
         """
         Inverse pass of the model.
 
@@ -252,25 +252,25 @@ class Bijection(eqx.Module):
 
     def __call__(
         self,
-        x: Float[Array, "n_dim"],
-        condition: Float[Array, "n_condition"],
-    ) -> tuple[Float[Array, "n_dim"], Float]:
+        x: Float[Array, " n_dim"],
+        condition: Float[Array, " n_condition"],
+    ) -> tuple[Float[Array, " n_dim"], Float]:
         return self.forward(x, condition)
 
     @abstractmethod
     def forward(
         self,
-        x: Float[Array, "n_dim"],
-        condition: Float[Array, "n_condition"],
-    ) -> tuple[Float[Array, "n_dim"], Float]:
+        x: Float[Array, " n_dim"],
+        condition: Float[Array, " n_condition"],
+    ) -> tuple[Float[Array, " n_dim"], Float]:
         return NotImplemented
 
     @abstractmethod
     def inverse(
         self,
-        x: Float[Array, "n_dim"],
-        condition: Float[Array, "n_condition"],
-    ) -> tuple[Float[Array, "n_dim"], Float]:
+        x: Float[Array, " n_dim"],
+        condition: Float[Array, " n_condition"],
+    ) -> tuple[Float[Array, " n_dim"], Float]:
         return NotImplemented
 
 
