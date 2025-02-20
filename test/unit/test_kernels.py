@@ -3,11 +3,14 @@ import jax
 import jax.numpy as jnp
 import optax  # Optimizers
 
-from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
-from flowMC.proposal.Gaussian_random_walk import GaussianRandomWalk
-from flowMC.proposal.HMC import HMC
-from flowMC.proposal.MALA import MALA
-from flowMC.proposal.NF_proposal import NFProposal
+from flowMC.resource.nf_model.rqSpline import MaskedCouplingRQSpline
+from flowMC.resource.local_kernel.Gaussian_random_walk import GaussianRandomWalk
+from flowMC.resource.local_kernel.HMC import HMC
+from flowMC.resource.local_kernel.MALA import MALA
+from flowMC.resource.nf_model.NF_proposal import NFProposal
+from flowMC.strategy.take_steps import TakeSerialSteps
+from flowMC.resource.buffers import Buffer
+from flowMC.Sampler import Sampler
 
 
 def log_posterior(x, data=None):
@@ -133,7 +136,7 @@ class TestMALA:
     def test_MALA_deterministic(self):
         n_dim = 2
         n_chains = 1
-        MALA_obj = MALA(log_posterior, True, step_size=1)
+        MALA_obj = MALA(step_size=1)
 
         rng_key = jax.random.PRNGKey(42)
         rng_key, subkey = jax.random.split(rng_key)
@@ -142,8 +145,12 @@ class TestMALA:
         initial_logp = log_posterior(initial_position, None)
 
         rng_key, subkey = jax.random.split(rng_key)
-        result1 = MALA_obj.kernel(subkey, initial_position[0], initial_logp, None)
-        result2 = MALA_obj.kernel(subkey, initial_position[0], initial_logp, None)
+        result1 = MALA_obj.kernel(
+            subkey, log_posterior, initial_position[0], initial_logp, None
+        )
+        result2 = MALA_obj.kernel(
+            subkey, log_posterior, initial_position[0], initial_logp, None
+        )
 
         assert jnp.allclose(result1[0], result2[0])
         assert result1[1] == result2[1]
@@ -152,7 +159,7 @@ class TestMALA:
     def test_MALA_acceptance_rate(self):
         # Test acceptance rate goes to one when the step size is small
 
-        MALA_obj = MALA(log_posterior, True, step_size=0.00001)
+        MALA_obj = MALA(step_size=0.00001)
 
         n_chains = 100
         n_dim = 2
@@ -164,27 +171,56 @@ class TestMALA:
 
         rng_key, subkey = jax.random.split(rng_key)
         subkey = jax.random.split(subkey, n_chains)
-        result = MALA_obj.kernel_vmap(subkey, initial_position, initial_logp, None)
+        result = jax.vmap(MALA_obj.kernel, in_axes=(0, None, 0, 0, None))(
+            subkey, log_posterior, initial_position, initial_logp, None
+        )
 
         assert result[2].all()
 
     def test_MALA_close_gaussian(self):
-        n_dim = 2
+
+        n_dims = 2
         n_chains = 1
-        MALA_obj = MALA(log_posterior, True, step_size=1)
+        n_local_steps = 30000
+        MALA_Sampler = MALA(step_size=1)
+        positions = Buffer(
+            "positions", n_chains=n_chains, n_steps=n_local_steps, n_dims=n_dims
+        )
+        log_prob = Buffer(
+            "log_prob", n_chains=n_chains, n_steps=n_local_steps, n_dims=1
+        )
+        acceptance = Buffer(
+            "acceptance", n_chains=n_chains, n_steps=n_local_steps, n_dims=1
+        )
+
+        resource = {
+            "positions": positions,
+            "log_prob": log_prob,
+            "acceptance": acceptance,
+            "MALA": MALA_Sampler,
+        }
+
+        # Defining strategy
+
+        strategy = TakeSerialSteps(
+            logpdf=log_posterior,
+            kernel_name="MALA",
+            buffer_names=["positions", "log_prob", "acceptance"],
+            n_steps=n_local_steps,
+        )
 
         rng_key = jax.random.PRNGKey(42)
         rng_key, subkey = jax.random.split(rng_key)
 
-        initial_position = jax.random.normal(subkey, shape=(n_chains, n_dim)) * 1
-        MALA_obj.precompilation(n_chains, n_dim, 30000, None)
+        initial_position = jax.random.normal(subkey, shape=(n_chains, n_dims)) * 1
 
         rng_key, subkey = jax.random.split(rng_key)
-        subkey = jax.random.split(subkey, n_chains)
-        result = MALA_obj.sample(subkey, 30000, initial_position, None)
+        result = strategy(subkey, resource, initial_position, {})[1]["positions"]
 
-        assert jnp.isclose(jnp.mean(result[1]), 0, atol=1e-2)
-        assert jnp.isclose(jnp.var(result[1]), 1, atol=1e-2)
+        assert isinstance(result, Buffer)
+
+        assert jnp.isclose(jnp.mean(result.buffer), 0, atol=1e-2)
+        assert jnp.isclose(jnp.var(result.buffer), 1, atol=1e-2)
 
 
 class TestGRW:
@@ -226,22 +262,50 @@ class TestGRW:
         assert result[2].all()
 
     def test_Gaussian_random_walk_close_gaussian(self):
-        n_dim = 2
+
+        n_dims = 2
         n_chains = 1
-        GRW_obj = GaussianRandomWalk(log_posterior, True, step_size=1)
+        n_local_steps = 50000
+        GRW_Sampler = GaussianRandomWalk(step_size=1)
+
+        positions = Buffer(
+            "positions", n_chains=n_chains, n_steps=n_local_steps, n_dims=n_dims
+        )
+        log_prob = Buffer(
+            "log_prob", n_chains=n_chains, n_steps=n_local_steps, n_dims=1
+        )
+        acceptance = Buffer(
+            "acceptance", n_chains=n_chains, n_steps=n_local_steps, n_dims=1
+        )
+
+        resource = {
+            "positions": positions,
+            "log_prob": log_prob,
+            "acceptance": acceptance,
+            "GRW": GRW_Sampler,
+        }
+
+        # Defining strategy
+
+        strategy = TakeSerialSteps(
+            logpdf=log_posterior,
+            kernel_name="GRW",
+            buffer_names=["positions", "log_prob", "acceptance"],
+            n_steps=n_local_steps,
+        )
 
         rng_key = jax.random.PRNGKey(42)
         rng_key, subkey = jax.random.split(rng_key)
 
-        initial_position = jax.random.normal(subkey, shape=(n_chains, n_dim)) * 1
-        GRW_obj.precompilation(n_chains, n_dim, 30000, None)
+        initial_position = jax.random.normal(subkey, shape=(n_chains, n_dims)) * 1
 
         rng_key, subkey = jax.random.split(rng_key)
-        subkey = jax.random.split(subkey, n_chains)
-        result = GRW_obj.sample(subkey, 30000, initial_position, None)
+        result = strategy(subkey, resource, initial_position, {})[1]["positions"]
 
-        assert jnp.isclose(jnp.mean(result[1]), 0, atol=3e-2)
-        assert jnp.isclose(jnp.var(result[1]), 1, atol=3e-2)
+        assert isinstance(result, Buffer)
+
+        assert jnp.isclose(jnp.mean(result.buffer), 0, atol=1e-2)
+        assert jnp.isclose(jnp.var(result.buffer), 1, atol=1e-2)
 
 
 class TestNF:
@@ -267,9 +331,10 @@ class TestNF:
         optim = optax.adam(learning_rate, momentum)
         state = optim.init(eqx.filter(model, eqx.is_array))
 
-
         rng, subkey = jax.random.split(rng)
-        key, model, state, loss = model.train(rng, data, optim, state, num_epochs, batch_size, verbose=True)
+        key, model, state, loss = model.train(
+            rng, data, optim, state, num_epochs, batch_size, verbose=True
+        )
         key1, rng, init_rng = jax.random.split(jax.random.PRNGKey(1), 3)
 
         n_dim = 2

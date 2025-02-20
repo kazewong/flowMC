@@ -101,8 +101,9 @@ class TakeSerialSteps(TakeSteps):
 
     def body(self, kernel, carry, aux):
         key, position, log_prob, data = carry
+        key, subkey = jax.random.split(key)
         position, log_prob, do_accept = kernel.kernel(
-            key, self.logpdf, position, log_prob, data
+            subkey, self.logpdf, position, log_prob, data
         )
         return (key, position, log_prob, data), (position, log_prob, do_accept)
 
