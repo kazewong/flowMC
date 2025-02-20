@@ -54,11 +54,7 @@ class TakeSteps(Strategy):
         resources: dict[str, Resource],
         initial_position: Float[Array, "n_chains n_dim"],
         data: dict,
-    ) -> tuple[
-        PRNGKeyArray,
-        dict[str, Resource],
-        Float[Array, "n_chains n_dim"],
-    ]:
+    ) -> tuple[PRNGKeyArray, dict[str, Resource], Float[Array, "n_chains n_dim"],]:
         rng_key, subkey = jax.random.split(rng_key)
         subkey = jax.random.split(subkey, initial_position.shape[0])
         position_buffer = resources[self.buffer_names[0]]
@@ -76,7 +72,8 @@ class TakeSteps(Strategy):
 
         kernel = resources[self.kernel_name]
 
-        # Filter jit will bypass the compilation of the function if not clearing the cache
+        # Filter jit will bypass the compilation of
+        # the function if not clearing the cache
         positions, log_probs, do_accepts = eqx.filter_jit(
             eqx.filter_vmap(
                 jax.tree_util.Partial(self.sample, kernel), in_axes=(0, 0, None)
@@ -102,9 +99,12 @@ class TakeSteps(Strategy):
 
 class TakeSerialSteps(TakeSteps):
     """
-    TakeSerialSteps is a strategy that takes a number of steps in a serial manner, i.e. one after the other.
-    This uses jax.lax.scan to iterate over the steps and apply the kernel to the current position.
-    This is intended to be used for most local kernels that are dependent on the previous step.
+    TakeSerialSteps is a strategy that takes a number of steps in a serial manner,
+    i.e. one after the other.
+    This uses jax.lax.scan to iterate over the steps and apply the kernel to the
+    current position.
+    This is intended to be used for most local kernels that are dependent on
+    the previous step.
     """
 
     def body(self, kernel, carry, aux):
@@ -135,8 +135,10 @@ class TakeSerialSteps(TakeSteps):
 
 class TakeGroupSteps(TakeSteps):
     """
-    TakeGroupSteps is a strategy that takes a number of steps in a group manner, i.e. all steps are taken at once.
-    This is intended to be used for kernels such as normalizing flow, which proposal steps are independent of each other,
+    TakeGroupSteps is a strategy that takes a number of steps in a group manner,
+    i.e. all steps are taken at once.
+    This is intended to be used for kernels such as normalizing flow,
+    which proposal steps are independent of each other,
     and benefit from being computed in parallel.
     """
 

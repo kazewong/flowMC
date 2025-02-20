@@ -112,12 +112,13 @@ class HMC(ProposalBase):
             PE (n_chains, ): Potential energy of the current position
         """
 
-        potential: Callable[[Float[Array, " n_dim"], PyTree], Float[Array, "1"]] = (
-            lambda x, data: -log_pdf(x, data)
-        )
-        kinetic: Callable[
-            [Float[Array, " n_dim"], Float[Array, " n_dim"]], Float[Array, "1"]
-        ] = lambda p, metric: 0.5 * (p**2 * metric).sum()
+        def potential(x: Float[Array, " n_dim"], data: PyTree) -> Float[Array, "1"]:
+            return -log_pdf(x, data)
+
+        def kinetic(
+            p: Float[Array, " n_dim"], metric: Float[Array, " n_dim"]
+        ) -> Float[Array, "1"]:
+            return 0.5 * (p**2 * metric).sum()
 
         leapfrog_kernel = jax.tree_util.Partial(
             self.leapfrog_kernel, kinetic, potential
@@ -127,7 +128,8 @@ class HMC(ProposalBase):
         key1, key2 = jax.random.split(rng_key)
 
         momentum: Float[Array, " n_dim"] = (
-            jax.random.normal(key1, shape=position.shape) * self.condition_matrix**-0.5
+            jax.random.normal(key1, shape=position.shape)
+            * self.condition_matrix**-0.5
         )
         momentum = jnp.dot(
             jax.random.normal(key1, shape=position.shape),

@@ -38,7 +38,9 @@ class NFModel(eqx.Module, Resource):
     def __init__(self):
         raise NotImplementedError
 
-    def __call__(self, x: Float[Array, " n_dim"]) -> tuple[Float[Array, " n_dim"], Float]:
+    def __call__(
+        self, x: Float[Array, " n_dim"]
+    ) -> tuple[Float[Array, " n_dim"], Float]:
         """
         Forward pass of the model.
 
@@ -46,7 +48,8 @@ class NFModel(eqx.Module, Resource):
             x (Float[Array, "n_dim"]): Input data.
 
         Returns:
-            tuple[Float[Array, "n_dim"], Float]: Output data and log determinant of the Jacobian.
+            tuple[Float[Array, "n_dim"], Float]:
+                Output data and log determinant of the Jacobian.
         """
         return self.forward(x)
 
@@ -69,12 +72,15 @@ class NFModel(eqx.Module, Resource):
             x (Float[Array, "n_dim"]): Input data.
 
         Returns:
-            tuple[Float[Array, "n_dim"], Float]: Output data and log determinant of the Jacobian.
+            tuple[Float[Array, "n_dim"], Float]:
+                Output data and log determinant of the Jacobian.
         """
         return NotImplemented
 
     @abstractmethod
-    def inverse(self, x: Float[Array, " n_dim"]) -> tuple[Float[Array, " n_dim"], Float]:
+    def inverse(
+        self, x: Float[Array, " n_dim"]
+    ) -> tuple[Float[Array, " n_dim"], Float]:
         """
         Inverse pass of the model.
 
@@ -82,7 +88,8 @@ class NFModel(eqx.Module, Resource):
             x (Float[Array, "n_dim"]): Input data.
 
         Returns:
-            tuple[Float[Array, "n_dim"], Float]: Output data and log determinant of the Jacobian.
+            tuple[Float[Array, "n_dim"], Float]:
+                Output data and log determinant of the Jacobian.
         """
         return NotImplemented
 
@@ -228,7 +235,8 @@ class NFModel(eqx.Module, Resource):
             precision_format = precisions_dict[precision.lower()]
         except KeyError:
             raise ValueError(
-                f"Precision {precision} not supported. Choose from {precisions_dict.keys()}"
+                f"Precision {precision} not supported.\
+                Choose from {precisions_dict.keys()}"
             )
         dynamic_model, static_model = eqx.partition(self, eqx.is_array)
         dynamic_model = jax.tree.map(

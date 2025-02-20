@@ -51,7 +51,8 @@ class TestStrategies:
 
     #     vmapped_logp = jax.vmap(log_posterior)
 
-    #     assert vmapped_logp(optimized_positions).mean() > vmapped_logp(initial_position).mean()
+    #     assert vmapped_logp(optimized_positions).mean() >
+    #       vmapped_logp(initial_position).mean()
 
     def test_take_local_step(self):
         n_chains = 5
@@ -209,7 +210,8 @@ class TestNFStrategies:
             "NFProposal": proposal,
         }
 
-        test_target = lambda x, data={}: model.log_prob(x)
+        def test_target(x, data={}):
+            return model.log_prob(x)
 
         strategy = TakeGroupSteps(
             test_target,
@@ -229,11 +231,9 @@ class TestNFStrategies:
         print(test_position.buffer[:, :, 0])
 
     def test_training_effect(self):
-        test_position = Buffer(
-            "test_position", self.n_chains, self.n_steps, self.n_dims
-        )
-        test_log_prob = Buffer("test_log_prob", self.n_chains, self.n_steps, 1)
-        test_acceptance = Buffer("test_acceptance", self.n_chains, self.n_steps, 1)
+        Buffer("test_position", self.n_chains, self.n_steps, self.n_dims)
+        Buffer("test_log_prob", self.n_chains, self.n_steps, 1)
+        Buffer("test_acceptance", self.n_chains, self.n_steps, 1)
 
         model = MaskedCouplingRQSpline(
             self.n_features,
@@ -243,11 +243,4 @@ class TestNFStrategies:
             jax.random.PRNGKey(10),
         )
 
-        proposal = NFProposal(model)
-
-        resources = {
-            "test_position": test_position,
-            "test_log_prob": test_log_prob,
-            "test_acceptance": test_acceptance,
-            "NFProposal": proposal,
-        }
+        NFProposal(model)
