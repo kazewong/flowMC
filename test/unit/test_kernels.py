@@ -216,7 +216,7 @@ class TestMALA:
     def test_MALA_close_gaussian(self):
         n_dims = 2
         n_chains = 1
-        n_local_steps = 30000
+        n_local_steps = 50000
         MALA_Sampler = MALA(step_size=1)
         positions = Buffer(
             "positions", n_chains=n_chains, n_steps=n_local_steps, n_dims=n_dims
