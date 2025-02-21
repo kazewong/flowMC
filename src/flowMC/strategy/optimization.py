@@ -1,8 +1,9 @@
+from typing import Callable
+
 import jax
 import jax.numpy as jnp
 import optax
 from jaxtyping import Array, Float, PRNGKeyArray, PyTree
-from typing import Callable
 
 from flowMC.proposal.base import ProposalBase
 from flowMC.proposal.NF_proposal import NFProposal
@@ -71,14 +72,15 @@ class optimization_Adam(Strategy):
             grad = grad_fn(params) * (1 + jax.random.normal(subkey) * self.noise_level)
             updates, opt_state = self.solver.update(grad, opt_state, params)
             params = optax.apply_updates(params, updates)
-            params = optax.projections.projection_box(params, self.bounds[:, 0], self.bounds[:, 1])
+            params = optax.projections.projection_box(
+                params, self.bounds[:, 0], self.bounds[:, 1]
+            )
             return (key, params, opt_state), None
 
         def _single_optimize(
             key: PRNGKeyArray,
             initial_position: Float[Array, " n_dim"],
         ) -> Float[Array, " n_dim"]:
-
             opt_state = self.solver.init(initial_position)
 
             (key, params, opt_state), _ = jax.lax.scan(
@@ -142,7 +144,6 @@ class optimization_Adam(Strategy):
             key: PRNGKeyArray,
             initial_position: Float[Array, " n_dim"],
         ) -> Float[Array, " n_dim"]:
-
             opt_state = self.solver.init(initial_position)
 
             (key, params, opt_state), _ = jax.lax.scan(
@@ -173,25 +174,3 @@ class optimization_Adam(Strategy):
             print("Warning: Optimization accessed infinite or NaN log-probabilities.")
 
         return rng_key, optimized_positions, summary
-
-class Evosax_CMA_ES(Strategy):
-
-    def __init__(
-        self,
-        **kwargs,
-    ):
-        class_keys = list(self.__class__.__annotations__.keys())
-        for key, value in kwargs.items():
-            if key in class_keys:
-                if not key.startswith("__"):
-                    setattr(self, key, value)
-
-    def __call__(
-        self,
-        rng_key: PRNGKeyArray,
-        local_sampler: ProposalBase,
-        global_sampler: NFProposal,
-        initial_position: Array,
-        data: dict,
-    ) -> tuple[PRNGKeyArray, Array, ProposalBase, NFProposal, PyTree]:
-        raise NotImplementedError

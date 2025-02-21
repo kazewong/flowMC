@@ -1,5 +1,6 @@
 import corner
 import jax
+
 print(jax.devices())
 import jax.numpy as jnp  # JAX NumPy
 import matplotlib.pyplot as plt
@@ -17,7 +18,7 @@ def target_dualmoon(x, data):
     along the first and second dimension
     """
     print("compile count")
-    term1 = 0.5 * ((jnp.linalg.norm(x - data['data']) - 2) / 0.1) ** 2
+    term1 = 0.5 * ((jnp.linalg.norm(x - data["data"]) - 2) / 0.1) ** 2
     term2 = -0.5 * ((x[:1] + jnp.array([-3.0, 3.0])) / 0.8) ** 2
     term3 = -0.5 * ((x[1:2] + jnp.array([-3.0, 3.0])) / 0.6) ** 2
     return -(term1 - logsumexp(term2) - logsumexp(term3))
@@ -34,7 +35,7 @@ momentum = 0.9
 num_epochs = 30
 batch_size = 10000
 
-data = {'data':jnp.zeros(n_dim)}
+data = {"data": jnp.zeros(n_dim)}
 
 rng_key = jax.random.PRNGKey(42)
 rng_key, subkey = jax.random.split(rng_key)

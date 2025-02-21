@@ -8,20 +8,39 @@ import optax
 from jaxtyping import Array, Float, PRNGKeyArray
 from tqdm import tqdm, trange
 from typing_extensions import Self
+from flowMC.resource.base import Resource
 
 
-class NFModel(eqx.Module):
+class NFModel(eqx.Module, Resource):
     """
     Base class for normalizing flow models.
 
     This is an abstract template that should not be directly used.
     """
 
+    _n_features: int
+    _data_mean: Float[Array, " n_dim"]
+    _data_cov: Float[Array, " n_dim n_dim"]
+
+    @property
+    def n_features(self):
+        return self._n_features
+
+    @property
+    def data_mean(self):
+        return jax.lax.stop_gradient(self._data_mean)
+
+    @property
+    def data_cov(self):
+        return jax.lax.stop_gradient(jnp.atleast_2d(self._data_cov))
+
     @abstractmethod
     def __init__(self):
         raise NotImplementedError
 
-    def __call__(self, x: Float[Array, "n_dim"]) -> tuple[Float[Array, "n_dim"], Float]:
+    def __call__(
+        self, x: Float[Array, " n_dim"]
+    ) -> tuple[Float[Array, " n_dim"], Float]:
         """
         Forward pass of the model.
 
@@ -29,12 +48,13 @@ class NFModel(eqx.Module):
             x (Float[Array, "n_dim"]): Input data.
 
         Returns:
-            tuple[Float[Array, "n_dim"], Float]: Output data and log determinant of the Jacobian.
+            tuple[Float[Array, "n_dim"], Float]:
+                Output data and log determinant of the Jacobian.
         """
         return self.forward(x)
 
     @abstractmethod
-    def log_prob(self, x: Float[Array, "n_dim"]) -> Float:
+    def log_prob(self, x: Float[Array, " n_dim"]) -> Float:
         return NotImplemented
 
     @abstractmethod
@@ -43,8 +63,8 @@ class NFModel(eqx.Module):
 
     @abstractmethod
     def forward(
-        self, x: Float[Array, "n_dim"], key: Optional[PRNGKeyArray] = None
-    ) -> tuple[Float[Array, "n_dim"], Float]:
+        self, x: Float[Array, " n_dim"], key: Optional[PRNGKeyArray] = None
+    ) -> tuple[Float[Array, " n_dim"], Float]:
         """
         Forward pass of the model.
 
@@ -52,12 +72,15 @@ class NFModel(eqx.Module):
             x (Float[Array, "n_dim"]): Input data.
 
         Returns:
-            tuple[Float[Array, "n_dim"], Float]: Output data and log determinant of the Jacobian.
+            tuple[Float[Array, "n_dim"], Float]:
+                Output data and log determinant of the Jacobian.
         """
         return NotImplemented
 
     @abstractmethod
-    def inverse(self, x: Float[Array, "n_dim"]) -> tuple[Float[Array, "n_dim"], Float]:
+    def inverse(
+        self, x: Float[Array, " n_dim"]
+    ) -> tuple[Float[Array, " n_dim"], Float]:
         """
         Inverse pass of the model.
 
@@ -65,12 +88,9 @@ class NFModel(eqx.Module):
             x (Float[Array, "n_dim"]): Input data.
 
         Returns:
-            tuple[Float[Array, "n_dim"], Float]: Output data and log determinant of the Jacobian.
+            tuple[Float[Array, "n_dim"], Float]:
+                Output data and log determinant of the Jacobian.
         """
-        return NotImplemented
-
-    @abstractmethod
-    def n_features(self) -> int:
         return NotImplemented
 
     def save_model(self, path: str):
@@ -80,8 +100,8 @@ class NFModel(eqx.Module):
         return eqx.tree_deserialise_leaves(path + ".eqx", self)
 
     @eqx.filter_value_and_grad
-    def loss_fn(self, x):
-        return -jnp.mean(self.log_prob(x))
+    def loss_fn(self, x: Float[Array, "n_batch n_dim"]) -> Float:
+        return -jnp.mean(jax.vmap(self.log_prob)(x))
 
     @eqx.filter_jit
     def train_step(
@@ -89,7 +109,7 @@ class NFModel(eqx.Module):
         x: Float[Array, "n_batch n_dim"],
         optim: optax.GradientTransformation,
         state: optax.OptState,
-    ) -> tuple[Float, Self, optax.OptState]:
+    ) -> tuple[Float[Array, " 1"], Self, optax.OptState]:
         """Train for a single step.
 
         Args:
@@ -103,7 +123,7 @@ class NFModel(eqx.Module):
             opt_state (optax.OptState): Updated optimizer state.
         """
         loss, grads = model.loss_fn(x)
-        updates, state = optim.update(grads, state, model) # type: ignore
+        updates, state = optim.update(grads, state, model)  # type: ignore
         model = eqx.apply_updates(model, updates)
         return loss, model, state
 
@@ -116,6 +136,7 @@ class NFModel(eqx.Module):
         batch_size: Float,
     ) -> tuple[Float, Self, optax.OptState]:
         """Train for a single epoch."""
+        value = 1e9
         model = self
         train_ds_size = len(data)
         steps_per_epoch = train_ds_size // batch_size
@@ -166,6 +187,8 @@ class NFModel(eqx.Module):
         best_model = model = self
         best_state = state
         best_loss = 1e9
+        model = eqx.tree_at(lambda m: m._data_mean, model, jnp.mean(data, axis=0))
+        model = eqx.tree_at(lambda m: m._data_cov, model, jnp.cov(data.T))
         for epoch in pbar:
             # Use a separate PRNG key to permute image data during shuffling
             rng, input_rng = jax.random.split(rng)
@@ -202,14 +225,27 @@ class NFModel(eqx.Module):
             eqx.Module: Model with parameters converted to the given precision.
         """
 
-        precisions_dict  = {"float16": jnp.float16, "bfloat16": jnp.bfloat16, "float32": jnp.float32, "float64": jnp.float64}
+        precisions_dict = {
+            "float16": jnp.float16,
+            "bfloat16": jnp.bfloat16,
+            "float32": jnp.float32,
+            "float64": jnp.float64,
+        }
         try:
             precision_format = precisions_dict[precision.lower()]
         except KeyError:
-            raise ValueError(f"Precision {precision} not supported. Choose from {precisions_dict.keys()}")
+            raise ValueError(
+                f"Precision {precision} not supported.\
+                Choose from {precisions_dict.keys()}"
+            )
         dynamic_model, static_model = eqx.partition(self, eqx.is_array)
-        dynamic_model = jax.tree.map(lambda x: x.astype(precision_format), dynamic_model)
+        dynamic_model = jax.tree.map(
+            lambda x: x.astype(precision_format), dynamic_model
+        )
         return eqx.combine(dynamic_model, static_model)
+
+    save_resource = save_model
+    load_resource = load_model
 
 
 class Bijection(eqx.Module):
@@ -223,16 +259,26 @@ class Bijection(eqx.Module):
         return NotImplemented
 
     def __call__(
-        self, x: Array, key: Optional[PRNGKeyArray] = None
-    ) -> tuple[Array, Array]:
-        return self.forward(x)
+        self,
+        x: Float[Array, " n_dim"],
+        condition: Float[Array, " n_condition"],
+    ) -> tuple[Float[Array, " n_dim"], Float]:
+        return self.forward(x, condition)
 
     @abstractmethod
-    def forward(self, x: Array) -> tuple[Array, Array]:
+    def forward(
+        self,
+        x: Float[Array, " n_dim"],
+        condition: Float[Array, " n_condition"],
+    ) -> tuple[Float[Array, " n_dim"], Float]:
         return NotImplemented
 
     @abstractmethod
-    def inverse(self, x: Array) -> tuple[Array, Array]:
+    def inverse(
+        self,
+        x: Float[Array, " n_dim"],
+        condition: Float[Array, " n_condition"],
+    ) -> tuple[Float[Array, " n_dim"], Float]:
         return NotImplemented
 
 

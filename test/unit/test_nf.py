@@ -1,8 +1,8 @@
 import jax
 import jax.numpy as jnp
 
-from flowMC.nfmodel.realNVP import AffineCoupling, RealNVP
-from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
+from flowMC.resource.nf_model.realNVP import AffineCoupling, RealNVP
+from flowMC.resource.nf_model.rqSpline import MaskedCouplingRQSpline
 
 
 def test_affine_coupling_forward_and_inverse():
@@ -35,7 +35,7 @@ def test_realnvp():
     assert y.shape == x.shape
     assert log_det.shape == (2,)
 
-    y_inv, log_det_inv = model.inverse(y)
+    y_inv, log_det_inv = jax.vmap(model.inverse)(y)
 
     assert y_inv.shape == x.shape
     assert log_det_inv.shape == (2,)
@@ -47,14 +47,14 @@ def test_realnvp():
 
     assert samples.shape == (2, 3)
 
-    log_prob = model.log_prob(samples)
+    log_prob = jax.vmap(model.log_prob)(samples)
 
     assert log_prob.shape == (2,)
 
 
 def test_rqspline():
     n_features = 3
-    hidden_layes = [10, 10]
+    hidden_layes = [16, 16]
     n_layers = 2
     n_bins = 8
 
@@ -68,6 +68,6 @@ def test_rqspline():
 
     assert samples.shape == (2, 3)
 
-    log_prob = model.log_prob(samples)
+    log_prob = jax.vmap(model.log_prob)(samples)
 
     assert log_prob.shape == (2,)

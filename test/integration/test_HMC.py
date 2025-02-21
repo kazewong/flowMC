@@ -3,7 +3,10 @@ import jax.numpy as jnp
 from jax.scipy.special import logsumexp
 from jaxtyping import Array, Float
 
-from flowMC.proposal.HMC import HMC
+from flowMC.resource.local_kernel.HMC import HMC
+from flowMC.strategy.take_steps import TakeSerialSteps
+from flowMC.resource.buffers import Buffer
+from flowMC.Sampler import Sampler
 
 
 def dual_moon_pe(x: Float[Array, "n_dim"], data: dict):
@@ -11,89 +14,59 @@ def dual_moon_pe(x: Float[Array, "n_dim"], data: dict):
     Term 2 and 3 separate the distribution and smear it along the first and second dimension
     """
     print("compile count")
-    term1 = 0.5 * ((jnp.linalg.norm(x - data['data']) - 2) / 0.1) ** 2
+    term1 = 0.5 * ((jnp.linalg.norm(x - data["data"]) - 2) / 0.1) ** 2
     term2 = -0.5 * ((x[:1] + jnp.array([-3.0, 3.0])) / 0.8) ** 2
     term3 = -0.5 * ((x[1:2] + jnp.array([-3.0, 3.0])) / 0.6) ** 2
     return -(term1 - logsumexp(term2) - logsumexp(term3))
 
 
+# Setup parameters
 n_dim = 5
 n_chains = 15
 n_local_steps = 30
 step_size = 0.1
 n_leapfrog = 10
 
-data = {'data':jnp.arange(5)}
+data = {"data": jnp.arange(5)}
 
+# Initialize positions
 rng_key = jax.random.PRNGKey(42)
 rng_key, subkey = jax.random.split(rng_key)
 initial_position = jax.random.normal(subkey, shape=(n_chains, n_dim)) * 1
 
+# Define resources
 HMC_sampler = HMC(
-    dual_moon_pe,
-    True,
     step_size=step_size,
     n_leapfrog=n_leapfrog,
     condition_matrix=jnp.eye(n_dim),
 )
 
-initial_PE = HMC_sampler.logpdf_vmap(initial_position, data)
+positions = Buffer("positions", n_chains=n_chains, n_steps=n_local_steps, n_dims=n_dim)
+log_prob = Buffer("log_prob", n_chains=n_chains, n_steps=n_local_steps, n_dims=1)
+acceptance = Buffer("acceptance", n_chains=n_chains, n_steps=n_local_steps, n_dims=1)
 
+resource = {
+    "positions": positions,
+    "log_prob": log_prob,
+    "acceptance": acceptance,
+    "HMC": HMC_sampler,
+}
 
-initial_position = jnp.repeat(initial_position[:, None], n_local_steps, 1)
-initial_PE = jnp.repeat(initial_PE[:, None], n_local_steps, 1)
-
-rng_key, subkey = jax.random.split(rng_key)
-subkey = jax.random.split(subkey, n_chains)
-state = (
-    subkey,
-    initial_position,
-    initial_PE,
-    jnp.zeros((n_chains, n_local_steps, 1)),
-    data,
+# Define strategy
+strategy = TakeSerialSteps(
+    logpdf=dual_moon_pe,
+    kernel_name="HMC",
+    buffer_names=["positions", "log_prob", "acceptance"],
+    n_steps=n_local_steps,
 )
 
-HMC_sampler.update_vmap(1, state)
-
-rng_key, subkey = jax.random.split(rng_key)
-subkey = jax.random.split(subkey, n_chains)
-state = HMC_sampler.sample(subkey, n_local_steps, initial_position[:, 0], data)
-
-
-from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
-from flowMC.Sampler import Sampler
-
-n_dim = 5
-n_chains = 2
-n_local_steps = 20
-n_global_steps = 3
-step_size = 0.1
-n_loop_training = 2
-n_loop_production = 2
-
-
-rng_key = jax.random.PRNGKey(43)
-rng_key, subkey = jax.random.split(rng_key)
-initial_position = jax.random.normal(subkey, shape=(n_chains, n_dim)) * 1
-
-rng_key, subkey = jax.random.split(rng_key)
-model = MaskedCouplingRQSpline(n_dim, 4, [32, 32], 4, subkey)
-
-print("Initializing sampler class")
-
+# Initialize and run sampler
 nf_sampler = Sampler(
-    n_dim,
-    rng_key,
-    data,
-    HMC_sampler,
-    model,
-    n_loop_training=n_loop_training,
-    n_loop_production=n_loop_production,
-    n_local_steps=n_local_steps,
-    n_global_steps=n_global_steps,
+    n_dim=n_dim,
     n_chains=n_chains,
-    use_global=False,
-    precompile=True,
+    rng_key=rng_key,
+    resources=resource,
+    strategies=[strategy],
 )
 
 nf_sampler.sample(initial_position, data)

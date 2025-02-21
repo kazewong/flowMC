@@ -5,7 +5,7 @@ import jax
 import jax.numpy as jnp
 from jaxtyping import Array, Float, PRNGKeyArray
 
-from flowMC.nfmodel.base import Bijection, Distribution
+from flowMC.resource.nf_model.base import Bijection, Distribution
 
 
 class MLP(eqx.Module):
@@ -20,6 +20,7 @@ class MLP(eqx.Module):
         activation (Callable): Activation function.
         use_bias (bool): Whether to use bias.
     """
+
     layers: List
 
     def __init__(
@@ -66,7 +67,6 @@ class MLP(eqx.Module):
 
 
 class MaskedCouplingLayer(Bijection):
-
     r"""Masked coupling layer.
 
     f(x) = (1-m)*b(x;c(m*x;z)) + m*x
@@ -89,14 +89,22 @@ class MaskedCouplingLayer(Bijection):
         self.bijector = bijector
         self._mask = mask
 
-    def forward(self, x: Float[Array, "n_dim"]) -> Tuple[Float[Array, "n_dim"], Float[Array, "n_dim"]]:
-        y, log_det = self.bijector(x, x * self.mask) # type: ignore
+    def forward(
+        self,
+        x: Float[Array, "n_dim"],
+        condition: Float[Array, "n_condition"],
+    ) -> tuple[Float[Array, "n_dim"], Float]:
+        y, log_det = self.bijector(x, x * self.mask)  # type: ignore
         y = (1 - self.mask) * y + self.mask * x
         log_det = ((1 - self.mask) * log_det).sum()
         return y, log_det
 
-    def inverse(self, x: Float[Array, "n_dim"]) -> Tuple[Float[Array, "n_dim"], Float[Array, "n_dim"]]:
-        y, log_det = self.bijector.inverse(x, x * self.mask) # type: ignore
+    def inverse(
+        self,
+        x: Float[Array, "n_dim"],
+        condition: Float[Array, "n_condition"],
+    ) -> tuple[Float[Array, "n_dim"], Float]:
+        y, log_det = self.bijector.inverse(x, x * self.mask)  # type: ignore
         y = (1 - self.mask) * y + self.mask * x
         log_det = ((1 - self.mask) * log_det).sum()
         return y, log_det
@@ -112,21 +120,31 @@ class MLPAffine(Bijection):
         self.shift_MLP = shift_MLP
         self.dt = dt
 
-    def __call__(self, x: Float[Array, "n_dim"], condition_x: Float[Array, "n_cond"]) -> Tuple[Float[Array, "n_dim"], Float]:
+    def __call__(
+        self, x: Float[Array, "n_dim"], condition_x: Float[Array, "n_cond"]
+    ) -> Tuple[Float[Array, "n_dim"], Float]:
         return self.forward(x, condition_x)
 
-    def forward(self, x: Float[Array, "n_dim"], condition_x: Float[Array, "n_cond"]) -> Tuple[Float[Array, "n_dim"], Float]:
+    def forward(
+        self,
+        x: Float[Array, "n_dim"],
+        condition: Float[Array, "n_condition"],
+    ) -> tuple[Float[Array, "n_dim"], Float]:
         # Note that this note output log_det as an array instead of a number.
         # This is because we need to sum over the log_det in the masked coupling layer.
-        scale = jnp.tanh(self.scale_MLP(condition_x)) * self.dt
-        shift = self.shift_MLP(condition_x) * self.dt
+        scale = jnp.tanh(self.scale_MLP(condition)) * self.dt
+        shift = self.shift_MLP(condition) * self.dt
         log_det = scale
         y = (x + shift) * jnp.exp(scale)
         return y, log_det
 
-    def inverse(self, x: Float[Array, "n_dim"], condition_x: Float[Array, "n_cond"]) -> Tuple[Float[Array, "n_dim"], Float]:
-        scale = jnp.tanh(self.scale_MLP(condition_x)) * self.dt
-        shift = self.shift_MLP(condition_x) * self.dt
+    def inverse(
+        self,
+        x: Float[Array, "n_dim"],
+        condition: Float[Array, "n_condition"],
+    ) -> tuple[Float[Array, "n_dim"], Float]:
+        scale = jnp.tanh(self.scale_MLP(condition)) * self.dt
+        shift = self.shift_MLP(condition) * self.dt
         log_det = -scale
         y = x * jnp.exp(-scale) - shift
         return y, log_det
@@ -140,22 +158,31 @@ class ScalarAffine(Bijection):
         self.scale = jnp.array(scale)
         self.shift = jnp.array(shift)
 
-    def __call__(self, x: Float[Array, "n_dim"], condition_x: Float[Array, "n_cond"]) -> Tuple[Float[Array, "n_dim"], Float]:
+    def __call__(
+        self, x: Float[Array, "n_dim"], condition_x: Float[Array, "n_cond"]
+    ) -> Tuple[Float[Array, "n_dim"], Float]:
         return self.forward(x, condition_x)
 
-    def forward(self, x: Float[Array, "n_dim"], condition_x: Float[Array, "n_cond"]) -> Tuple[Float[Array, "n_dim"], Float]:
+    def forward(
+        self,
+        x: Float[Array, "n_dim"],
+        condition: Float[Array, "n_condition"],
+    ) -> tuple[Float[Array, "n_dim"], Float]:
         y = (x + self.shift) * jnp.exp(self.scale)
         log_det = self.scale
         return y, log_det
 
-    def inverse(self, x: Float[Array, "n_dim"], condition_x: Float[Array, "n_cond"]) -> Tuple[Float[Array, "n_dim"], Float]:
+    def inverse(
+        self,
+        x: Float[Array, "n_dim"],
+        condition: Float[Array, "n_condition"],
+    ) -> tuple[Float[Array, "n_dim"], Float]:
         y = x * jnp.exp(-self.scale) - self.shift
         log_det = -self.scale
         return y, log_det
 
 
 class Gaussian(Distribution):
-
     r"""Multivariate Gaussian distribution.
 
     Args:
@@ -186,7 +213,12 @@ class Gaussian(Distribution):
         else:
             return jax.lax.stop_gradient(self._cov)
 
-    def __init__(self, mean: Float[Array, "n_dim"], cov: Float[Array, "n_dim n_dim"], learnable: bool = False):
+    def __init__(
+        self,
+        mean: Float[Array, "n_dim"],
+        cov: Float[Array, "n_dim n_dim"],
+        learnable: bool = False,
+    ):
         self._mean = mean
         self._cov = cov
         self.learnable = learnable
@@ -194,12 +226,15 @@ class Gaussian(Distribution):
     def log_prob(self, x: Float[Array, "n_dim"]) -> Float:
         return jax.scipy.stats.multivariate_normal.logpdf(x, self.mean, self.cov)
 
-    def sample(self, key: PRNGKeyArray, n_samples: int = 1) -> Float[Array, "n_samples n_dim"]:
-        return jax.random.multivariate_normal(key, self.mean, self.cov, (n_samples,))
+    def sample(
+        self, rng_key: PRNGKeyArray, n_samples: int
+    ) -> Float[Array, " n_samples n_features"]:
+        return jax.random.multivariate_normal(
+            rng_key, self.mean, self.cov, (n_samples,)
+        )
 
 
 class Composable(Distribution):
-
     distributions: list[Distribution]
     partitions: dict[str, tuple[int, int]]
 
@@ -213,9 +248,11 @@ class Composable(Distribution):
             log_prob += dist.log_prob(x[ranges[0] : ranges[1]])
         return log_prob
 
-    def sample(self, rng_key: PRNGKeyArray, n_samples: int) -> dict[str, Float[Array, "n_samples n_dim"]]:
+    def sample(
+        self, rng_key: PRNGKeyArray, n_samples: int
+    ) -> Float[Array, " n_samples n_features"]:
         samples = {}
         for dist, (key, _) in zip(self.distributions, self.partitions.items()):
             rng_key, sub_key = jax.random.split(rng_key)
             samples[key] = dist.sample(sub_key, n_samples=n_samples)
-        return samples
+        return samples  # type: ignore

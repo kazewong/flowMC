@@ -1,15 +1,17 @@
-from functools import partial
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 import equinox as eqx
 import jax
 import jax.numpy as jnp
-import numpy as np
-import optax
 from jaxtyping import Array, Float, PRNGKeyArray
 
-from flowMC.nfmodel.base import Distribution, NFModel
-from flowMC.nfmodel.common import MLP, Gaussian, MaskedCouplingLayer, MLPAffine
+from flowMC.resource.nf_model.base import Distribution, NFModel
+from flowMC.resource.nf_model.common import (
+    MLP,
+    Gaussian,
+    MaskedCouplingLayer,
+    MLPAffine,
+)
 
 
 class AffineCoupling(eqx.Module):
@@ -115,11 +117,11 @@ class RealNVP(NFModel):
     base_dist: Distribution
     affine_coupling: List[MaskedCouplingLayer]
     _n_features: int
-    _data_mean: Float[Array, " n_dim"] | None
-    _data_cov: Float[Array, " n_dim n_dim"] | None
+    _data_mean: Float[Array, " n_dim"]
+    _data_cov: Float[Array, " n_dim n_dim"]
 
     @property
-    def n_features(self):
+    def n_features(self) -> int:
         return self._n_features
 
     @property
@@ -131,12 +133,7 @@ class RealNVP(NFModel):
         return jax.lax.stop_gradient(jnp.atleast_2d(self._data_cov))
 
     def __init__(
-        self,
-        n_features: int,
-        n_layers: int,
-        n_hidden: int,
-        key: PRNGKeyArray,
-        **kwargs
+        self, n_features: int, n_layers: int, n_hidden: int, key: PRNGKeyArray, **kwargs
     ):
         if kwargs.get("base_dist") is not None:
             self.base_dist = kwargs.get("base_dist")  # type: ignore
@@ -146,12 +143,16 @@ class RealNVP(NFModel):
             )
 
         if kwargs.get("data_mean") is not None:
-            self._data_mean = kwargs.get("data_mean")
+            data_mean = kwargs.get("data_mean")
+            assert isinstance(data_mean, Array)
+            self._data_mean = data_mean
         else:
             self._data_mean = jnp.zeros(n_features)
 
         if kwargs.get("data_cov") is not None:
-            self._data_cov = kwargs.get("data_cov")
+            data_cov = kwargs.get("data_cov")
+            assert isinstance(data_cov, Array)
+            self._data_cov = data_cov
         else:
             self._data_cov = jnp.eye(n_features)
 
@@ -169,24 +170,29 @@ class RealNVP(NFModel):
         keys = jax.random.split(key, n_layers)
         self.affine_coupling = eqx.filter_vmap(make_layer)(jnp.arange(n_layers), keys)
 
-    def __call__(self, x: Array) -> Tuple[Array, Float]:
-        return self.forward(x)
-
-    def forward(self, x: Array) -> Tuple[Array, Float]:
+    def forward(
+        self,
+        x: Float[Array, "n_dim"],
+        key: Optional[PRNGKeyArray] = None,
+        condition: Optional[Float[Array, "n_condition"]] = None,
+    ) -> tuple[Float[Array, "n_dim"], Float]:
         log_det = 0.0
         dynamics, statics = eqx.partition(self.affine_coupling, eqx.is_array)
 
         def f(carry, data):
             x, log_det = carry
             layers = eqx.combine(data, statics)
-            x, log_det_i = layers(x)
+            x, log_det_i = layers(x, condition)
             return (x, log_det + log_det_i), None
 
         (x, log_det), _ = jax.lax.scan(f, (x, log_det), dynamics)
         return x, log_det
 
-    @partial(jax.vmap, in_axes=(None, 0))
-    def inverse(self, x: Array) -> Tuple[Array, Float]:
+    def inverse(
+        self,
+        x: Float[Array, "n_dim"],
+        condition: Optional[Float[Array, "n_condition"]] = None,
+    ) -> tuple[Float[Array, "n_dim"], Float]:
         """From latent space to data space"""
         log_det = 0.0
         dynamics, statics = eqx.partition(self.affine_coupling, eqx.is_array)
@@ -194,25 +200,28 @@ class RealNVP(NFModel):
         def f(carry, data):
             x, log_det = carry
             layers = eqx.combine(data, statics)
-            x, log_det_i = layers.inverse(x)
+            x, log_det_i = layers.inverse(x, condition)
             return (x, log_det + log_det_i), None
 
         (x, log_det), _ = jax.lax.scan(f, (x, log_det), dynamics, reverse=True)
         return x, log_det
 
-    @eqx.filter_jit
     def sample(self, rng_key: PRNGKeyArray, n_samples: int) -> Array:
         samples = self.base_dist.sample(rng_key, n_samples)
-        samples = self.inverse(samples)[0]
+        samples = jax.vmap(self.inverse)(samples)[0]
         samples = samples * jnp.sqrt(jnp.diag(self.data_cov)) + self.data_mean
         return samples
 
-    @eqx.filter_jit
-    @partial(jax.vmap, in_axes=(None, 0))
-    def log_prob(self, x: Array) -> Array:
+    def log_prob(self, x: Float[Array, "n_dim"]) -> Float:
+        # TODO: Check whether taking away vmap hurts accuracy.
         x = (x - self.data_mean) / jnp.sqrt(jnp.diag(self.data_cov))
         y, log_det = self.__call__(x)
         log_det = log_det + jax.scipy.stats.multivariate_normal.logpdf(
             y, jnp.zeros(self.n_features), jnp.eye(self.n_features)
         )
         return log_det
+
+    def print_parameters(self):
+        print("RealNVP parameters:")
+        print(f"Data mean: {self.data_mean}")
+        print(f"Data covariance: {self.data_cov}")

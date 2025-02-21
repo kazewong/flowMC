@@ -4,6 +4,12 @@ import tqdm
 from evosax import CMA_ES
 from jaxtyping import PRNGKeyArray
 
+"""
+WARNING: This file is on the process of being deprecated.
+Do not use this optimizer
+
+"""
+
 
 class EvolutionaryOptimizer:
     """
