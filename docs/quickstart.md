@@ -33,64 +33,78 @@ pip install -e .
 
 To sample a N dimensional Gaussian, you would do something like:
 
-
-``` 
+``` python
 import jax
 import jax.numpy as jnp
-from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
-from flowMC.proposal.MALA import MALA
 from flowMC.Sampler import Sampler
+from flowMC.resource_strategy_bundles import RQSpline_MALA_Bundle
 
+# Defining the log posterior
 
 def log_posterior(x, data: dict):
-    return -0.5 * jnp.sum((x - data['data']) ** 2)
+    return -0.5 * jnp.sum((x - data["data"]) ** 2)
 
+# Declaring hyperparameters
 
-data = {'data':jnp.arange(5)}
-
-n_dim = 1
+n_dims = 2
+n_local_steps = 10
+n_global_steps = 10
+n_training_loops = 3
+n_production_loops = 3
+n_epochs = 10
 n_chains = 10
+rq_spline_hidden_units = [64, 64]
+rq_spline_n_bins = 8
+rq_spline_n_layers = 3
+data = {"data": jnp.arange(n_dims).astype(jnp.float32)}
 
 rng_key = jax.random.PRNGKey(42)
 rng_key, subkey = jax.random.split(rng_key)
-initial_position = jax.random.normal(subkey, shape=(n_chains, n_dim)) * 1
+initial_position = jax.random.normal(subkey, shape=(n_chains, n_dims)) * 1
+
+# Initializing the strategy bundle
+
 rng_key, subkey = jax.random.split(rng_key)
-model = MaskedCouplingRQSpline(n_dim, 3, [64, 64], 8, subkey)
-step_size = 1e-1
-local_sampler = MALA(log_posterior, True, step_size=step_size)
+bundle = RQSpline_MALA_Bundle(
+    subkey,
+    n_chains,
+    n_dims,
+    log_posterior,
+    n_local_steps,
+    n_global_steps,
+    n_training_loops,
+    n_production_loops,
+    n_epochs,
+    rq_spline_hidden_units=rq_spline_hidden_units,
+    rq_spline_n_bins=rq_spline_n_bins,
+    rq_spline_n_layers=rq_spline_n_layers,
+)
+
+# Run the sampler
 
 nf_sampler = Sampler(
-    n_dim,
+    n_dims,
+    n_chains,
     rng_key,
-    data,
-    local_sampler,
-    model,
-    n_local_steps=50,
-    n_global_steps=50,
-    n_epochs=30,
-    learning_rate=1e-2,
-    batch_size=10000,
-    n_chains=n_chains,
+    resource_strategy_bundles=bundle,
 )
 
 nf_sampler.sample(initial_position, data)
-chains, log_prob, local_accs, global_accs = nf_sampler.get_sampler_state().values()
 ```
 
-For more examples, have a look at the [tutorials](https://github.com/kazewong/flowMC/tree/main/example) on GitHub.
-In particular, currently the best engineered test case is [dualmoon.py](https://github.com/kazewong/flowMC/blob/main/example/dualmoon.py).
+For more examples, there is a series of tutorials in the tutorials directory, we recommend you walk through the [Dual moon example](../tutorials/dualmoon) as a starting point.
 
 In the ideal case, the only three things you will have to do are:
 
 1. Write down the log-probability density function you want to sample in the form of `log_p(x)`, where `x` is the vector of variables of interest,
 2. Give the sampler the initial position of your n_chains,
-3. Configure the sampler and normalizing flow model.
+3. Choose your sampling strategy and initialize the sampler.
 
 While this [configuration guide](#configuration_guide-section-top) can help in configuring the sampler, here are the two important bits you need to think about before using this package:
 
 ## 1. Write the likelihood function in JAX
 
-While the package does support non-JAX likelihood function, it is highly recommended that you write your likelihood function in JAX. This entails writing matrix operations using `jax.numpy` and making sure the code remains *functional* as in *functional programming*.
+While the package does support non-JAX likelihood function, it is highly recommended that you write your likelihood function in JAX for performance reasons.
 
 If your likelihood is fully defined in [JAX](https://github.com/google/jax), there are a couple benefits that compound with each other:
 
