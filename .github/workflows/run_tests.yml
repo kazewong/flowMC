@@ -30,9 +30,9 @@ jobs:
       - name: Run tests and coverage
         run: |
           uv run coverage run --source=src -m pytest test
-          uv run coveralls
+          uv run coveralls --service=github-actions
         env:
-          GITHUB_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
+          COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
 
       - name: Run build
         run: uv build
