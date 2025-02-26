@@ -1,4 +1,3 @@
-flowMC
 mkdocs==1.6.1              # Main documentation generator.
 mkdocs-material==9.5.47    # Theme
 pymdown-extensions==10.12  # Markdown extensions e.g. to handle LaTeX.
