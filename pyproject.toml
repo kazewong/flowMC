@@ -13,6 +13,7 @@ keywords = ["sampling", "inference", "machine learning", "normalizing", "autodif
 dependencies = [
     "chex>=0.1.87",
     "corner>=2.2.3",
+    "coveralls>=4.0.1",
     "equinox>=0.11.9",
     "jax[cuda12]==0.5.0",
     "jaxtyping>=0.2.36",
