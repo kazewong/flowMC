@@ -1,0 +1,8 @@
+flowMC
+mkdocs==1.6.1              # Main documentation generator.
+mkdocs-material==9.5.47    # Theme
+pymdown-extensions==10.12  # Markdown extensions e.g. to handle LaTeX.
+mkdocstrings[python]==0.27.0       # Autogenerate documentation from docstrings.
+mkdocs-jupyter==0.25.1      # Turn Jupyter Lab notebooks into webpages.
+mkdocs-gen-files==0.5.0
+mkdocs-literate-nav==0.6.1
