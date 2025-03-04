@@ -8,7 +8,8 @@ def plot_summary(sampler: Sampler, **plotkwargs) -> None:
     """Create plots of the most important quantities in the summary.
 
     Args:
-        training (bool, optional): If True, plot training quantities. If False, plot production quantities. Defaults to False.
+        training (bool, optional): If True, plot training quantities.
+            If False, plot production quantities. Defaults to False.
     """
     keys = ["local_accs", "global_accs", "log_prob"]
 
