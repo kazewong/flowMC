@@ -5,8 +5,8 @@ import jax.numpy as jnp
 import optax
 from jaxtyping import Array, Float, PRNGKeyArray, PyTree
 
-from flowMC.proposal.base import ProposalBase
-from flowMC.proposal.NF_proposal import NFProposal
+from flowMC.resource.local_kernel.base import ProposalBase
+from flowMC.resource.nf_model.NF_proposal import NFProposal
 from flowMC.strategy.base import Strategy
 
 
@@ -61,7 +61,7 @@ class optimization_Adam(Strategy):
         PRNGKeyArray, Float[Array, " n_chain n_dim"], ProposalBase, NFProposal, PyTree
     ]:
         def loss_fn(params: Float[Array, " n_dim"]) -> Float:
-            return -local_sampler.logpdf(params, data)
+            return -local_sampler.log_pdf(params, data)
 
         grad_fn = jax.jit(jax.grad(loss_fn))
 
