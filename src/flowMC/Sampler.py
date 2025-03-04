@@ -93,3 +93,11 @@ class Sampler:
             ) = strategy(rng_key, self.resources, last_step, data)
 
     # TODO: Implement quick access and summary functions that operates on buffer
+
+    def serialize(self):
+        """Serialize the sampler object."""
+        pass
+
+    def deserialize(self):
+        """Deserialize the sampler object."""
+        pass
