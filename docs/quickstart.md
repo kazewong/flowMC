@@ -11,8 +11,8 @@ pip install flowMC
 ```
 
 This will install the latest stable release and its dependencies.
-flowMC is based on [JAX](https://github.com/google/jax) and [Flax](https://github.com/google/flax).
-By default, installing flowMC will automatically install JAX and Flax available on [PyPI](https://pypi.org/).
+flowMC is based on [JAX](https://github.com/google/jax) and [Equinox](https://github.com/patrick-kidger/equinox).
+By default, installing flowMC will automatically install JAX and Equinox available on [PyPI](https://pypi.org/).
 JAX does not install GPU support by default.
 If you want to use GPU with JAX, you need to install JAX with GPU support according to [their document](https://github.com/google/jax#pip-installation-gpu-cuda-installed-via-pip-easier).
 At the time of writing this documentation page, this is the command to install JAX with GPU support:
