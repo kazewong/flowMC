@@ -24,13 +24,14 @@ The main loop of `Sampler` is pretty straight forward after initialization: Give
 
 # Resource and Strategy
 
-At the core of the new `flowMC` API are the resource and strategy interfaces. Broadly speaking, resources are 
+At the core of the new `flowMC` API are the resource and strategy interfaces. Broadly speaking resources are similar to a data class, and strategies are similar to functions.
+**Resources** store some attribute and can be manipulated, but should not have too many methods associated with it. For example, a buffer that stores the sampling results is a resource, a MALA kernel is a resource, and a normalizing flow model is a resource. **Strategies** are functions that take in resources and return updated resources. For example, taking a local step requires two kinds of resources: a proposal distribution and the buffer where the samples are stored. Examples of strategies are taking a local step, training a normalizing flow, and running an optimization step.
 
-## Resource
+The reason for this separation is to allow users to compose different strategies together. For example, the user may want to update the parameters of a proposal kernel like MALA with the local information from a normalizing flow model. Instead of hard coding this functionality to associate with either the MALA kernel or the normalizing flow model, the current API allows the user to define a strategy that takes in both the MALA kernel and the normalizing flow model, and update the MALA kernel with the information from the normalizing flow model. This separate the concern of intermixing different components of the algorithm and make experimenting with new strategies more manageable.
 
-## Strategy
+Since this API is designed for users who are willing to look into the guts of `flowMC` and experiment with different strategies, the main question to ask is whether a new data structure/functionality should be a resource or a strategy. While there is no hard rules for such implementation other than conforming to the individual base classes, a good rule of thumb is to ask whether the new data structure/functionality is something that should be updated by other strategies. If the answer is yes, then it should be a resource. If the answer is no, then it should be a strategy.
 
-
+One extra criteria that decides whether an implementation should be a resource or a strategy is whether the implementation is compatible with `jax`'s transformation. Resource should be compatible with `jit`, and strategy is not required to be compatible with `jit`. An example to illustrate the difference is a training loop contains for-looping over a number of epochs and logging the metadata, which is usually not necessary to be jitted, so this should be a strategy. A neural network and its main functions needs to run efficiently on GPU no matter in sampling or training, so it should be a resource.
 
 # Scope of flowMC
 
