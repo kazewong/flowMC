@@ -11,7 +11,8 @@ from flowMC.Sampler import Sampler
 
 def dual_moon_pe(x: Float[Array, "n_dim"], data: dict):
     """
-    Term 2 and 3 separate the distribution and smear it along the first and second dimension
+    Term 2 and 3 separate the distribution
+    and smear it along the first and second dimension
     """
     print("compile count")
     term1 = 0.5 * ((jnp.linalg.norm(x - data["data"]) - 2) / 0.1) ** 2

@@ -39,7 +39,8 @@ class Buffer(Resource):
 
     def print_parameters(self):
         print(
-            f"Buffer: {self.n_chains} chains, {self.n_steps} steps, {self.n_dims} dimensions"
+            f"Buffer: {self.n_chains} chains,"
+            "{self.n_steps} steps, {self.n_dims} dimensions"
         )
 
     def get_distribution(self, n_bins: int = 100):

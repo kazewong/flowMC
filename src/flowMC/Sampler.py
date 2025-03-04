@@ -13,7 +13,8 @@ class Sampler:
         n_dim (int): Dimension of the parameter space.
         n_chains (int): Number of chains to sample.
         rng_key (PRNGKeyArray): Jax PRNGKey.
-        logpdf (Callable[[Float[Array, "n_dim"], dict], Float): Log probability function.
+        logpdf (Callable[[Float[Array, "n_dim"], dict], Float):
+            Log probability function.
         resources (dict[str, Resource]): Resources to be used by the sampler.
         strategies (list[Strategy]): List of strategies to be used by the sampler.
         verbose (bool): Whether to print out progress. Defaults to False.
@@ -59,9 +60,10 @@ class Sampler:
             print(
                 "Resources or strategies not provided. Using resource strategy bundles."
             )
-            assert (
-                resource_strategy_bundles is not None
-            ), "Resource strategy bundles must be provided if resources and strategies are not."
+            assert resource_strategy_bundles is not None, (
+                "Resource strategy bundles must be provided"
+                "if resources and strategies are not."
+            )
             self.resources = resource_strategy_bundles.resources
             self.strategies = resource_strategy_bundles.strategies
 
