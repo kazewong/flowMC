@@ -53,11 +53,11 @@ class NFModel(eqx.Module, Resource):
 
     @abstractmethod
     def log_prob(self, x: Float[Array, " n_dim"]) -> Float:
-        return NotImplemented
+        raise NotImplementedError
 
     @abstractmethod
     def sample(self, rng_key: PRNGKeyArray, n_samples: int) -> Array:
-        return NotImplemented
+        raise NotImplementedError
 
     @abstractmethod
     def forward(
@@ -72,7 +72,7 @@ class NFModel(eqx.Module, Resource):
             tuple[Float[Array, "n_dim"], Float]:
                 Output data and log determinant of the Jacobian.
         """
-        return NotImplemented
+        raise NotImplementedError
 
     @abstractmethod
     def inverse(
@@ -87,7 +87,7 @@ class NFModel(eqx.Module, Resource):
             tuple[Float[Array, "n_dim"], Float]:
                 Output data and log determinant of the Jacobian.
         """
-        return NotImplemented
+        raise NotImplementedError
 
     def save_model(self, path: str):
         eqx.tree_serialise_leaves(path + ".eqx", self)
@@ -252,7 +252,7 @@ class Bijection(eqx.Module):
 
     @abstractmethod
     def __init__(self):
-        return NotImplemented
+        raise NotImplementedError
 
     def __call__(
         self,
@@ -267,7 +267,7 @@ class Bijection(eqx.Module):
         x: Float[Array, " n_dim"],
         condition: Float[Array, " n_condition"],
     ) -> tuple[Float[Array, " n_dim"], Float]:
-        return NotImplemented
+        raise NotImplementedError
 
     @abstractmethod
     def inverse(
@@ -275,7 +275,7 @@ class Bijection(eqx.Module):
         x: Float[Array, " n_dim"],
         condition: Float[Array, " n_condition"],
     ) -> tuple[Float[Array, " n_dim"], Float]:
-        return NotImplemented
+        raise NotImplementedError
 
 
 class Distribution(eqx.Module):
@@ -286,17 +286,17 @@ class Distribution(eqx.Module):
 
     @abstractmethod
     def __init__(self):
-        return NotImplemented
+        raise NotImplementedError
 
     def __call__(self, x: Array, key: Optional[PRNGKeyArray] = None) -> Array:
         return self.log_prob(x)
 
     @abstractmethod
     def log_prob(self, x: Array) -> Array:
-        return NotImplemented
+        raise NotImplementedError
 
     @abstractmethod
     def sample(
         self, rng_key: PRNGKeyArray, n_samples: int
     ) -> Float[Array, " n_samples n_features"]:
-        return NotImplemented
+        raise NotImplementedError
