@@ -244,9 +244,8 @@ class RQSpline(Bijection):
     _min_bin_size: float
     _min_knot_slope: float
     conditioner: MLP
-
     """A rational-quadratic spline bijection.
-    
+
     This bijection is a piecewise rational-quadratic spline with `num_bins` bins.
     The spline is defined by the bin boundaries on the x and y axes, the slopes
     at the knot points, and the slopes at the boundaries of the spline range.
@@ -463,7 +462,7 @@ class MaskedCouplingRQSpline(NFModel):
         x: Float[Array, " n_dim"],
         condition: Optional[Float[Array, "n_condition"]] = None,
     ) -> tuple[Float[Array, " n_dim"], Float]:
-        """From latent space to data space"""
+        """From latent space to data space."""
         log_det = 0.0
         dynamics, statics = eqx.partition(self.layers, eqx.is_array)
 
@@ -487,7 +486,7 @@ class MaskedCouplingRQSpline(NFModel):
         return samples
 
     def log_prob(self, x: Float[Array, "n_sample n_dim"]) -> Float[Array, " n_sample"]:
-        """From data space to latent space"""
+        """From data space to latent space."""
         # TODO: Check if taking away vmap hurts accuracy.
         x = (x - self.data_mean) / jnp.sqrt(jnp.diag(self.data_cov))
         y, log_det = self.__call__(x)

@@ -8,10 +8,7 @@ from flowMC.resource.local_kernel.base import ProposalBase
 
 
 class GaussianRandomWalk(ProposalBase):
-    """
-    Gaussian random walk sampler class.
-
-    """
+    """Gaussian random walk sampler class."""
 
     step_size: Float
 
@@ -33,9 +30,8 @@ class GaussianRandomWalk(ProposalBase):
         log_prob: Float[Array, "1"],
         data: PyTree,
     ) -> tuple[Float[Array, " n_dim"], Float[Array, "1"], Int[Array, "1"]]:
-        """
-        Random walk gaussian kernel.
-        This is a kernel that only evolve a single chain.
+        """Random walk gaussian kernel. This is a kernel that only evolve a single
+        chain.
 
         Args:
             rng_key (PRNGKeyArray): Jax PRNGKey

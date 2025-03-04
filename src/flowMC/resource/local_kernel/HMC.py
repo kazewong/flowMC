@@ -8,9 +8,8 @@ from flowMC.resource.local_kernel.base import ProposalBase
 
 
 class HMC(ProposalBase):
-    """
-    Hamiltonian Monte Carlo sampler class builiding the hmc_sampler method
-    from target logpdf.
+    """Hamiltonian Monte Carlo sampler class builiding the hmc_sampler method from
+    target logpdf.
 
     Args:
         logpdf: target logpdf function
@@ -56,10 +55,8 @@ class HMC(ProposalBase):
         position: Float[Array, " n_dim"],
         data: PyTree,
     ):
-        """
-        Compute the value of the Hamiltonian from positions with initial momentum draw
-        at random from the standard normal distribution.
-        """
+        """Compute the value of the Hamiltonian from positions with initial momentum
+        draw at random from the standard normal distribution."""
 
         momentum = (
             jax.random.normal(rng_key, shape=position.shape)
@@ -102,8 +99,7 @@ class HMC(ProposalBase):
         log_prob: Float[Array, "1"],
         data: PyTree,
     ) -> tuple[Float[Array, " n_dim"], Float[Array, "1"], Int[Array, "1"]]:
-        """
-        Note that since the potential function is the negative log likelihood,
+        """Note that since the potential function is the negative log likelihood,
         hamiltonian is going down, but the likelihood value should go up.
 
         Args:

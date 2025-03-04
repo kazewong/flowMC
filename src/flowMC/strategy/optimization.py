@@ -11,9 +11,8 @@ from flowMC.strategy.base import Strategy
 
 
 class optimization_Adam(Strategy):
-    """
-    Optimize a set of chains using Adam optimization.
-    Note that if the posterior can go to infinity, this optimization scheme is likely to return NaNs.
+    """Optimize a set of chains using Adam optimization. Note that if the posterior can
+    go to infinity, this optimization scheme is likely to return NaNs.
 
     Args:
         n_steps: int = 100
@@ -118,8 +117,8 @@ class optimization_Adam(Strategy):
         objective: Callable,
         initial_position: Float[Array, " n_chain n_dim"],
     ):
-        """
-        Standalone optimization function that takes an objective function and returns the optimized positions.
+        """Standalone optimization function that takes an objective function and returns
+        the optimized positions.
 
         Args:
             rng_key: PRNGKeyArray

@@ -12,11 +12,8 @@ Do not use this optimizer
 
 
 class EvolutionaryOptimizer:
-    """
-    A wrapper class for the evosax package.
-    Note that we do not aim to solve any generic optimization problem,
-    especially in a high dimension space.
-
+    """A wrapper class for the evosax package. Note that we do not aim to solve any
+    generic optimization problem, especially in a high dimension space.
 
     Parameters
     ----------
@@ -52,8 +49,7 @@ class EvolutionaryOptimizer:
         self.state = None
 
     def optimize(self, objective, bound, n_loops=100, seed=9527, keep_history_step=0):
-        """
-        Optimize the objective function.
+        """Optimize the objective function.
 
         Parameters
         ----------
@@ -113,8 +109,7 @@ class EvolutionaryOptimizer:
         return key, state, theta
 
     def get_result(self):
-        """
-        Get the best member and the best fitness.
+        """Get the best member and the best fitness.
 
         Returns
         -------

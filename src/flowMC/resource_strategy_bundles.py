@@ -15,9 +15,11 @@ from flowMC.strategy.global_tuning import LocalGlobalNFSample
 
 
 class ResourceStrategyBundle(ABC):
-    """
-    Resource-Strategy Bundle is aim to be the highest level of abstraction in the flowMC library.
-    It is a collection of resources and strategies that are used to perform a specific task.
+    """Resource-Strategy Bundle is aim to be the highest level of abstraction in the
+    flowMC library.
+
+    It is a collection of resources and strategies that are used to perform a specific
+    task.
     """
 
     resources: dict[str, Resource]

@@ -7,8 +7,7 @@ from flowMC.resource_strategy_bundles import ResourceStrategyBundle
 
 
 class Sampler:
-    """
-    Top level API that the users primarily interact with.
+    """Top level API that the users primarily interact with.
 
     Args:
         n_dim (int): Dimension of the parameter space.
@@ -74,13 +73,11 @@ class Sampler:
                     setattr(self, key, value)
 
     def sample(self, initial_position: Float[Array, "n_chains n_dim"], data: dict):
-        """
-        Sample from the posterior using the local sampler.
+        """Sample from the posterior using the local sampler.
 
         Args:
             initial_position (Device Array): Initial position.
             data (dict): Data to be used by the likelihood functions
-
         """
 
         initial_position = jnp.atleast_2d(initial_position)  # type: ignore

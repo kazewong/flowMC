@@ -75,7 +75,6 @@ class MaskedCouplingLayer(Bijection):
     Args:
         bijector (Bijection): inner bijector in the masked coupling layer.
         mask (Array): Mask. 0 for the input variables that are transformed, 1 for the input variables that are not transformed.
-
     """
 
     _mask: Float[Array, "n_dim"]

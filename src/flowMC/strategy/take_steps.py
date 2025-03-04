@@ -102,12 +102,11 @@ class TakeSteps(Strategy):
 
 
 class TakeSerialSteps(TakeSteps):
-    """
-    TakeSerialSteps is a strategy that takes a number of steps in a serial manner,
+    """TakeSerialSteps is a strategy that takes a number of steps in a serial manner,
     i.e. one after the other.
-    This uses jax.lax.scan to iterate over the steps and apply the kernel to the
-    current position.
-    This is intended to be used for most local kernels that are dependent on
+
+    This uses jax.lax.scan to iterate over the steps and apply the kernel to the current
+    position. This is intended to be used for most local kernels that are dependent on
     the previous step.
     """
 
@@ -138,12 +137,11 @@ class TakeSerialSteps(TakeSteps):
 
 
 class TakeGroupSteps(TakeSteps):
-    """
-    TakeGroupSteps is a strategy that takes a number of steps in a group manner,
-    i.e. all steps are taken at once.
-    This is intended to be used for kernels such as normalizing flow,
-    which proposal steps are independent of each other,
-    and benefit from being computed in parallel.
+    """TakeGroupSteps is a strategy that takes a number of steps in a group manner, i.e.
+    all steps are taken at once.
+
+    This is intended to be used for kernels such as normalizing flow, which proposal
+    steps are independent of each other, and benefit from being computed in parallel.
     """
 
     def sample(

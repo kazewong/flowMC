@@ -60,7 +60,7 @@ class AffineCoupling(eqx.Module):
         return self.forward(x)
 
     def forward(self, x: Array) -> Tuple[Array, Array]:
-        """From latent space to data space
+        """From latent space to data space.
 
         Args:
             x: (Array) Latent space.
@@ -81,7 +81,7 @@ class AffineCoupling(eqx.Module):
         return outputs, log_det
 
     def inverse(self, x: Array) -> Tuple[Array, Array]:
-        """From data space to latent space
+        """From data space to latent space.
 
         Args:
             x: (Array) Data space.
@@ -193,7 +193,7 @@ class RealNVP(NFModel):
         x: Float[Array, "n_dim"],
         condition: Optional[Float[Array, "n_condition"]] = None,
     ) -> tuple[Float[Array, "n_dim"], Float]:
-        """From latent space to data space"""
+        """From latent space to data space."""
         log_det = 0.0
         dynamics, statics = eqx.partition(self.affine_coupling, eqx.is_array)
 

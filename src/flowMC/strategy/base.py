@@ -6,12 +6,10 @@ from flowMC.resource.base import Resource
 
 
 class Strategy(ABC):
-    """
-    Base class for strategies,
-    which are basically wrapper blocks that modify the state of the sampler
+    """Base class for strategies, which are basically wrapper blocks that modify the
+    state of the sampler.
 
     This is an abstract template that should not be directly used.
-
     """
 
     @abstractmethod

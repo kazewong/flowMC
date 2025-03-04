@@ -12,8 +12,7 @@ from flowMC.resource.base import Resource
 
 
 class NFModel(eqx.Module, Resource):
-    """
-    Base class for normalizing flow models.
+    """Base class for normalizing flow models.
 
     This is an abstract template that should not be directly used.
     """
@@ -41,8 +40,7 @@ class NFModel(eqx.Module, Resource):
     def __call__(
         self, x: Float[Array, " n_dim"]
     ) -> tuple[Float[Array, " n_dim"], Float]:
-        """
-        Forward pass of the model.
+        """Forward pass of the model.
 
         Args:
             x (Float[Array, "n_dim"]): Input data.
@@ -65,8 +63,7 @@ class NFModel(eqx.Module, Resource):
     def forward(
         self, x: Float[Array, " n_dim"], key: Optional[PRNGKeyArray] = None
     ) -> tuple[Float[Array, " n_dim"], Float]:
-        """
-        Forward pass of the model.
+        """Forward pass of the model.
 
         Args:
             x (Float[Array, "n_dim"]): Input data.
@@ -81,8 +78,7 @@ class NFModel(eqx.Module, Resource):
     def inverse(
         self, x: Float[Array, " n_dim"]
     ) -> tuple[Float[Array, " n_dim"], Float]:
-        """
-        Inverse pass of the model.
+        """Inverse pass of the model.
 
         Args:
             x (Float[Array, "n_dim"]): Input data.
@@ -249,10 +245,10 @@ class NFModel(eqx.Module, Resource):
 
 
 class Bijection(eqx.Module):
-    """
-    Base class for bijective transformations.
+    """Base class for bijective transformations.
 
-    This is an abstract template that should not be directly used."""
+    This is an abstract template that should not be directly used.
+    """
 
     @abstractmethod
     def __init__(self):
@@ -283,8 +279,7 @@ class Bijection(eqx.Module):
 
 
 class Distribution(eqx.Module):
-    """
-    Base class for probability distributions.
+    """Base class for probability distributions.
 
     This is an abstract template that should not be directly used.
     """

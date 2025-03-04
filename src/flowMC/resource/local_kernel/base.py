@@ -12,9 +12,7 @@ class ProposalBase(Resource):
         self,
         **kwargs,
     ):
-        """
-        Initialize the sampler class
-        """
+        """Initialize the sampler class."""
         self.kwargs = kwargs
 
     @abstractmethod
@@ -28,9 +26,7 @@ class ProposalBase(Resource):
     ) -> tuple[
         Float[Array, "nstep  n_dim"], Float[Array, "nstep 1"], Int[Array, "n_step 1"]
     ]:
-        """
-        Kernel for one step in the proposal cycle.
-        """
+        """Kernel for one step in the proposal cycle."""
 
     def tree_flatten(self):
         children = ()

@@ -5,8 +5,7 @@ from flowMC import Sampler
 
 
 def plot_summary(sampler: Sampler, **plotkwargs) -> None:
-    """
-    Create plots of the most important quantities in the summary.
+    """Create plots of the most important quantities in the summary.
 
     Args:
         training (bool, optional): If True, plot training quantities. If False, plot production quantities. Defaults to False.

@@ -9,9 +9,7 @@ from flowMC.resource.local_kernel.base import ProposalBase
 
 
 class MALA(ProposalBase):
-    """
-    Metropolis-adjusted Langevin algorithm sampler class.
-    """
+    """Metropolis-adjusted Langevin algorithm sampler class."""
 
     step_size: Float
 
@@ -33,9 +31,8 @@ class MALA(ProposalBase):
         log_prob: Float[Array, "1"],
         data: PyTree,
     ) -> tuple[Float[Array, " n_dim"], Float[Array, "1"], Int[Array, "1"]]:
-        """
-        Metropolis-adjusted Langevin algorithm kernel.
-        This is a kernel that only evolve a single chain.
+        """Metropolis-adjusted Langevin algorithm kernel. This is a kernel that only
+        evolve a single chain.
 
         Args:
             rng_key (PRNGKeyArray): Jax PRNGKey
