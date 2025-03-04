@@ -337,24 +337,24 @@ class RQSpline(Bijection):
 
     def __call__(
         self,
-        x: Float[Array, "n_dim"],
-        condition: Float[Array, "n_condition"],
-    ) -> tuple[Float[Array, "n_dim"], Float]:
+        x: Float[Array, " n_dim"],
+        condition: Float[Array, " n_condition"],
+    ) -> tuple[Float[Array, " n_dim"], Float]:
         return self.forward(x, condition)
 
     def forward(
         self,
-        x: Float[Array, "n_dim"],
-        condition: Float[Array, "n_condition"],
-    ) -> tuple[Float[Array, "n_dim"], Float]:
+        x: Float[Array, " n_dim"],
+        condition: Float[Array, " n_condition"],
+    ) -> tuple[Float[Array, " n_dim"], Float]:
         x_pos, y_pos, knot_slopes = self.get_params(condition)
         return _rational_quadratic_spline_fwd(x, x_pos, y_pos, knot_slopes)
 
     def inverse(
         self,
-        x: Float[Array, "n_dim"],
-        condition: Float[Array, "n_condition"],
-    ) -> tuple[Float[Array, "n_dim"], Float]:
+        x: Float[Array, " n_dim"],
+        condition: Float[Array, " n_condition"],
+    ) -> tuple[Float[Array, " n_dim"], Float]:
         x_pos, y_pos, knot_slopes = self.get_params(condition)
         return _rational_quadratic_spline_inv(x, x_pos, y_pos, knot_slopes)
 
@@ -439,9 +439,9 @@ class MaskedCouplingRQSpline(NFModel):
 
     def forward(
         self,
-        x: Float[Array, "n_dim"],
+        x: Float[Array, " n_dim"],
         key: Optional[PRNGKeyArray] = None,
-        condition: Optional[Float[Array, "n_condition"]] = None,
+        condition: Optional[Float[Array, " n_condition"]] = None,
     ) -> tuple[Float[Array, " n_dim"], Float]:
         log_det = 0.0
         dynamics, statics = eqx.partition(self.layers, eqx.is_array)
@@ -460,7 +460,7 @@ class MaskedCouplingRQSpline(NFModel):
     def inverse(
         self,
         x: Float[Array, " n_dim"],
-        condition: Optional[Float[Array, "n_condition"]] = None,
+        condition: Optional[Float[Array, " n_condition"]] = None,
     ) -> tuple[Float[Array, " n_dim"], Float]:
         """From latent space to data space."""
         log_det = 0.0
