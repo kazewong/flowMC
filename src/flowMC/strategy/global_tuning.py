@@ -69,11 +69,7 @@ class LocalGlobalNFSample(Strategy):
         resources: dict[str, Resource],
         initial_position: Float[Array, "n_chains n_dim"],
         data: dict,
-    ) -> tuple[
-        PRNGKeyArray,
-        dict[str, Resource],
-        Float[Array, "n_chains n_dim"],
-    ]:
+    ) -> tuple[PRNGKeyArray, dict[str, Resource], Float[Array, "n_chains n_dim"],]:
         for _ in tqdm(
             range(self.n_loops),
             desc="Tuning Phase",

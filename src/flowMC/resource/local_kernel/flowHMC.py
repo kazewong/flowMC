@@ -119,7 +119,9 @@ class flowHMC(HMC, NFProposal):
 
         return position, log_prob[0], do_accept[0]
 
-    def update(self, i, state) -> tuple[
+    def update(
+        self, i, state
+    ) -> tuple[
         PRNGKeyArray,
         Float[Array, "nstep ndim"],
         Float[Array, "nstep 1"],
