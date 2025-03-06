@@ -164,9 +164,9 @@ Since this API is designed for users who are willing to look into the guts of `f
 
 One extra criteria that decides whether an implementation should be a resource or a strategy is whether the implementation is compatible with `jax`'s transformation. Resource should be compatible with `jit`, and strategy is not required to be compatible with `jit`. An example to illustrate the difference is a training loop contains for-looping over a number of epochs and logging the metadata, which is usually not necessary to be jitted, so this should be a strategy. A neural network and its main functions needs to run efficiently on GPU no matter in sampling or training, so it should be a resource.
 
+You can find the hyper-parameters of a resource, a strategy, or a resource-strategy bundles in the API docs.
 
 ## Guiding principles
-
 
 ### Write the likelihood function in JAX
 

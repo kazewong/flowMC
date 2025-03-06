@@ -77,7 +77,6 @@ extra_css:
 nav:
     - Home: index.md
     - Quickstart: quickstart.md
-    - Configuration: configuration.md
     - Tutorial: tutorials/
     - Examples: communityExamples.md
     - FAQ: FAQ.md
