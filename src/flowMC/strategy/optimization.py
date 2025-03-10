@@ -3,15 +3,13 @@ from typing import Callable
 import jax
 import jax.numpy as jnp
 import optax
-from jaxtyping import Array, Float, PRNGKeyArray, PyTree
+from jaxtyping import Array, Float, PRNGKeyArray
 
-from flowMC.resource.local_kernel.base import ProposalBase
-from flowMC.resource.nf_model.NF_proposal import NFProposal
 from flowMC.strategy.base import Strategy
 from flowMC.resource.base import Resource
 
 
-class optimization_Adam(Strategy):
+class AdamOptimization(Strategy):
     """Optimize a set of chains using Adam optimization. Note that if the posterior can
     go to infinity, this optimization scheme is likely to return NaNs.
 
@@ -42,7 +40,6 @@ class optimization_Adam(Strategy):
         bounds: Float[Array, "n_dim 2"] = jnp.array([[-jnp.inf, jnp.inf]]),
     ):
 
-
         self.logpdf = logpdf
         self.n_steps = n_steps
         self.learning_rate = learning_rate
@@ -52,7 +49,6 @@ class optimization_Adam(Strategy):
         self.solver = optax.chain(
             optax.adam(learning_rate=self.learning_rate),
         )
-
 
     def __call__(
         self,
@@ -103,12 +99,11 @@ class optimization_Adam(Strategy):
             keys, initial_position
         )
 
-        final_log_prob = jax.vmap(self.logpdf, in_axes=(0, None))(optimized_positions, data)
+        final_log_prob = jax.vmap(self.logpdf, in_axes=(0, None))(
+            optimized_positions, data
+        )
 
-        if (
-            jnp.isinf(final_log_prob).any()
-            or jnp.isnan(final_log_prob).any()
-        ):
+        if jnp.isinf(final_log_prob).any() or jnp.isnan(final_log_prob).any():
             print("Warning: Optimization accessed infinite or NaN log-probabilities.")
 
         return rng_key, resources, optimized_positions
