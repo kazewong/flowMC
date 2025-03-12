@@ -80,7 +80,7 @@ class TestStrategies:
             n_batch,
         )
         key = jax.random.PRNGKey(42)
-        positions = test_position.buffer[:, 0]
+        positions = test_position.data[:, 0]
 
         for i in range(n_batch):
             key, subkey1, subkey2 = jax.random.split(key, 3)
@@ -213,15 +213,15 @@ class TestNFStrategies:
             self.n_steps,
         )
         key = jax.random.PRNGKey(42)
-        positions = test_position.buffer[:, 0]
-        print(test_position.buffer[:, :, 0])
+        positions = test_position.data[:, 0]
+        print(test_position.data[:, :, 0])
         strategy(
             rng_key=key,
             resources=resources,
             initial_position=positions,
             data={},
         )
-        print(test_position.buffer[:, :, 0])
+        print(test_position.data[:, :, 0])
 
     def test_training_effect(self):
         Buffer("test_position", self.n_chains, self.n_steps, self.n_dims)

@@ -164,8 +164,8 @@ class TestHMC:
 
         assert isinstance(result, Buffer)
 
-        assert jnp.isclose(jnp.mean(result.buffer), 0, atol=1e-2)
-        assert jnp.isclose(jnp.var(result.buffer), 1, atol=1e-2)
+        assert jnp.isclose(jnp.mean(result.data), 0, atol=1e-2)
+        assert jnp.isclose(jnp.var(result.data), 1, atol=1e-2)
 
 
 class TestMALA:
@@ -254,8 +254,8 @@ class TestMALA:
 
         assert isinstance(result, Buffer)
 
-        assert jnp.isclose(jnp.mean(result.buffer), 0, atol=1e-2)
-        assert jnp.isclose(jnp.var(result.buffer), 1, atol=1e-2)
+        assert jnp.isclose(jnp.mean(result.data), 0, atol=1e-2)
+        assert jnp.isclose(jnp.var(result.data), 1, atol=1e-2)
 
 
 class TestGRW:
@@ -343,5 +343,5 @@ class TestGRW:
 
         assert isinstance(result, Buffer)
 
-        assert jnp.isclose(jnp.mean(result.buffer), 0, atol=1e-2)
-        assert jnp.isclose(jnp.var(result.buffer), 1, atol=1e-2)
+        assert jnp.isclose(jnp.mean(result.data), 0, atol=1e-2)
+        assert jnp.isclose(jnp.var(result.data), 1, atol=1e-2)
