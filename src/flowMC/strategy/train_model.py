@@ -50,7 +50,11 @@ class TrainModel(Strategy):
         resources: dict[str, Resource],
         initial_position: Float[Array, "n_chains n_dim"],
         data: dict,
-    ) -> tuple[PRNGKeyArray, dict[str, Resource], Float[Array, "n_chains n_dim"],]:
+    ) -> tuple[
+        PRNGKeyArray,
+        dict[str, Resource],
+        Float[Array, "n_chains n_dim"],
+    ]:
         model = resources[self.model_resource]
         assert isinstance(model, NFModel), "Target resource must be a NFModel"
         data_resource = resources[self.data_resource]
@@ -59,7 +63,7 @@ class TrainModel(Strategy):
         assert isinstance(
             optimizer, Optimizer
         ), "Optimizer resource must be an optimizer"
-        training_data = data_resource.buffer.reshape(-1, data_resource.n_dims)[
+        training_data = data_resource.data.reshape(-1, data_resource.n_dims)[
             :: self.thinning
         ]
         training_data = training_data[jnp.isfinite(training_data).all(axis=1)]
