@@ -380,8 +380,7 @@ class MaskedCouplingRQSpline(NFModel):
     layers: list[Bijection]
 
     def __repr__(self):
-        return "MaskedCouplingRQSpline with n_features=" + str(self._n_features) + ", n_layers=" + str(len(self.layers)) + ", hidden_size=" + str(self.layers[0].conditioner.hidden_size) + ", num_bins=" + str(self.layers[0].conditioner.num_bins) # type: ignore
-
+        return "MaskedCouplingRQSpline with n_features=" + str(self._n_features) + ", n_layers=" + str(len(self.layers))
     def __init__(
         self,
         n_features: int,

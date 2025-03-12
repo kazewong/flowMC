@@ -9,6 +9,7 @@ from flowMC.resource.buffers import Buffer
 from flowMC.resource.local_kernel.MALA import MALA
 from flowMC.resource.nf_model.NF_proposal import NFProposal
 from flowMC.resource.nf_model.rqSpline import MaskedCouplingRQSpline
+from flowMC.resource.optimizer import Optimizer
 from flowMC.strategy.base import Strategy
 from flowMC.strategy.global_tuning import LocalGlobalNFSample
 
@@ -98,6 +99,7 @@ class RQSpline_MALA_Bundle(ResourceStrategyBundle):
             n_dim, rq_spline_n_layers, rq_spline_hidden_units, rq_spline_n_bins, subkey
         )
         global_sampler = NFProposal(model)
+        optimizer = Optimizer(model=model, learning_rate=learning_rate)
 
         self.resources = {
             "positions_training": positions_training,
@@ -112,6 +114,7 @@ class RQSpline_MALA_Bundle(ResourceStrategyBundle):
             "local_sampler": local_sampler,
             "global_sampler": global_sampler,
             "model": model,
+            "optimizer": optimizer,
         }
 
         self.strategies = [
@@ -120,7 +123,7 @@ class RQSpline_MALA_Bundle(ResourceStrategyBundle):
                 "local_sampler",
                 "global_sampler",
                 ["positions_training", "log_prob_training", "local_accs_training"],
-                ["model", "positions_training"],
+                ["model", "positions_training", "optimizer"],
                 ["positions_training", "log_prob_training", "global_accs_training"],
                 n_local_steps,
                 n_global_steps,
@@ -141,7 +144,7 @@ class RQSpline_MALA_Bundle(ResourceStrategyBundle):
                     "log_prob_production",
                     "local_accs_production",
                 ],
-                ["model", "positions_production"],
+                ["model", "positions_production", "optimizer"],
                 [
                     "positions_production",
                     "log_prob_production",
