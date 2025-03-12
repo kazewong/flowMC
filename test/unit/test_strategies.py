@@ -18,8 +18,8 @@ from flowMC.strategy.train_model import TrainModel
 def log_posterior(x, data={}):
     return -0.5 * jnp.sum(x**2)
 
+
 class TestOptimizationStrategies:
-    
     def test_Adam_optimization(self):
         n_dim = 2
         n_chains = 20
@@ -34,16 +34,16 @@ class TestOptimizationStrategies:
             log_posterior,
             n_steps,
             learning_rate=5e-2,
-            noise_level=0.,
+            noise_level=0.0,
             bounds=jnp.array([[-jnp.inf, jnp.inf]]),
         )
 
-        _, _, optimized_position = strategy(
-            key, {}, initial_position, {}
-        )
+        _, _, optimized_position = strategy(key, {}, initial_position, {})
 
         assert optimized_position.shape == (n_chains, n_dim)
-        assert jnp.all(jnp.mean(optimized_position,axis=1) < jnp.mean(initial_position,axis=1))
+        assert jnp.all(
+            jnp.mean(optimized_position, axis=1) < jnp.mean(initial_position, axis=1)
+        )
 
 
 class TestStrategies:

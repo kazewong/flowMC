@@ -39,7 +39,6 @@ class AdamOptimization(Strategy):
         noise_level: float = 10,
         bounds: Float[Array, "n_dim 2"] = jnp.array([[-jnp.inf, jnp.inf]]),
     ):
-
         self.logpdf = logpdf
         self.n_steps = n_steps
         self.learning_rate = learning_rate
@@ -56,11 +55,7 @@ class AdamOptimization(Strategy):
         resources: dict[str, Resource],
         initial_position: Float[Array, " n_chain n_dim"],
         data: dict,
-    ) -> tuple[
-        PRNGKeyArray,
-        dict[str, Resource],
-        Float[Array, "n_chains n_dim"],
-    ]:
+    ) -> tuple[PRNGKeyArray, dict[str, Resource], Float[Array, "n_chains n_dim"],]:
         def loss_fn(params: Float[Array, " n_dim"]) -> Float:
             return -self.logpdf(params, data)
 
