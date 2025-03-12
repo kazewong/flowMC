@@ -19,8 +19,4 @@ repos:
     - id: nbqa-black
       additional_dependencies: [ipython==8.12, black]
     - id: nbqa-ruff-format
-      args: ["--ignore=I001"]
-      additional_dependencies: [ipython==8.12, ruff]
-    - id: nbqa-ruff-check
-      args: ["--ignore=I001"]
       additional_dependencies: [ipython==8.12, ruff]
