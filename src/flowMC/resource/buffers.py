@@ -13,7 +13,7 @@ class Buffer(Resource):
     current_position: int = 0
 
     def __repr__(self):
-        return str(self.data)
+        return "Buffer " + self.name + " with shape " + str(self.data.shape)
 
     @property
     def n_chains(self) -> int:
