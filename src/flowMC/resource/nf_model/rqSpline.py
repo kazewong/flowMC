@@ -244,9 +244,8 @@ class RQSpline(Bijection):
     _min_bin_size: float
     _min_knot_slope: float
     conditioner: MLP
-
     """A rational-quadratic spline bijection.
-    
+
     This bijection is a piecewise rational-quadratic spline with `num_bins` bins.
     The spline is defined by the bin boundaries on the x and y axes, the slopes
     at the knot points, and the slopes at the boundaries of the spline range.
@@ -338,24 +337,24 @@ class RQSpline(Bijection):
 
     def __call__(
         self,
-        x: Float[Array, "n_dim"],
-        condition: Float[Array, "n_condition"],
-    ) -> tuple[Float[Array, "n_dim"], Float]:
+        x: Float[Array, " n_dim"],
+        condition: Float[Array, " n_condition"],
+    ) -> tuple[Float[Array, " n_dim"], Float]:
         return self.forward(x, condition)
 
     def forward(
         self,
-        x: Float[Array, "n_dim"],
-        condition: Float[Array, "n_condition"],
-    ) -> tuple[Float[Array, "n_dim"], Float]:
+        x: Float[Array, " n_dim"],
+        condition: Float[Array, " n_condition"],
+    ) -> tuple[Float[Array, " n_dim"], Float]:
         x_pos, y_pos, knot_slopes = self.get_params(condition)
         return _rational_quadratic_spline_fwd(x, x_pos, y_pos, knot_slopes)
 
     def inverse(
         self,
-        x: Float[Array, "n_dim"],
-        condition: Float[Array, "n_condition"],
-    ) -> tuple[Float[Array, "n_dim"], Float]:
+        x: Float[Array, " n_dim"],
+        condition: Float[Array, " n_condition"],
+    ) -> tuple[Float[Array, " n_dim"], Float]:
         x_pos, y_pos, knot_slopes = self.get_params(condition)
         return _rational_quadratic_spline_inv(x, x_pos, y_pos, knot_slopes)
 
@@ -379,6 +378,14 @@ class MaskedCouplingRQSpline(NFModel):
 
     base_dist: Distribution
     layers: list[Bijection]
+
+    def __repr__(self):
+        return (
+            "MaskedCouplingRQSpline with n_features="
+            + str(self._n_features)
+            + ", n_layers="
+            + str(len(self.layers))
+        )
 
     def __init__(
         self,
@@ -440,9 +447,9 @@ class MaskedCouplingRQSpline(NFModel):
 
     def forward(
         self,
-        x: Float[Array, "n_dim"],
+        x: Float[Array, " n_dim"],
         key: Optional[PRNGKeyArray] = None,
-        condition: Optional[Float[Array, "n_condition"]] = None,
+        condition: Optional[Float[Array, " n_condition"]] = None,
     ) -> tuple[Float[Array, " n_dim"], Float]:
         log_det = 0.0
         dynamics, statics = eqx.partition(self.layers, eqx.is_array)
@@ -461,9 +468,9 @@ class MaskedCouplingRQSpline(NFModel):
     def inverse(
         self,
         x: Float[Array, " n_dim"],
-        condition: Optional[Float[Array, "n_condition"]] = None,
+        condition: Optional[Float[Array, " n_condition"]] = None,
     ) -> tuple[Float[Array, " n_dim"], Float]:
-        """From latent space to data space"""
+        """From latent space to data space."""
         log_det = 0.0
         dynamics, statics = eqx.partition(self.layers, eqx.is_array)
 
@@ -487,7 +494,7 @@ class MaskedCouplingRQSpline(NFModel):
         return samples
 
     def log_prob(self, x: Float[Array, "n_sample n_dim"]) -> Float[Array, " n_sample"]:
-        """From data space to latent space"""
+        """From data space to latent space."""
         # TODO: Check if taking away vmap hurts accuracy.
         x = (x - self.data_mean) / jnp.sqrt(jnp.diag(self.data_cov))
         y, log_det = self.__call__(x)

@@ -15,9 +15,11 @@ from flowMC.strategy.global_tuning import LocalGlobalNFSample
 
 
 class ResourceStrategyBundle(ABC):
-    """
-    Resource-Strategy Bundle is aim to be the highest level of abstraction in the flowMC library.
-    It is a collection of resources and strategies that are used to perform a specific task.
+    """Resource-Strategy Bundle is aim to be the highest level of abstraction in the
+    flowMC library.
+
+    It is a collection of resources and strategies that are used to perform a specific
+    task.
     """
 
     resources: dict[str, Resource]
@@ -25,6 +27,15 @@ class ResourceStrategyBundle(ABC):
 
 
 class RQSpline_MALA_Bundle(ResourceStrategyBundle):
+    """A bundle that uses a Rational Quadratic Spline as a normalizing flow model and
+    the Metropolis Adjusted Langevin Algorithm as a local sampler.
+
+    This is the base algorithm described in https://www.pnas.org/doi/full/10.1073/pnas.2109420119
+
+
+
+    """
+
     def __str__(self):
         return "Local Global NF Sampling"
 

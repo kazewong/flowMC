@@ -6,12 +6,10 @@ from flowMC.resource.base import Resource
 
 
 class Strategy(ABC):
-    """
-    Base class for strategies,
-    which are basically wrapper blocks that modify the state of the sampler
+    """Base class for strategies, which are basically wrapper blocks that modify the
+    state of the sampler.
 
     This is an abstract template that should not be directly used.
-
     """
 
     @abstractmethod
@@ -25,7 +23,11 @@ class Strategy(ABC):
         resources: dict[str, Resource],
         initial_position: Float[Array, "n_chains n_dim"],
         data: dict,
-    ) -> tuple[PRNGKeyArray, dict[str, Resource], Float[Array, "n_chains n_dim"],]:
+    ) -> tuple[
+        PRNGKeyArray,
+        dict[str, Resource],
+        Float[Array, "n_chains n_dim"],
+    ]:
         raise NotImplementedError
 
 
@@ -39,7 +41,11 @@ class StrategiesBundle(Strategy):
         resources: dict[str, Resource],
         initial_position: Float[Array, "n_chains n_dim"],
         data: dict,
-    ) -> tuple[PRNGKeyArray, dict[str, Resource], Float[Array, "n_chains n_dim"],]:
+    ) -> tuple[
+        PRNGKeyArray,
+        dict[str, Resource],
+        Float[Array, "n_chains n_dim"],
+    ]:
         for strategy in self.strategies:
             rng_key, resources, initial_position = strategy(
                 rng_key, resources, initial_position, data

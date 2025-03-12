@@ -18,13 +18,12 @@ The code is open source under MIT license, and it is under active development.
 - Native support for GPU acceleration.
 - Suit for problems with multi-modality and complex geometry.
 
-Five steps to use flowMC's guide
+Four steps to use flowMC's guide
 ================================
 
-1. You will find basic information such as installation and a quick guide in the [quickstart](quickstart.md).
-2. We give more information about tuning parameters of our sampler in the [configuration_guide](configuration.md).
-3. In tutorials, we have a set of more pedagogical notebooks that will give you a better understanding of the package infrastructure.
-4. We list some community examples in [community_example](communityExamples.md), so users can see whether there is a similar use case they can adopt their code quickly.
-5. Finally, we have a list of frequently asked questions in [FAQ](FAQ.md).
+1. You can find installation info, a basic example, and some design and guiding principles of `flowMC` in the [quickstart](quickstart.md).
+2. In tutorials, we have a set of pedagogical notebooks that will give you a better understanding of the package infrastructure and a number of common use cases.
+3. We list some community examples in [community_example](communityExamples.md), so users can see whether there is a similar use case they can adopt their code quickly.
+4. Finally, we have a list of frequently asked questions in [FAQ](FAQ.md).
 
    

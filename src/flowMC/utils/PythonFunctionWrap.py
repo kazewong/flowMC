@@ -1,11 +1,6 @@
 import warnings
 from functools import wraps
-from typing import Any, Callable, Dict, Iterable, List, NamedTuple, Tuple, Union
-
-Array = Any
-PyTree = Union[Array, Iterable[Array], Dict[Any, Array], NamedTuple]
-SampleStats = Dict[str, Array]
-Extras = PyTree
+from typing import Any, Callable, List, Tuple
 
 import jax
 import jax.numpy as jnp
@@ -17,6 +12,9 @@ from jax.custom_batching import custom_vmap
 from jax.experimental import host_callback
 from jax.tree_util import tree_flatten, tree_unflatten
 from jaxtyping import PyTree
+
+
+Array = Any
 
 
 def wrap_python_log_prob_fn(python_log_prob_fn: Callable[..., Array]):
@@ -63,7 +61,7 @@ def wrap_python_log_prob_fn(python_log_prob_fn: Callable[..., Array]):
 
 def _tree_dtype(tree: PyTree) -> Any:
     leaves, _ = tree_flatten(tree)
-    from_dtypes = [dtypes.dtype(l) for l in leaves]
+    from_dtypes = [dtypes.dtype(leaf) for leaf in leaves]
     return dtypes.result_type(*from_dtypes)
 
 
@@ -94,7 +92,7 @@ def ravel_ensemble(coords: PyTree) -> Tuple[Array, UnravelFn]:
 def _ravel_inner(lst: List[Array]) -> Tuple[Array, UnravelFn]:
     if not lst:
         return jnp.array([], jnp.float32), lambda _: []
-    from_dtypes = [dtypes.dtype(l) for l in lst]
+    from_dtypes = [dtypes.dtype(leaf) for leaf in lst]
     to_dtype = dtypes.result_type(*from_dtypes)
     shapes = [jnp.shape(x)[1:] for x in lst]
     indices = np.cumsum([int(np.prod(s)) for s in shapes])

@@ -77,9 +77,12 @@ extra_css:
 nav:
     - Home: index.md
     - Quickstart: quickstart.md
-    - Configuration: configuration.md
-    - Tutorial: tutorials/
-    - Examples: communityExamples.md
+    - Tutorial:
+        - Step-by-step guide: tutorials/dualmoon.ipynb
+        - Custom Strategy: tutorials/custom_strategy.ipynb
+        - Training Normalizing Flow: tutorials/train_normalizing_flow.ipynb
+        - Loading Resource: tutorials/loading_resources.ipynb
+    - Community Examples: communityExamples.md
     - FAQ: FAQ.md
     - Contribution: contribution.md
     - API: api/flowMC/*

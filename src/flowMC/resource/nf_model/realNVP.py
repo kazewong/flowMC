@@ -60,7 +60,7 @@ class AffineCoupling(eqx.Module):
         return self.forward(x)
 
     def forward(self, x: Array) -> Tuple[Array, Array]:
-        """From latent space to data space
+        """From latent space to data space.
 
         Args:
             x: (Array) Latent space.
@@ -81,7 +81,7 @@ class AffineCoupling(eqx.Module):
         return outputs, log_det
 
     def inverse(self, x: Array) -> Tuple[Array, Array]:
-        """From data space to latent space
+        """From data space to latent space.
 
         Args:
             x: (Array) Data space.
@@ -172,10 +172,10 @@ class RealNVP(NFModel):
 
     def forward(
         self,
-        x: Float[Array, "n_dim"],
+        x: Float[Array, " n_dim"],
         key: Optional[PRNGKeyArray] = None,
-        condition: Optional[Float[Array, "n_condition"]] = None,
-    ) -> tuple[Float[Array, "n_dim"], Float]:
+        condition: Optional[Float[Array, " n_condition"]] = None,
+    ) -> tuple[Float[Array, " n_dim"], Float]:
         log_det = 0.0
         dynamics, statics = eqx.partition(self.affine_coupling, eqx.is_array)
 
@@ -190,10 +190,10 @@ class RealNVP(NFModel):
 
     def inverse(
         self,
-        x: Float[Array, "n_dim"],
-        condition: Optional[Float[Array, "n_condition"]] = None,
-    ) -> tuple[Float[Array, "n_dim"], Float]:
-        """From latent space to data space"""
+        x: Float[Array, " n_dim"],
+        condition: Optional[Float[Array, " n_condition"]] = None,
+    ) -> tuple[Float[Array, " n_dim"], Float]:
+        """From latent space to data space."""
         log_det = 0.0
         dynamics, statics = eqx.partition(self.affine_coupling, eqx.is_array)
 
@@ -212,7 +212,7 @@ class RealNVP(NFModel):
         samples = samples * jnp.sqrt(jnp.diag(self.data_cov)) + self.data_mean
         return samples
 
-    def log_prob(self, x: Float[Array, "n_dim"]) -> Float:
+    def log_prob(self, x: Float[Array, " n_dim"]) -> Float:
         # TODO: Check whether taking away vmap hurts accuracy.
         x = (x - self.data_mean) / jnp.sqrt(jnp.diag(self.data_cov))
         y, log_det = self.__call__(x)

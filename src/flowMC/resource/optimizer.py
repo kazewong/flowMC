@@ -7,6 +7,9 @@ class Optimizer(Resource):
     optim: optax.GradientTransformation
     optim_state: optax.OptState
 
+    def __repr__(self):
+        return "Optimizer"
+
     def __init__(
         self,
         model: eqx.Module,

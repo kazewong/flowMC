@@ -69,11 +69,23 @@ class LocalGlobalNFSample(Strategy):
         resources: dict[str, Resource],
         initial_position: Float[Array, "n_chains n_dim"],
         data: dict,
-    ) -> tuple[PRNGKeyArray, dict[str, Resource], Float[Array, "n_chains n_dim"],]:
-        for _ in tqdm(
-            range(self.n_loops),
-            desc="Tuning Phase",
-        ):
+    ) -> tuple[
+        PRNGKeyArray,
+        dict[str, Resource],
+        Float[Array, "n_chains n_dim"],
+    ]:
+        if self.training is True:
+            iterator = tqdm(
+                range(self.n_loops),
+                desc="Tuning Phase",
+            )
+        else:
+            iterator = tqdm(
+                range(self.n_loops),
+                desc="Sampling Phase",
+            )
+
+        for _ in iterator:
             rng_key, resources, initial_position = self.local_stepper(
                 rng_key,
                 resources,
