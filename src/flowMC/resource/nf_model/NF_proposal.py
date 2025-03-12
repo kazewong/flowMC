@@ -14,7 +14,7 @@ class NFProposal(ProposalBase):
     n_flow_sample: int
 
     def __repr__(self):
-        return "NF proposal with " + self.model.__str__()
+        return "NF proposal with " + self.model.__repr__()
 
     def __init__(self, model: NFModel, n_flow_sample: int = 1000):
         super().__init__()
