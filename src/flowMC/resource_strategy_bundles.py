@@ -27,7 +27,6 @@ class ResourceStrategyBundle(ABC):
 
 
 class RQSpline_MALA_Bundle(ResourceStrategyBundle):
-
     """A bundle that uses a Rational Quadratic Spline as a normalizing flow model and
     the Metropolis Adjusted Langevin Algorithm as a local sampler.
 

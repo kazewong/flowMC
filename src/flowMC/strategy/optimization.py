@@ -55,7 +55,11 @@ class AdamOptimization(Strategy):
         resources: dict[str, Resource],
         initial_position: Float[Array, " n_chain n_dim"],
         data: dict,
-    ) -> tuple[PRNGKeyArray, dict[str, Resource], Float[Array, "n_chains n_dim"],]:
+    ) -> tuple[
+        PRNGKeyArray,
+        dict[str, Resource],
+        Float[Array, "n_chains n_dim"],
+    ]:
         def loss_fn(params: Float[Array, " n_dim"]) -> Float:
             return -self.logpdf(params, data)
 

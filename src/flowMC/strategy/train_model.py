@@ -50,7 +50,11 @@ class TrainModel(Strategy):
         resources: dict[str, Resource],
         initial_position: Float[Array, "n_chains n_dim"],
         data: dict,
-    ) -> tuple[PRNGKeyArray, dict[str, Resource], Float[Array, "n_chains n_dim"],]:
+    ) -> tuple[
+        PRNGKeyArray,
+        dict[str, Resource],
+        Float[Array, "n_chains n_dim"],
+    ]:
         model = resources[self.model_resource]
         assert isinstance(model, NFModel), "Target resource must be a NFModel"
         data_resource = resources[self.data_resource]

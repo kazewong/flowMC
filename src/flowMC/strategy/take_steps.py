@@ -54,7 +54,11 @@ class TakeSteps(Strategy):
         resources: dict[str, Resource],
         initial_position: Float[Array, "n_chains n_dim"],
         data: dict,
-    ) -> tuple[PRNGKeyArray, dict[str, Resource], Float[Array, "n_chains n_dim"],]:
+    ) -> tuple[
+        PRNGKeyArray,
+        dict[str, Resource],
+        Float[Array, "n_chains n_dim"],
+    ]:
         rng_key, subkey = jax.random.split(rng_key)
         subkey = jax.random.split(subkey, initial_position.shape[0])
         position_buffer = resources[self.buffer_names[0]]

@@ -69,7 +69,11 @@ class LocalGlobalNFSample(Strategy):
         resources: dict[str, Resource],
         initial_position: Float[Array, "n_chains n_dim"],
         data: dict,
-    ) -> tuple[PRNGKeyArray, dict[str, Resource], Float[Array, "n_chains n_dim"],]:
+    ) -> tuple[
+        PRNGKeyArray,
+        dict[str, Resource],
+        Float[Array, "n_chains n_dim"],
+    ]:
         if self.training is True:
             iterator = tqdm(
                 range(self.n_loops),

@@ -124,8 +124,7 @@ class HMC(ProposalBase):
         key1, key2 = jax.random.split(rng_key)
 
         momentum: Float[Array, " n_dim"] = (
-            jax.random.normal(key1, shape=position.shape)
-            * self.condition_matrix**-0.5
+            jax.random.normal(key1, shape=position.shape) * self.condition_matrix**-0.5
         )
         momentum = jnp.dot(
             jax.random.normal(key1, shape=position.shape),
