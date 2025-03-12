@@ -41,7 +41,7 @@ once you have cloned the repo.
 ## Basic Usage
 
 
-To sample a N dimensional Gaussian, you would do something like:
+To sample an N dimensional Gaussian, you would do something like:
 
 ``` python
 import jax

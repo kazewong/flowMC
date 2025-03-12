@@ -40,7 +40,7 @@ class Buffer(Resource):
     def print_parameters(self):
         print(
             f"Buffer: {self.n_chains} chains,"
-            "{self.n_steps} steps, {self.n_dims} dimensions"
+            f"{self.n_steps} steps, {self.n_dims} dimensions"
         )
 
     def get_distribution(self, n_bins: int = 100):
@@ -51,12 +51,12 @@ class Buffer(Resource):
         np.savez(
             path + self.name,
             name=self.name,
-            buffer=self.data,
+            data=self.data,
         )
 
     def load_resource(self: TBuffer, path: str) -> TBuffer:
         data = np.load(path)
-        buffer: Float[Array, "n_chains n_steps n_dims"] = data["buffer"]
+        buffer: Float[Array, "n_chains n_steps n_dims"] = data["data"]
         result = Buffer(data["name"], buffer.shape[0], buffer.shape[1], buffer.shape[2])
         result.data = buffer
         return result  # type: ignore

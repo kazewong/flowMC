@@ -60,10 +60,11 @@ class Sampler:
             print(
                 "Resources or strategies not provided. Using resource strategy bundles."
             )
-            assert resource_strategy_bundles is not None, (
-                "Resource strategy bundles must be provided"
-                "if resources and strategies are not."
-            )
+            if resource_strategy_bundles is None:
+                raise ValueError(
+                    "Resource strategy bundles not provided."
+                    "Please provide either resources and strategies or resource strategy bundles."
+                )
             self.resources = resource_strategy_bundles.resources
             self.strategies = resource_strategy_bundles.strategies
 
