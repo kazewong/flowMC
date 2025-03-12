@@ -34,4 +34,4 @@ If you don't want to wait, you can set ``Jit=False``, which would increase the s
 
 If you have a likelihood with many lines, Jax will take a long time to compile the code.
 Jax is known to be slow in compilation, especially if your computational graph uses some sort of loop that call a function many times.
-While we cannot fundamentally get rid of the problem, here are some tips in alleviating the symptoms:
+While we cannot fundamentally get rid of the problem, [using a jax.lax.scan](https://docs.kidger.site/equinox/tricks/#low-overhead-training-loops) is usually how we deal with it.

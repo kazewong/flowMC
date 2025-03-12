@@ -28,6 +28,16 @@ git clone https://github.com/kazewong/flowMC.git
 cd flowMC
 pip install -e .
 ```
+
+If you have [uv](https://docs.astral.sh/uv/) installed, you can also install the latest version of flowMC by running:
+
+```
+uv sync
+```
+
+once you have cloned the repo.
+
+
 ## Basic Usage
 
 
