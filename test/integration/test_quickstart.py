@@ -11,8 +11,8 @@ def log_posterior(x, data: dict):
 n_dims = 2
 n_local_steps = 10
 n_global_steps = 10
-n_training_loops = 3
-n_production_loops = 3
+n_training_loops = 5
+n_production_loops = 5
 n_epochs = 10
 n_chains = 10
 rq_spline_hidden_units = [64, 64]
@@ -38,6 +38,8 @@ bundle = RQSpline_MALA_Bundle(
     rq_spline_hidden_units=rq_spline_hidden_units,
     rq_spline_n_bins=rq_spline_n_bins,
     rq_spline_n_layers=rq_spline_n_layers,
+    verbose=True,
+
 )
 
 nf_sampler = Sampler(
