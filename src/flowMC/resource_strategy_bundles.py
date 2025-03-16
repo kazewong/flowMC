@@ -68,28 +68,28 @@ class RQSpline_MALA_Bundle(ResourceStrategyBundle):
         n_total_epochs = n_training_loops * n_epochs
 
         positions_training = Buffer(
-            "positions_training", n_chains, n_training_steps, n_dim
+            "positions_training", (n_chains, n_training_steps, n_dim), 1
         )
-        log_prob_training = Buffer("log_prob_training", n_chains, n_training_steps, 1)
+        log_prob_training = Buffer("log_prob_training", (n_chains, n_training_steps), 1)
         local_accs_training = Buffer(
-            "local_accs_training", n_chains, n_training_steps, 1
+            "local_accs_training", (n_chains, n_training_steps), 1
         )
         global_accs_training = Buffer(
-            "global_accs_training", n_chains, n_training_steps, 1
+            "global_accs_training", (n_chains, n_training_steps), 1
         )
-        loss_buffer = Buffer("loss_buffer", 1, n_total_epochs, 1)
+        loss_buffer = Buffer("loss_buffer", (n_total_epochs,), 0)
 
         position_production = Buffer(
-            "positions_production", n_chains, n_production_steps, n_dim
+            "positions_production", (n_chains, n_production_steps, n_dim), 1
         )
         log_prob_production = Buffer(
-            "log_prob_production", n_chains, n_production_steps, 1
+            "log_prob_production", (n_chains, n_production_steps), 1
         )
         local_accs_production = Buffer(
-            "local_accs_production", n_chains, n_production_steps, 1
+            "local_accs_production", (n_chains, n_production_steps), 1
         )
         global_accs_production = Buffer(
-            "global_accs_production", n_chains, n_production_steps, 1
+            "global_accs_production", (n_chains, n_production_steps), 1
         )
 
         local_sampler = MALA(step_size=mala_step_size)

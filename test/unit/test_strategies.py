@@ -76,9 +76,9 @@ class TestStrategies:
         n_dims = 2
         n_batch = 5
 
-        test_position = Buffer("test_position", n_chains, n_steps, n_dims)
-        test_log_prob = Buffer("test_log_prob", n_chains, n_steps, 1)
-        test_acceptance = Buffer("test_acceptance", n_chains, n_steps, 1)
+        test_position = Buffer("test_position", (n_chains, n_steps, n_dims), 1)
+        test_log_prob = Buffer("test_log_prob", (n_chains, n_steps), 1)
+        test_acceptance = Buffer("test_acceptance", (n_chains, n_steps), 1)
 
         mala_kernel = MALA(1.0)
         grw_kernel = GaussianRandomWalk(1.0)
@@ -93,9 +93,6 @@ class TestStrategies:
             "HMC": hmc_kernel,
         }
 
-        test_log_prob.update_buffer(
-            log_posterior(jnp.zeros((n_chains, n_steps, 1))), n_steps
-        )
         strategy = TakeSerialSteps(
             log_posterior,
             "MALA",
@@ -164,12 +161,11 @@ class TestNFStrategies:
             jax.random.PRNGKey(10),
         )
 
-        test_data = Buffer("test_data", self.n_chains, self.n_steps, self.n_dims)
+        test_data = Buffer("test_data", (self.n_chains, self.n_steps, self.n_dims), 1)
         test_data.update_buffer(
             jax.random.normal(
                 rng_subkey, shape=(self.n_chains, self.n_steps, self.n_dims)
             ),
-            self.n_steps,
         )
         optimizer = Optimizer(model)
 
@@ -204,10 +200,10 @@ class TestNFStrategies:
 
     def test_take_NF_step(self):
         test_position = Buffer(
-            "test_position", self.n_chains, self.n_steps, self.n_dims
+            "test_position", (self.n_chains, self.n_steps, self.n_dims), 1
         )
-        test_log_prob = Buffer("test_log_prob", self.n_chains, self.n_steps, 1)
-        test_acceptance = Buffer("test_acceptance", self.n_chains, self.n_steps, 1)
+        test_log_prob = Buffer("test_log_prob", (self.n_chains, self.n_steps), 1)
+        test_acceptance = Buffer("test_acceptance", (self.n_chains, self.n_steps), 1)
 
         model = MaskedCouplingRQSpline(
             self.n_features,
@@ -247,9 +243,9 @@ class TestNFStrategies:
         print(test_position.data[:, :, 0])
 
     def test_training_effect(self):
-        Buffer("test_position", self.n_chains, self.n_steps, self.n_dims)
-        Buffer("test_log_prob", self.n_chains, self.n_steps, 1)
-        Buffer("test_acceptance", self.n_chains, self.n_steps, 1)
+        Buffer("test_position", (self.n_chains, self.n_steps, self.n_dims), 1)
+        Buffer("test_log_prob", (self.n_chains, self.n_steps), 1)
+        Buffer("test_acceptance", (self.n_chains, self.n_steps), 1)
 
         model = MaskedCouplingRQSpline(
             self.n_features,

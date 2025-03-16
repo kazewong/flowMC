@@ -142,15 +142,9 @@ class TestHMC:
             n_leapfrog=5,
             condition_matrix=jnp.eye(n_dims),
         )
-        positions = Buffer(
-            "positions", n_chains=n_chains, n_steps=n_local_steps, n_dims=n_dims
-        )
-        log_prob = Buffer(
-            "log_prob", n_chains=n_chains, n_steps=n_local_steps, n_dims=1
-        )
-        acceptance = Buffer(
-            "acceptance", n_chains=n_chains, n_steps=n_local_steps, n_dims=1
-        )
+        positions = Buffer("positions", (n_chains, n_local_steps, n_dims), 1)
+        log_prob = Buffer("log_prob", (n_chains, n_local_steps), 1)
+        acceptance = Buffer("acceptance", (n_chains, n_local_steps), 1)
 
         resource = {
             "positions": positions,
@@ -243,15 +237,9 @@ class TestMALA:
         n_chains = 1
         n_local_steps = 50000
         MALA_Sampler = MALA(step_size=1)
-        positions = Buffer(
-            "positions", n_chains=n_chains, n_steps=n_local_steps, n_dims=n_dims
-        )
-        log_prob = Buffer(
-            "log_prob", n_chains=n_chains, n_steps=n_local_steps, n_dims=1
-        )
-        acceptance = Buffer(
-            "acceptance", n_chains=n_chains, n_steps=n_local_steps, n_dims=1
-        )
+        positions = Buffer("positions", (n_chains, n_local_steps, n_dims), 1)
+        log_prob = Buffer("log_prob", (n_chains, n_local_steps), 1)
+        acceptance = Buffer("acceptance", (n_chains, n_local_steps), 1)
 
         resource = {
             "positions": positions,
@@ -343,15 +331,9 @@ class TestGRW:
         n_local_steps = 50000
         GRW_Sampler = GaussianRandomWalk(step_size=1)
 
-        positions = Buffer(
-            "positions", n_chains=n_chains, n_steps=n_local_steps, n_dims=n_dims
-        )
-        log_prob = Buffer(
-            "log_prob", n_chains=n_chains, n_steps=n_local_steps, n_dims=1
-        )
-        acceptance = Buffer(
-            "acceptance", n_chains=n_chains, n_steps=n_local_steps, n_dims=1
-        )
+        positions = Buffer("positions", (n_chains, n_local_steps, n_dims), 1)
+        log_prob = Buffer("log_prob", (n_chains, n_local_steps), 1)
+        acceptance = Buffer("acceptance", (n_chains, n_local_steps), 1)
 
         resource = {
             "positions": positions,

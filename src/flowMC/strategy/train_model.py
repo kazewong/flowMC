@@ -63,7 +63,7 @@ class TrainModel(Strategy):
         assert isinstance(
             optimizer, Optimizer
         ), "Optimizer resource must be an optimizer"
-        training_data = data_resource.data.reshape(-1, data_resource.n_dims)[
+        training_data = data_resource.data.reshape(-1, data_resource.shape[-1])[
             :: self.thinning
         ]
         training_data = training_data[jnp.isfinite(training_data).all(axis=1)]
@@ -99,12 +99,8 @@ class TrainModel(Strategy):
             assert isinstance(
                 loss_buffer, Buffer
             ), "Loss buffer resource must be a buffer"
-            loss_buffer.update_buffer(
-                jnp.array(loss_values)[None, :, None],
-                len(loss_values),
-                start=loss_buffer.current_position,
-            )
-            loss_buffer.current_position += len(loss_values)
+            loss_buffer.update_buffer(loss_values, start=loss_buffer.cursor)
+            loss_buffer.cursor += len(loss_values)
             resources[self.loss_buffer_name] = loss_buffer
 
         optimizer.optim_state = optim_state

@@ -4,6 +4,7 @@ from flowMC.resource.buffers import Buffer
 from flowMC.strategy.base import Strategy
 from jaxtyping import Array, Float, PRNGKeyArray
 import jax
+import jax.numpy as jnp
 import equinox as eqx
 from typing import Callable
 from abc import abstractmethod
@@ -85,18 +86,12 @@ class TakeSteps(Strategy):
         )(subkey, initial_position, data)
 
         positions = positions[:, :: self.thinning]
-        log_probs = log_probs[:, :: self.thinning][..., None]
-        do_accepts = do_accepts[:, :: self.thinning][..., None]
+        log_probs = log_probs[:, :: self.thinning]
+        do_accepts = do_accepts[:, :: self.thinning].astype(jnp.float32)
 
-        position_buffer.update_buffer(
-            positions, self.n_steps // self.thinning, self.current_position
-        )
-        log_prob_buffer.update_buffer(
-            log_probs, self.n_steps // self.thinning, self.current_position
-        )
-        acceptance_buffer.update_buffer(
-            do_accepts, self.n_steps // self.thinning, self.current_position
-        )
+        position_buffer.update_buffer(positions, self.current_position)
+        log_prob_buffer.update_buffer(log_probs, self.current_position)
+        acceptance_buffer.update_buffer(do_accepts, self.current_position)
         self.current_position += self.n_steps // self.thinning
         return rng_key, resources, positions[:, -1]
 
