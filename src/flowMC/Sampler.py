@@ -97,8 +97,8 @@ class Sampler:
 
     def serialize(self):
         """Serialize the sampler object."""
-        pass
+        raise NotImplementedError
 
     def deserialize(self):
         """Deserialize the sampler object."""
-        pass
+        raise NotImplementedError

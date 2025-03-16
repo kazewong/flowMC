@@ -1,5 +1,6 @@
 import jax
 import jax.numpy as jnp
+from jaxtyping import Array, Float
 
 from flowMC.resource.nf_model.rqSpline import MaskedCouplingRQSpline
 from flowMC.resource.optimizer import Optimizer
@@ -20,27 +21,49 @@ def log_posterior(x, data={}):
 
 
 class TestOptimizationStrategies:
-    def test_Adam_optimization(self):
-        n_dim = 2
-        n_chains = 20
-        n_steps = 100
+    n_dim = 2
+    n_chains = 20
+    n_steps = 100
 
+    strategy = AdamOptimization(
+        log_posterior,
+        n_steps,
+        learning_rate=5e-2,
+        noise_level=0.0,
+        bounds=jnp.array([[-jnp.inf, jnp.inf]]),
+    )
+
+    def test_Adam_optimization(self):
         key = jax.random.PRNGKey(42)
 
         key, subkey = jax.random.split(key)
-        initial_position = jax.random.normal(subkey, shape=(n_chains, n_dim)) * 1 + 10
-
-        strategy = AdamOptimization(
-            log_posterior,
-            n_steps,
-            learning_rate=5e-2,
-            noise_level=0.0,
-            bounds=jnp.array([[-jnp.inf, jnp.inf]]),
+        initial_position = (
+            jax.random.normal(subkey, shape=(self.n_chains, self.n_dim)) * 1 + 10
         )
 
-        _, _, optimized_position = strategy(key, {}, initial_position, {})
+        _, _, optimized_position = self.strategy(key, {}, initial_position, {})
 
-        assert optimized_position.shape == (n_chains, n_dim)
+        assert optimized_position.shape == (self.n_chains, self.n_dim)
+        assert jnp.all(
+            jnp.mean(optimized_position, axis=1) < jnp.mean(initial_position, axis=1)
+        )
+
+    def test_standalone_optimize(self):
+        key = jax.random.PRNGKey(42)
+
+        key, subkey = jax.random.split(key)
+        initial_position = (
+            jax.random.normal(subkey, shape=(self.n_chains, self.n_dim)) * 1 + 10
+        )
+
+        def loss_fn(params: Float[Array, " n_dim"]) -> Float:
+            return -log_posterior(params, {})
+
+        rng_key, optimized_position = self.strategy.optimize(
+            key, loss_fn, initial_position, {}
+        )
+
+        assert optimized_position.shape == (self.n_chains, self.n_dim)
         assert jnp.all(
             jnp.mean(optimized_position, axis=1) < jnp.mean(initial_position, axis=1)
         )

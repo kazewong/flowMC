@@ -14,6 +14,20 @@ def log_posterior(x, data=None):
 
 
 class TestHMC:
+
+    def test_repr(self):
+        HMC_obj = HMC(step_size=1, n_leapfrog=5)
+        assert repr(HMC_obj) == "HMC with step size 1 and 5 leapfrog steps"
+
+    def test_print_params(self, capsys):
+        HMC_obj = HMC(step_size=1, n_leapfrog=5)
+        HMC_obj.print_parameters()
+        captured = capsys.readouterr()
+        assert (
+            captured.out
+            == "HMC parameters:\nstep_size: 1\nn_leapfrog: 5\ncondition_matrix: 1\n"
+        )
+
     def test_HMC_deterministic(self):
         n_dim = 2
         n_chains = 1
@@ -169,6 +183,17 @@ class TestHMC:
 
 
 class TestMALA:
+
+    def test_repr(self):
+        MALA_obj = MALA(step_size=1)
+        assert repr(MALA_obj) == "MALA with step size 1"
+
+    def test_print_params(self, capsys):
+        MALA_obj = MALA(step_size=1)
+        MALA_obj.print_parameters()
+        captured = capsys.readouterr()
+        assert captured.out == "MALA parameters:\nstep_size: 1\n"
+
     def test_MALA_deterministic(self):
         n_dim = 2
         n_chains = 1
@@ -259,6 +284,17 @@ class TestMALA:
 
 
 class TestGRW:
+
+    def test_repr(self):
+        GRW_obj = GaussianRandomWalk(step_size=1)
+        assert repr(GRW_obj) == "Gaussian Random Walk with step size 1"
+
+    def test_print_params(self, capsys):
+        GRW_obj = GaussianRandomWalk(step_size=1)
+        GRW_obj.print_parameters()
+        captured = capsys.readouterr()
+        assert captured.out == "Gaussian Random Walk parameters:\nstep_size: 1\n"
+
     def test_Gaussian_random_walk_deterministic(self):
         n_dim = 2
         n_chains = 1

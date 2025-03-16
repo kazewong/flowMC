@@ -39,7 +39,6 @@ bundle = RQSpline_MALA_Bundle(
     rq_spline_n_bins=rq_spline_n_bins,
     rq_spline_n_layers=rq_spline_n_layers,
     verbose=True,
-
 )
 
 nf_sampler = Sampler(

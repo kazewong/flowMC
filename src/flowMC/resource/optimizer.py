@@ -23,7 +23,7 @@ class Optimizer(Resource):
         self.optim_state = self.optim.init(eqx.filter(model, eqx.is_array))
 
     def __call__(self, params, grads):
-        pass
+        raise NotImplementedError
 
     def print_parameters(self):
         raise NotImplementedError
