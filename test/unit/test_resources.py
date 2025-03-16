@@ -10,7 +10,7 @@ class TestBuffer:
         assert buffer.cursor_dim == 1
 
     def test_update_buffer(self):
-        buffer = Buffer("test", (10, 10), cursor_dim=1)
-        buffer.update_buffer(jnp.ones((1, 10, 10)))
-        assert buffer.cursor == 1
-        assert buffer.data[0] == jnp.ones((10, 10))
+        buffer = Buffer("test", (10, 10), cursor_dim=0)
+        buffer.update_buffer(jnp.ones((10, 10)))
+        assert buffer.cursor == 10
+        assert (buffer.data == jnp.ones((10, 10))).all()
