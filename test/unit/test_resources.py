@@ -1,6 +1,7 @@
 import jax.numpy as jnp
 from flowMC.resource.buffers import Buffer
 
+
 class TestBuffer:
     def test_buffer(self):
         buffer = Buffer("test", (10, 10), cursor_dim=1)

@@ -40,7 +40,6 @@ class Buffer(Resource):
             self.data, updates, start, self.cursor_dim
         )
 
-
     def print_parameters(self):
         print(
             f"Buffer: {self.name} with shape {self.data.shape} and cursor"
