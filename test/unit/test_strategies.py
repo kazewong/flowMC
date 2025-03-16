@@ -19,7 +19,6 @@ from flowMC.strategy.train_model import TrainModel
 def log_posterior(x, data={}):
     return -0.5 * jnp.sum(x**2)
 
-
 class TestOptimizationStrategies:
     n_dim = 2
     n_chains = 20
