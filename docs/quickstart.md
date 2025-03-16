@@ -180,14 +180,12 @@ You can find the hyper-parameters of a resource, a strategy, or a resource-strat
 
 ### Write the likelihood function in JAX
 
-While the package does support non-JAX likelihood function, it is highly recommended that you write your likelihood function in JAX for performance reasons.
-
 If your likelihood is fully defined in [JAX](https://github.com/google/jax), there are a couple benefits that compound with each other:
 
 1. JAX allows you to access the gradient of the likelihood function with respect to the parameters of the model through automatic differentiation. Having access to the gradient allows the use of gradient-based local sampler such as Metropolis-adjusted Langevin algorithm (MALA) and Hamiltonian Monte Carlo (HMC). These algorithms allow the sampler to handle high dimensional problems, and is often more efficient than the gradient-free local sampler such as Metropolis-Hastings.
 2. JAX uses [XLA](https://www.tensorflow.org/xla) to compile your code not only into machine code but also in a way that is more optimized for accelerators such as GPUs and TPUs. Having multiple MCMC chains helps speed up the training of the normalizing flow. Accelerators such as GPUs and TPUs provide parallel computing solutions that are more scalable compared to CPUs.
 
-Being able to run many chains in parallel helps training the normalizing flow model.
+Since version 0.4.0, we made the design choice of removing support of the likelihood function that is not compatible with `jax` transformation. The reason is `flowMC` is designed to leverage GPU acceleration and machine learning methods to solve complex problems. If a developer decides to use `flowMC` to try solve their problem, it is also a good time to consider rewriting their legacy code base in `jax`, which on its own could provide a significant speedup. Instead of letting people off the hook by allowing non-jax compatible likelihood function, we decided to enforce the use of `jax` to encourage the users to take advantage of the benefits of `jax`.
 
 ### Parallelize whenever you can
 
