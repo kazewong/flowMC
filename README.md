@@ -11,6 +11,7 @@
 <a href="https://github.com/kazewong/flowMC/blob/Packaging/LICENSE">
 <img src="https://img.shields.io/badge/License-MIT-blue?style=flat-square" alt="doc"/>
 </a>
+<a href='https://coveralls.io/github/kazewong/flowMC?branch=main'><img src='https://img.shields.io/coverallsCoverage/github/kazewong/flowMC?style=flat-square' alt='Coverage Status' /></a>
 
 ![flowMC_logo](./docs/logo_0810.png)
 
