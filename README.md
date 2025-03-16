@@ -1,8 +1,5 @@
 # flowMC
 
-> [!WARNING]
-> flowMC is undergoing some API changes so the documentation built for the main version is currently lagging behind the source. It is expected to be resolved by mid-March 2025.
-
 **Normalizing-flow enhanced sampling package for probabilistic inference**
 
 <a href="https://flowmc.readthedocs.io/en/main/">
