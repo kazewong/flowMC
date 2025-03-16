@@ -35,9 +35,9 @@ initial_position = jax.random.normal(subkey, shape=(n_chains, n_dims)) * 1
 # Defining resources
 
 MALA_Sampler = MALA(step_size=step_size)
-positions = Buffer("positions", n_chains=n_chains, n_steps=n_local_steps, n_dims=n_dims)
-log_prob = Buffer("log_prob", n_chains=n_chains, n_steps=n_local_steps, n_dims=1)
-acceptance = Buffer("acceptance", n_chains=n_chains, n_steps=n_local_steps, n_dims=1)
+positions = Buffer("positions", (n_chains, n_local_steps, n_dims), 1)
+log_prob = Buffer("log_prob", (n_chains, n_local_steps), 1)
+acceptance = Buffer("acceptance", (n_chains, n_local_steps), 1)
 
 resource = {
     "positions": positions,

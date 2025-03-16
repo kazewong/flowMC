@@ -102,9 +102,9 @@ class TrainModel(Strategy):
             loss_buffer.update_buffer(
                 jnp.array(loss_values)[None, :, None],
                 len(loss_values),
-                start=loss_buffer.current_position,
+                start=loss_buffer.cursor,
             )
-            loss_buffer.current_position += len(loss_values)
+            loss_buffer.cursor += len(loss_values)
             resources[self.loss_buffer_name] = loss_buffer
 
         optimizer.optim_state = optim_state
