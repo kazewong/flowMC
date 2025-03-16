@@ -19,6 +19,7 @@ from flowMC.strategy.train_model import TrainModel
 def log_posterior(x, data={}):
     return -0.5 * jnp.sum(x**2)
 
+
 class TestOptimizationStrategies:
     n_dim = 2
     n_chains = 20
@@ -36,7 +37,9 @@ class TestOptimizationStrategies:
         key = jax.random.PRNGKey(42)
 
         key, subkey = jax.random.split(key)
-        initial_position = jax.random.normal(subkey, shape=(self.n_chains, self.n_dim)) * 1 + 10
+        initial_position = (
+            jax.random.normal(subkey, shape=(self.n_chains, self.n_dim)) * 1 + 10
+        )
 
         _, _, optimized_position = self.strategy(key, {}, initial_position, {})
 
@@ -49,12 +52,16 @@ class TestOptimizationStrategies:
         key = jax.random.PRNGKey(42)
 
         key, subkey = jax.random.split(key)
-        initial_position = jax.random.normal(subkey, shape=(self.n_chains, self.n_dim)) * 1 + 10
+        initial_position = (
+            jax.random.normal(subkey, shape=(self.n_chains, self.n_dim)) * 1 + 10
+        )
 
         def loss_fn(params: Float[Array, " n_dim"]) -> Float:
             return -log_posterior(params, {})
-        
-        rng_key, optimized_position = self.strategy.optimize(key, loss_fn, initial_position, {})
+
+        rng_key, optimized_position = self.strategy.optimize(
+            key, loss_fn, initial_position, {}
+        )
 
         assert optimized_position.shape == (self.n_chains, self.n_dim)
         assert jnp.all(

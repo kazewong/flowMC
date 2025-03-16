@@ -12,6 +12,7 @@ from flowMC.resource.buffers import Buffer
 def log_posterior(x, data=None):
     return -0.5 * jnp.sum(x**2)
 
+
 class TestHMC:
 
     def test_repr(self):

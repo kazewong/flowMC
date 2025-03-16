@@ -29,4 +29,3 @@ class Strategy(ABC):
         Float[Array, "n_chains n_dim"],
     ]:
         raise NotImplementedError
-
