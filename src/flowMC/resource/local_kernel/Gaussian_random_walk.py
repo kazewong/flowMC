@@ -62,7 +62,7 @@ class GaussianRandomWalk(ProposalBase):
 
     def print_parameters(self):
         print("Gaussian Random Walk parameters:")
-        print("Step size: ", self.step_size)
+        print(f"step_size: {self.step_size}")
 
     def save_resource(self, path):
         pass

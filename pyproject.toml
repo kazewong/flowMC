@@ -68,3 +68,10 @@ include = [
 exclude = [
     "docs"
 ]
+
+[tool.coverage.report]
+exclude_also = [
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "@(abc\\. )?abstractmethod",
+]
