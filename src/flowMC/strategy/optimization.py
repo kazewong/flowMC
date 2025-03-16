@@ -28,7 +28,7 @@ class AdamOptimization(Strategy):
     noise_level: float = 10
     bounds: Float[Array, "n_dim 2"] = jnp.array([[-jnp.inf, jnp.inf]])
 
-    def __str__(self):
+    def __repr__(self):
         return "AdamOptimization"
 
     def __init__(
@@ -63,7 +63,30 @@ class AdamOptimization(Strategy):
         def loss_fn(params: Float[Array, " n_dim"]) -> Float:
             return -self.logpdf(params, data)
 
-        grad_fn = jax.jit(jax.grad(loss_fn))
+        rng_key, optimized_positions = self.optimize(
+            rng_key, loss_fn, initial_position, data
+        )
+
+        return rng_key, resources, optimized_positions
+
+    def optimize(
+        self,
+        rng_key: PRNGKeyArray,
+        objective: Callable,
+        initial_position: Float[Array, " n_chain n_dim"],
+        data: dict,
+    ):
+        """Optimization kernel. This can be used independently of the __call__ method.
+
+        Args:
+            rng_key: PRNGKeyArray
+                Random key for the optimization.
+            objective: Callable
+                Objective function to optimize.
+            initial_position: Float[Array, " n_chain n_dim"]
+                Initial positions for the optimization.
+        """
+        grad_fn = jax.jit(jax.grad(objective))
 
         def _kernel(carry, data):
             key, params, opt_state = carry
@@ -105,69 +128,4 @@ class AdamOptimization(Strategy):
         if jnp.isinf(final_log_prob).any() or jnp.isnan(final_log_prob).any():
             print("Warning: Optimization accessed infinite or NaN log-probabilities.")
 
-        return rng_key, resources, optimized_positions
-
-    def optimize(
-        self,
-        rng_key: PRNGKeyArray,
-        objective: Callable,
-        initial_position: Float[Array, " n_chain n_dim"],
-    ):
-        """Standalone optimization function that takes an objective function and returns
-        the optimized positions.
-
-        WARNING: This is an old function that may not be compatible with flowMC 0.4.0
-
-        Args:
-            rng_key: PRNGKeyArray
-                Random key for the optimization.
-            objective: Callable
-                Objective function to optimize.
-            initial_position: Float[Array, " n_chain n_dim"]
-                Initial positions for the optimization.
-        """
-        grad_fn = jax.jit(jax.grad(objective))
-
-        def _kernel(carry, data):
-            key, params, opt_state = carry
-
-            key, subkey = jax.random.split(key)
-            grad = grad_fn(params) * (1 + jax.random.normal(subkey) * self.noise_level)
-            updates, opt_state = self.solver.update(grad, opt_state, params)
-            params = optax.apply_updates(params, updates)
-            return (key, params, opt_state), None
-
-        def _single_optimize(
-            key: PRNGKeyArray,
-            initial_position: Float[Array, " n_dim"],
-        ) -> Float[Array, " n_dim"]:
-            opt_state = self.solver.init(initial_position)
-
-            (key, params, opt_state), _ = jax.lax.scan(
-                _kernel,
-                (key, initial_position, opt_state),
-                jnp.arange(self.n_steps),
-            )
-
-            return params  # type: ignore
-
-        print("Using Adam optimization")
-        rng_key, subkey = jax.random.split(rng_key)
-        keys = jax.random.split(subkey, initial_position.shape[0])
-        optimized_positions = jax.vmap(_single_optimize, in_axes=(0, 0))(
-            keys, initial_position
-        )
-
-        summary = {}
-        summary["initial_positions"] = initial_position
-        summary["initial_log_prob"] = jax.jit(jax.vmap(objective))(initial_position)
-        summary["final_positions"] = optimized_positions
-        summary["final_log_prob"] = jax.jit(jax.vmap(objective))(optimized_positions)
-
-        if (
-            jnp.isinf(summary["final_log_prob"]).any()
-            or jnp.isnan(summary["final_log_prob"]).any()
-        ):
-            print("Warning: Optimization accessed infinite or NaN log-probabilities.")
-
-        return rng_key, optimized_positions, summary
+        return rng_key, optimized_positions
