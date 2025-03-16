@@ -65,7 +65,7 @@ class GaussianRandomWalk(ProposalBase):
         print(f"step_size: {self.step_size}")
 
     def save_resource(self, path):
-        pass
+        raise NotImplementedError
 
     def load_resource(self, path):
         raise NotImplementedError
