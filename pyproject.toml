@@ -71,6 +71,7 @@ exclude = [
 
 [tool.coverage.report]
 exclude_also = [
+    'def __repr__',
     "raise AssertionError",
     "raise NotImplementedError",
     "@(abc\\. )?abstractmethod",
