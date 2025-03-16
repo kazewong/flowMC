@@ -100,7 +100,7 @@ class TrainModel(Strategy):
                 loss_buffer, Buffer
             ), "Loss buffer resource must be a buffer"
             loss_buffer.update_buffer(
-                loss_values,
+                loss_values, start=loss_buffer.cursor
             )
             loss_buffer.cursor += len(loss_values)
             resources[self.loss_buffer_name] = loss_buffer

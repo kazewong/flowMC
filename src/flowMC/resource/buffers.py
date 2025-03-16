@@ -29,7 +29,7 @@ class Buffer(Resource):
     def __call__(self):
         return self.data
 
-    def update_buffer(self, updates: Array):
+    def update_buffer(self, updates: Array, start: int = 0):
         """Update the buffer with new data.
 
         This will modify the buffer in place.
@@ -37,9 +37,8 @@ class Buffer(Resource):
         with length equal to the length of the updates in its first dimension.
         """
         self.data = jax.lax.dynamic_update_slice_in_dim(
-            self.data, updates, self.cursor, self.cursor_dim
+            self.data, updates, start, self.cursor_dim
         )
-        self.cursor = self.cursor + updates.shape[0]
 
 
     def print_parameters(self):

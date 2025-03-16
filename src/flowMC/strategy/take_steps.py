@@ -89,9 +89,9 @@ class TakeSteps(Strategy):
         log_probs = log_probs[:, :: self.thinning]
         do_accepts = do_accepts[:, :: self.thinning].astype(jnp.float32)
 
-        position_buffer.update_buffer(positions)
-        log_prob_buffer.update_buffer(log_probs)
-        acceptance_buffer.update_buffer(do_accepts)
+        position_buffer.update_buffer(positions, self.current_position)
+        log_prob_buffer.update_buffer(log_probs, self.current_position)
+        acceptance_buffer.update_buffer(do_accepts, self.current_position)
         self.current_position += self.n_steps // self.thinning
         return rng_key, resources, positions[:, -1]
 
