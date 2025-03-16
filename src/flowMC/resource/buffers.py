@@ -3,48 +3,52 @@ from typing import TypeVar
 import numpy as np
 from jaxtyping import Array, Float
 import jax.numpy as jnp
+import jax
 
 TBuffer = TypeVar("TBuffer", bound="Buffer")
 
 
 class Buffer(Resource):
     name: str
-    data: Float[Array, "n_chains n_steps n_dims"]
-    current_position: int = 0
+    data: Float[Array, " ..."]
+    cursor: int = 0
+    cursor_dim: int = 0
 
     def __repr__(self):
         return "Buffer " + self.name + " with shape " + str(self.data.shape)
 
     @property
-    def n_chains(self) -> int:
-        return self.data.shape[0]
+    def shape(self):
+        return self.data.shape
 
-    @property
-    def n_steps(self) -> int:
-        return self.data.shape[1]
-
-    @property
-    def n_dims(self) -> int:
-        return self.data.shape[2]
-
-    def __init__(self, name: str, n_chains: int, n_steps: int, n_dims: int):
+    def __init__(self, name: str, shape: tuple[int, ...], cursor_dim: int = 0):
+        self.cursor_dim = cursor_dim
         self.name = name
-        self.data = jnp.zeros((n_chains, n_steps, n_dims)) - jnp.inf
+        self.data = jnp.zeros(shape) - jnp.inf
 
     def __call__(self):
         return self.data
 
-    def update_buffer(self, updates: Array, length: int, start: int = 0):
-        self.data = self.data.at[:, start : start + length].set(updates)
+    def update_buffer(self, updates: Array):
+        """Update the buffer with new data.
+
+        This will modify the buffer in place.
+        The cursor is expected to propagate the buffer in the cursor_dim
+        with length equal to the length of the updates in its first dimension.
+        """
+        self.data = jax.lax.dynamic_update_slice_in_dim(
+            self.data, updates, self.cursor, self.cursor_dim
+        )
+        self.cursor = self.cursor + updates.shape[0]
+
 
     def print_parameters(self):
         print(
-            f"Buffer: {self.n_chains} chains,"
-            f"{self.n_steps} steps, {self.n_dims} dimensions"
+            f"Buffer: {self.name} with shape {self.data.shape} and cursor"
+            f" {self.cursor} at dimension {self.cursor_dim}"
         )
 
     def get_distribution(self, n_bins: int = 100):
-        assert self.n_dims == 1, "Only 1D buffers are supported for now"
         return np.histogram(self.data.flatten(), bins=n_bins)
 
     def save_resource(self, path: str):
@@ -56,7 +60,7 @@ class Buffer(Resource):
 
     def load_resource(self: TBuffer, path: str) -> TBuffer:
         data = np.load(path)
-        buffer: Float[Array, "n_chains n_steps n_dims"] = data["data"]
-        result = Buffer(data["name"], buffer.shape[0], buffer.shape[1], buffer.shape[2])
+        buffer: Float[Array, " ..."] = data["data"]
+        result = Buffer(data["name"], buffer.shape)
         result.data = buffer
         return result  # type: ignore
