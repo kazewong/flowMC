@@ -8,6 +8,7 @@ from jaxtyping import Array, Float, Int, PRNGKeyArray, PyTree
 
 from flowMC.resource.nf_model.base import NFModel
 from flowMC.resource.local_kernel.base import ProposalBase
+from flowMC.resource.logPDF import LogPDF
 
 
 class NFProposal(ProposalBase):
@@ -24,9 +25,9 @@ class NFProposal(ProposalBase):
     def kernel(
         self,
         rng_key: PRNGKeyArray,
-        log_pdf: Callable[[Float[Array, " n_dim"], PyTree], Float[Array, "1"]],
         position: Float[Array, " n_dim"],
         log_prob: Float[Array, "1"],
+        logpdf: LogPDF,
         data: PyTree,
     ) -> tuple[
         Float[Array, "n_step n_dim"], Float[Array, "n_step 1"], Int[Array, "n_step 1"]
@@ -41,7 +42,7 @@ class NFProposal(ProposalBase):
 
         # All these are size (n_steps, n_dim)
         proposal_position = self.sample_flow(subkey, n_steps, n_dims)
-        log_prob_proposed = jax.vmap(log_pdf, in_axes=(0, None))(
+        log_prob_proposed = jax.vmap(logpdf, in_axes=(0, None))(
             proposal_position, data
         )
         log_prob_nf_proposed = jax.vmap(self.model.log_prob)(proposal_position)

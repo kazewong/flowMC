@@ -1,10 +1,9 @@
-from typing import Callable
-
 import jax
 import jax.numpy as jnp
 from jax.scipy.stats import multivariate_normal
 from jaxtyping import Array, Bool, Float, Int, PRNGKeyArray, PyTree
 
+from flowMC.resource.logPDF import LogPDF
 from flowMC.resource.local_kernel.base import ProposalBase
 
 
@@ -26,9 +25,9 @@ class MALA(ProposalBase):
     def kernel(
         self,
         rng_key: PRNGKeyArray,
-        log_pdf: Callable[[Float[Array, " n_dim"], PyTree], Float[Array, "1"]],
         position: Float[Array, " n_dim"],
         log_prob: Float[Array, "1"],
+        logpdf: LogPDF,
         data: PyTree,
     ) -> tuple[Float[Array, " n_dim"], Float[Array, "1"], Int[Array, "1"]]:
         """Metropolis-adjusted Langevin algorithm kernel. This is a kernel that only
@@ -56,7 +55,7 @@ class MALA(ProposalBase):
             print("Compiling MALA body")
             this_position, dt, data = carry
             dt2 = dt * dt
-            this_log_prob, this_d_log = jax.value_and_grad(log_pdf)(this_position, data)
+            this_log_prob, this_d_log = jax.value_and_grad(logpdf)(this_position, data)
             proposal = this_position + jnp.dot(dt2, this_d_log) / 2
             proposal += jnp.dot(
                 dt, jax.random.normal(this_key, shape=this_position.shape)
