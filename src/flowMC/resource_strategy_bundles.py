@@ -37,7 +37,7 @@ class RQSpline_MALA_Bundle(ResourceStrategyBundle):
 
     """
 
-    def __str__(self):
+    def __repr__(self):
         return "Local Global NF Sampling"
 
     def __init__(
