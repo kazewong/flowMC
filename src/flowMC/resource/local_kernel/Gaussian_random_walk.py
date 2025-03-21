@@ -1,5 +1,3 @@
-from typing import Callable
-
 import jax
 import jax.numpy as jnp
 from jaxtyping import Array, Float, Int, PRNGKeyArray, PyTree

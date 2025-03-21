@@ -1,6 +1,4 @@
 from abc import abstractmethod
-from typing import Callable
-
 import jax
 from jaxtyping import Array, Float, Int, PRNGKeyArray, PyTree
 from flowMC.resource.base import Resource

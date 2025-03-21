@@ -9,9 +9,6 @@ from typing import Callable
 
 
 class LocalGlobalNFSample(Strategy):
-    logpdf: Callable[[Float[Array, " n_dim"], dict], Float]
-    training_stepper: TrainModel
-
     n_loops: int
 
     def __str__(self):
@@ -19,7 +16,7 @@ class LocalGlobalNFSample(Strategy):
 
     def __init__(
         self,
-        logpdf: Callable[[Float[Array, " n_dim"], dict], Float],
+        logpdf_name: str,
         local_kernel_name: str,
         global_kernel_name: str,
         local_buffers_names: list[str],
@@ -35,16 +32,15 @@ class LocalGlobalNFSample(Strategy):
         training: bool = True,
         verbose: bool = False,
     ):
-        self.logpdf = logpdf
         self.local_stepper = TakeSerialSteps(
-            logpdf,
+            logpdf_name,
             local_kernel_name,
             local_buffers_names,
             n_local_steps,
             verbose=verbose,
         )
         self.global_stepper = TakeGroupSteps(
-            logpdf,
+            logpdf_name,
             global_kernel_name,
             global_buffers_names,
             n_global_steps,

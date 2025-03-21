@@ -13,7 +13,13 @@ class Variable:
 @jax.tree_util.register_pytree_node_class
 class LogPDF(Resource):
 
-    """LogPDF class 
+    """A resource class that holds the log-pdf function.
+    The main purpose of this class is to wrap the log-pdf function into the unified Resource interface.
+
+    Args:
+        log_pdf (Callable[[Float[Array, "n_dim"], PyTree], Float[Array, "1"]): The log-pdf function
+        variables (list[Variable]): The list of variables in the log-pdf function
+
     
     """
     log_pdf: Callable[[Float[Array, " n_dim"], PyTree], Float[Array, "1"]]
@@ -27,6 +33,12 @@ class LogPDF(Resource):
         return super().__repr__()
     
     def __init__(self, log_pdf: Callable[[Float[Array, " n_dim"], PyTree], Float[Array, "1"]], variables: Optional[list[Variable]] = None, n_dims: Optional[int] = None):
+        """
+        Args:
+            log_pdf (Callable[[Float[Array, "n_dim"], PyTree], Float[Array, "1"]): The log-pdf function
+            variables (list[Variable], optional): The list of variables in the log-pdf function. Defaults to None. n_dims must be provided if this argument is None.
+            n_dims (int, optional): The number of dimensions of the log-pdf function. Defaults to None. If variables is provided, this argument is ignored.
+        """
         self.log_pdf = log_pdf
         if variables is None and n_dims is not None:
             self.variables = [Variable("x_"+str(i), True) for i in range(n_dims)]
