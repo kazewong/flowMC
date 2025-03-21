@@ -6,6 +6,7 @@ from jaxtyping import Array, Float
 from flowMC.resource.local_kernel.MALA import MALA
 from flowMC.strategy.take_steps import TakeSerialSteps
 from flowMC.resource.buffers import Buffer
+from flowMC.resource.logPDF import LogPDF
 from flowMC.Sampler import Sampler
 
 
@@ -44,12 +45,13 @@ resource = {
     "log_prob": log_prob,
     "acceptance": acceptance,
     "MALA": MALA_Sampler,
+    "logpdf": LogPDF(dual_moon_pe, n_dims=n_dims),
 }
 
 # Defining strategy
 
 strategy = TakeSerialSteps(
-    logpdf=dual_moon_pe,
+    "logpdf",
     kernel_name="MALA",
     buffer_names=["positions", "log_prob", "acceptance"],
     n_steps=n_local_steps,

@@ -6,6 +6,7 @@ from jaxtyping import Array, Float, PRNGKeyArray
 
 from flowMC.resource.base import Resource
 from flowMC.resource.buffers import Buffer
+from flowMC.resource.logPDF import LogPDF
 from flowMC.resource.local_kernel.MALA import MALA
 from flowMC.resource.nf_model.NF_proposal import NFProposal
 from flowMC.resource.nf_model.rqSpline import MaskedCouplingRQSpline
@@ -43,7 +44,7 @@ class RQSpline_MALA_Bundle(ResourceStrategyBundle):
         self,
         rng_key: PRNGKeyArray,
         n_chains: int,
-        n_dim: int,
+        n_dims: int,
         logpdf: Callable[[Float[Array, " n_dim"], dict], Float],
         n_local_steps: int,
         n_global_steps: int,
@@ -68,7 +69,7 @@ class RQSpline_MALA_Bundle(ResourceStrategyBundle):
         n_total_epochs = n_training_loops * n_epochs
 
         positions_training = Buffer(
-            "positions_training", (n_chains, n_training_steps, n_dim), 1
+            "positions_training", (n_chains, n_training_steps, n_dims), 1
         )
         log_prob_training = Buffer("log_prob_training", (n_chains, n_training_steps), 1)
         local_accs_training = Buffer(
@@ -80,7 +81,7 @@ class RQSpline_MALA_Bundle(ResourceStrategyBundle):
         loss_buffer = Buffer("loss_buffer", (n_total_epochs,), 0)
 
         position_production = Buffer(
-            "positions_production", (n_chains, n_production_steps, n_dim), 1
+            "positions_production", (n_chains, n_production_steps, n_dims), 1
         )
         log_prob_production = Buffer(
             "log_prob_production", (n_chains, n_production_steps), 1
@@ -95,12 +96,14 @@ class RQSpline_MALA_Bundle(ResourceStrategyBundle):
         local_sampler = MALA(step_size=mala_step_size)
         rng_key, subkey = jax.random.split(rng_key)
         model = MaskedCouplingRQSpline(
-            n_dim, rq_spline_n_layers, rq_spline_hidden_units, rq_spline_n_bins, subkey
+            n_dims, rq_spline_n_layers, rq_spline_hidden_units, rq_spline_n_bins, subkey
         )
         global_sampler = NFProposal(model)
         optimizer = Optimizer(model=model, learning_rate=learning_rate)
+        logpdf = LogPDF(logpdf, n_dims=n_dims)
 
         self.resources = {
+            "logpdf": logpdf,
             "positions_training": positions_training,
             "log_prob_training": log_prob_training,
             "local_accs_training": local_accs_training,
@@ -118,7 +121,7 @@ class RQSpline_MALA_Bundle(ResourceStrategyBundle):
 
         self.strategies = [
             LocalGlobalNFSample(
-                logpdf,
+                "logpdf",
                 "local_sampler",
                 "global_sampler",
                 ["positions_training", "log_prob_training", "local_accs_training"],
@@ -135,7 +138,7 @@ class RQSpline_MALA_Bundle(ResourceStrategyBundle):
                 verbose=verbose,
             ),
             LocalGlobalNFSample(
-                logpdf,
+                "logpdf",
                 "local_sampler",
                 "global_sampler",
                 [
