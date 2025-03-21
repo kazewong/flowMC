@@ -3,11 +3,12 @@
 **Normalizing-flow enhanced sampling package for probabilistic inference**
 
 <a href="https://flowmc.readthedocs.io/en/main/">
-<img src="https://badgen.net/badge/Read/the doc/blue" alt="doc"/>
+<img src="https://readthedocs.org/projects/flowmc/badge/?version=main&style=flat-square" alt="doc"/>
 </a>
-<a href="https://github.com/kazewong/FlowMC/blob/Packaging/LICENSE">
-<img src="https://badgen.net/badge/License/MIT/blue" alt="doc"/>
+<a href="https://github.com/kazewong/flowMC/blob/Packaging/LICENSE">
+<img src="https://img.shields.io/badge/License-MIT-blue?style=flat-square" alt="doc"/>
 </a>
+<a href='https://coveralls.io/github/kazewong/flowMC?branch=main'><img src='https://img.shields.io/coverallsCoverage/github/kazewong/flowMC?style=flat-square' alt='Coverage Status' /></a>
 
 ![flowMC_logo](./docs/logo_0810.png)
 

@@ -1,3 +1,80 @@
+[project]
+name = "flowMC"
+version = "0.4.0"
+description = "Normalizing flow exhanced sampler in jax"
+authors = [
+    { name = "Kaze Wong", email = "kazewong.physics@gmail.com"},
+    { name = "Marylou Gabrié"},
+    { name = "Dan Foreman-Mackey"}
+]
+readme = "README.md"
+requires-python = ">=3.11"
+keywords = ["sampling", "inference", "machine learning", "normalizing", "autodiff", "jax"]
+dependencies = [
+    "chex>=0.1.87",
+    "coveralls>=4.0.1",
+    "equinox>=0.11.9",
+    "jax[cuda12]==0.5.0",
+    "jaxtyping>=0.2.36",
+    "optax>=0.2.4",
+    "pre-commit==4.0.1",
+    "pyright==1.1.389",
+    "pytest==8.3.3",
+    "ruff==0.8.0",
+    "scikit-learn>=1.6.0",
+    "tqdm>=4.67.1",
+]
+license = { file = "LICENSE" }
+
+[project.urls]
+Documentation = "https://github.com/kazewong/flowMC"
+
+
+[project.optional-dependencies]
+docs = [
+    "mkdocs-gen-files==0.5.0",
+    "mkdocs-jupyter==0.25.1",
+    "mkdocs-literate-nav==0.6.1",
+    "mkdocs-material==9.5.47",
+    "mkdocs==1.6.1",
+    "mkdocstrings[python]==0.27.0",
+    "pymdown-extensions==10.12",
+]
+visualize = [
+    "arviz>=0.21.0",
+    "corner>=2.2.3",
+]
+
+[dependency-groups]
+dev = [
+    "flowMC",
+    "ipykernel>=6.29.5",
+]
+
+[tool.uv.sources]
+flowMC = { workspace = true }
+
+
 [build-system]
-requires = ["setuptools","wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+
+[tool.pyright]
+include = [
+    "src",
+    "tests",
+]
+exclude = [
+    "docs"
+]
+
+[tool.coverage.report]
+exclude_also = [
+    'def __repr__',
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "@(abc\\. )?abstractmethod",
+    "def tree_flatten",
+    "def tree_unflatten",
+]
