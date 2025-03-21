@@ -2,17 +2,17 @@ from dataclasses import dataclass
 from typing import Callable, Optional
 from flowMC.resource.base import Resource
 from jaxtyping import Array, Float, PyTree
-import jax.numpy as jnp
 import jax
+
 
 @dataclass
 class Variable:
     name: str
     continuous: bool
 
+
 @jax.tree_util.register_pytree_node_class
 class LogPDF(Resource):
-
     """A resource class that holds the log-pdf function.
     The main purpose of this class is to wrap the log-pdf function into the unified Resource interface.
 
@@ -20,8 +20,9 @@ class LogPDF(Resource):
         log_pdf (Callable[[Float[Array, "n_dim"], PyTree], Float[Array, "1"]): The log-pdf function
         variables (list[Variable]): The list of variables in the log-pdf function
 
-    
+
     """
+
     log_pdf: Callable[[Float[Array, " n_dim"], PyTree], Float[Array, "1"]]
     variables: list[Variable]
 
@@ -31,8 +32,13 @@ class LogPDF(Resource):
 
     def __repr__(self):
         return super().__repr__()
-    
-    def __init__(self, log_pdf: Callable[[Float[Array, " n_dim"], PyTree], Float[Array, "1"]], variables: Optional[list[Variable]] = None, n_dims: Optional[int] = None):
+
+    def __init__(
+        self,
+        log_pdf: Callable[[Float[Array, " n_dim"], PyTree], Float[Array, "1"]],
+        variables: Optional[list[Variable]] = None,
+        n_dims: Optional[int] = None,
+    ):
         """
         Args:
             log_pdf (Callable[[Float[Array, "n_dim"], PyTree], Float[Array, "1"]): The log-pdf function
@@ -41,7 +47,7 @@ class LogPDF(Resource):
         """
         self.log_pdf = log_pdf
         if variables is None and n_dims is not None:
-            self.variables = [Variable("x_"+str(i), True) for i in range(n_dims)]
+            self.variables = [Variable("x_" + str(i), True) for i in range(n_dims)]
         elif variables is not None:
             self.variables = variables
         else:
@@ -54,10 +60,10 @@ class LogPDF(Resource):
         print("LogPDF with variables:")
         for var in self.variables:
             print(var.name, var.continuous)
-    
+
     def save_resource(self, path):
         raise NotImplementedError
-    
+
     def load_resource(self, path):
         raise NotImplementedError
 
@@ -65,7 +71,7 @@ class LogPDF(Resource):
         children = ()
         aux_data = (self.log_pdf, self.variables)
         return (children, aux_data)
-    
+
     @classmethod
     def tree_unflatten(cls, aux_data, children):
         return cls(aux_data[0], aux_data[1])

@@ -5,7 +5,6 @@ from flowMC.strategy.base import Strategy
 from flowMC.resource.base import Resource
 from flowMC.strategy.take_steps import TakeSerialSteps, TakeGroupSteps
 from flowMC.strategy.train_model import TrainModel
-from typing import Callable
 
 
 class LocalGlobalNFSample(Strategy):

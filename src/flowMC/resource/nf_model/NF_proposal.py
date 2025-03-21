@@ -1,5 +1,4 @@
 from math import ceil
-from typing import Callable
 
 import jax
 import jax.numpy as jnp
@@ -42,9 +41,7 @@ class NFProposal(ProposalBase):
 
         # All these are size (n_steps, n_dim)
         proposal_position = self.sample_flow(subkey, n_steps, n_dims)
-        log_prob_proposed = jax.vmap(logpdf, in_axes=(0, None))(
-            proposal_position, data
-        )
+        log_prob_proposed = jax.vmap(logpdf, in_axes=(0, None))(proposal_position, data)
         log_prob_nf_proposed = jax.vmap(self.model.log_prob)(proposal_position)
 
         def body(carry, data):
