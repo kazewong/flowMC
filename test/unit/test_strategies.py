@@ -9,6 +9,7 @@ from flowMC.resource.local_kernel.MALA import MALA
 from flowMC.resource.local_kernel.Gaussian_random_walk import GaussianRandomWalk
 from flowMC.resource.local_kernel.HMC import HMC
 from flowMC.resource.buffers import Buffer
+from flowMC.resource.logPDF import LogPDF
 
 # from flowMC.strategy.optimization import optimization_Adam
 from flowMC.strategy.take_steps import TakeSerialSteps, TakeGroupSteps
@@ -84,17 +85,20 @@ class TestStrategies:
         grw_kernel = GaussianRandomWalk(1.0)
         hmc_kernel = HMC(jnp.eye(n_dims), 0.1, 10)
 
+        logpdf = LogPDF(log_posterior, n_dims=n_dims)
+
         resources = {
             "test_position": test_position,
             "test_log_prob": test_log_prob,
             "test_acceptance": test_acceptance,
+            "logpdf": logpdf,
             "MALA": mala_kernel,
             "GRW": grw_kernel,
             "HMC": hmc_kernel,
         }
 
         strategy = TakeSerialSteps(
-            log_posterior,
+            "logpdf",
             "MALA",
             ["test_position", "test_log_prob", "test_acceptance"],
             n_batch,
@@ -215,18 +219,19 @@ class TestNFStrategies:
 
         proposal = NFProposal(model)
 
+        def test_target(x, data={}):
+            return model.log_prob(x)
+
         resources = {
             "test_position": test_position,
             "test_log_prob": test_log_prob,
             "test_acceptance": test_acceptance,
             "NFProposal": proposal,
+            "logpdf": LogPDF(test_target, n_dims=self.n_dims),
         }
 
-        def test_target(x, data={}):
-            return model.log_prob(x)
-
         strategy = TakeGroupSteps(
-            test_target,
+            "logpdf",
             "NFProposal",
             ["test_position", "test_log_prob", "test_acceptance"],
             self.n_steps,

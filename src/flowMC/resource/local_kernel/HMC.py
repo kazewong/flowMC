@@ -5,6 +5,7 @@ import jax.numpy as jnp
 from jaxtyping import Array, Float, Int, PRNGKeyArray, PyTree
 
 from flowMC.resource.local_kernel.base import ProposalBase
+from flowMC.resource.logPDF import LogPDF
 
 
 class HMC(ProposalBase):
@@ -94,9 +95,9 @@ class HMC(ProposalBase):
     def kernel(
         self,
         rng_key: PRNGKeyArray,
-        log_pdf: Callable[[Float[Array, " n_dim"], PyTree], Float[Array, "1"]],
         position: Float[Array, " n_dim"],
         log_prob: Float[Array, "1"],
+        logpdf: LogPDF,
         data: PyTree,
     ) -> tuple[Float[Array, " n_dim"], Float[Array, "1"], Int[Array, "1"]]:
         """Note that since the potential function is the negative log likelihood,
@@ -109,7 +110,7 @@ class HMC(ProposalBase):
         """
 
         def potential(x: Float[Array, " n_dim"], data: PyTree) -> Float[Array, "1"]:
-            return -log_pdf(x, data)
+            return -logpdf(x, data)
 
         def kinetic(
             p: Float[Array, " n_dim"], metric: Float[Array, " n_dim"]

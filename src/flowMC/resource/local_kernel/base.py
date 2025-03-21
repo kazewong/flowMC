@@ -1,9 +1,8 @@
 from abc import abstractmethod
-from typing import Callable
-
 import jax
 from jaxtyping import Array, Float, Int, PRNGKeyArray, PyTree
 from flowMC.resource.base import Resource
+from flowMC.resource.logPDF import LogPDF
 
 
 @jax.tree_util.register_pytree_node_class
@@ -19,9 +18,9 @@ class ProposalBase(Resource):
     def kernel(
         self,
         rng_key: PRNGKeyArray,
-        log_pdf: Callable[[Float[Array, " n_dim"], PyTree], Float[Array, "1"]],
         position: Float[Array, "nstep  n_dim"],
         log_prob: Float[Array, "nstep 1"],
+        logpdf: LogPDF,
         data: PyTree,
     ) -> tuple[
         Float[Array, "nstep  n_dim"], Float[Array, "nstep 1"], Int[Array, "n_step 1"]
