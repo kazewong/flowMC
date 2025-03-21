@@ -10,8 +10,9 @@ class Variable:
     """A dataclass that holds the information of a variable in the log-pdf function.
 
     This main purpose of this class is to let the users name their variables,
-    and specify whether they are continuous or not.    
+    and specify whether they are continuous or not.
     """
+
     name: str
     continuous: bool
 
