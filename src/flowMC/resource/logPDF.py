@@ -3,6 +3,7 @@ from typing import Callable, Optional
 from flowMC.resource.base import Resource
 from jaxtyping import Array, Float, PyTree
 import jax
+import jax.numpy as jnp
 
 
 @dataclass
@@ -79,3 +80,40 @@ class LogPDF(Resource):
     @classmethod
     def tree_unflatten(cls, aux_data, children):
         return cls(aux_data[0], aux_data[1])
+
+
+@jax.tree_util.register_pytree_node_class
+class TemperedPDF(LogPDF):
+
+    temperatures: Float[Array, " n_temps"]
+    log_prior: Callable[[Float[Array, " n_dim"], PyTree], Float[Array, "1"]]
+
+    @property
+    def n_temps(self):
+        return len(self.temperatures)
+
+    def __init__(
+        self,
+        log_likelihood: Callable[[Float[Array, " n_dim"], PyTree], Float[Array, "1"]],
+        log_prior: Callable[[Float[Array, " n_dim"], PyTree], Float[Array, "1"]],
+        variables=None,
+        n_dims=None,
+        n_temps=1,
+        max_temp=1,
+    ):
+        super().__init__(log_likelihood, variables, n_dims)
+        self.temperatures = jnp.linspace(1, max_temp, n_temps)
+        self.log_prior = log_prior
+
+    def __call__(self, x, data):
+        base_pdf = super().__call__(x, data)
+        return base_pdf**(1./self.temperatures) * self.log_prior(x, data)
+
+    def tree_flatten(self):  # type: ignore
+        children = ()
+        aux_data = (self.log_pdf, self.variables)
+        return (children, aux_data)
+
+    @classmethod
+    def tree_unflatten(cls, aux_data, children):
+        return cls(aux_data[0], aux_data[1], aux_data[2])
