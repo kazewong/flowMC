@@ -98,8 +98,8 @@ class TemperedPDF(LogPDF):
         log_prior: Callable[[Float[Array, " n_dim"], PyTree], Float[Array, "1"]],
         variables=None,
         n_dims=None,
-        n_temps=1,
-        max_temp=1,
+        n_temps=5,
+        max_temp=100,
     ):
         super().__init__(log_likelihood, variables, n_dims)
         self.temperatures = jnp.linspace(1, max_temp, n_temps)
@@ -107,7 +107,7 @@ class TemperedPDF(LogPDF):
 
     def __call__(self, x, data):
         base_pdf = super().__call__(x, data)
-        return base_pdf**(1./self.temperatures) * self.log_prior(x, data)
+        return (1.0 / self.temperatures) * base_pdf + self.log_prior(x, data)
 
     def tree_flatten(self):  # type: ignore
         children = ()

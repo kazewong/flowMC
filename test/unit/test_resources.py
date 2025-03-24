@@ -1,7 +1,7 @@
 import jax
 import jax.numpy as jnp
 from flowMC.resource.buffers import Buffer
-from flowMC.resource.logPDF import LogPDF, Variable
+from flowMC.resource.logPDF import LogPDF, Variable, TemperedPDF
 from flowMC.resource.local_kernel.MALA import MALA
 from flowMC.strategy.take_steps import TakeSerialSteps
 
@@ -41,6 +41,20 @@ class TestLogPDF:
             "logpdf", "MALA", ["test_position", "test_log_prob", "test_acceptance"], 1
         )
         key, resources, positions = stepper(rng_key, resources, initial_position, data)
+
+    def test_tempered_pdf(self):
+        logpdf = TemperedPDF(
+            self.posterior,
+            lambda x, data: jnp.zeros(x.shape[0]),
+            n_dims=self.n_dims,
+            n_temps=5,
+            max_temp=100,
+        )
+        inputs = jnp.arange(self.n_dims).astype(jnp.float32)
+        data = {"data": jnp.ones(self.n_dims)}
+        values = logpdf(inputs, data)
+        assert values[0] == self.posterior(inputs, data)
+        assert values.shape == (5,)
 
 
 class TestBuffer:
