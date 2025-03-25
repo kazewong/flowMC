@@ -10,7 +10,18 @@ import equinox as eqx
 
 
 class ParallelTempering(Strategy):
-    """ """
+    """Sample a tempered PDF with one exchange step.
+    This is in essence closer to TakeSteps than global tuning.
+    Considering the tempered version of the PDF is only there to
+    help with convergence, by default the extra information in
+    temperature not equal to 1 is not saved.
+
+    There should be a version of this class that saves the extra
+    information in the temperature not equal to 1, which could be
+    used for other purposes such as diagnostics or training.
+
+
+    """
 
     n_steps: int
     tempered_logpdf_name: str
@@ -56,20 +67,18 @@ class ParallelTempering(Strategy):
         rng_key, subkey = jax.random.split(rng_key)
         positions, log_probs, do_accepts = eqx.filter_jit(
             eqx.filter_vmap(
-                jax.tree_util.Partial(self._individal_step, kernel)(
-                    subkey, tempered_positions.data, tempered_logpdf
-                ),
+                jax.tree_util.Partial(self._individal_step, kernel),
                 in_axes=(0, 0, None),
             )
         )(
-            subkey, initial_position, tempered_logpdf, data
+            subkey, tempered_positions.data, tempered_logpdf, data
         )  # vmapping over chains
 
         # Exchange between temperatures
 
         final_position = self._exchange(positions, kernel, tempered_logpdf)
 
-        return rng_key, resources, final_position
+        return rng_key, resources, final_position[0]
 
     def _step_body(
         self,
