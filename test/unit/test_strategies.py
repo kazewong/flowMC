@@ -1,6 +1,7 @@
 import jax
 import jax.numpy as jnp
 from jaxtyping import Array, Float
+import equinox as eqx
 
 from flowMC.resource.nf_model.rqSpline import MaskedCouplingRQSpline
 from flowMC.resource.optimizer import Optimizer
@@ -9,12 +10,13 @@ from flowMC.resource.local_kernel.MALA import MALA
 from flowMC.resource.local_kernel.Gaussian_random_walk import GaussianRandomWalk
 from flowMC.resource.local_kernel.HMC import HMC
 from flowMC.resource.buffers import Buffer
-from flowMC.resource.logPDF import LogPDF
+from flowMC.resource.logPDF import LogPDF, TemperedPDF
 
 # from flowMC.strategy.optimization import optimization_Adam
 from flowMC.strategy.take_steps import TakeSerialSteps, TakeGroupSteps
 from flowMC.strategy.optimization import AdamOptimization
 from flowMC.strategy.train_model import TrainModel
+from flowMC.strategy.parallel_tempering import ParallelTempering
 
 
 def log_posterior(x, data={}):
@@ -70,7 +72,7 @@ class TestOptimizationStrategies:
         )
 
 
-class TestStrategies:
+class TestLocalStep:
     def test_take_local_step(self):
         n_chains = 5
         n_steps = 25
@@ -261,3 +263,62 @@ class TestNFStrategies:
         )
 
         NFProposal(model)
+
+
+class TestTemperingStrategies:
+    n_temps = 5
+    n_dims = 3
+    n_chains = 7
+
+    def initialize(self):
+        mala = MALA(1.0)
+        logpdf = TemperedPDF(
+            log_posterior, lambda x, data: jnp.array(0.0), n_dims=3, n_temps=5
+        )
+        tempered_positions = Buffer(
+            "tempered_positions", (self.n_chains, self.n_temps, self.n_dims), 2
+        )
+
+        resources = {
+            "logpdf": logpdf,
+            "MALA": mala,
+            "tempered_positions": tempered_positions,
+        }
+
+        parallel_tempering_strat = ParallelTempering(
+            n_steps=5,
+            tempered_logpdf_name="tempered_logpdf",
+            kernel_name="MALA",
+            tempered_buffer_names=["tempered_positions"],
+        )
+        key = jax.random.PRNGKey(42)
+        key, subkey = jax.random.split(key)
+        initial_position = jax.random.normal(
+            subkey, shape=(self.n_chains, self.n_temps, self.n_dims)
+        )
+
+        return key, resources, parallel_tempering_strat, initial_position
+
+    def test_step_body(self):
+        key, resources, parallel_tempering_strat, initial_position = self.initialize()
+        mala = resources["MALA"]
+        logpdf = resources["logpdf"]
+        key, subkey = jax.random.split(key)
+        parallel_tempering_strat._step_body(
+            mala,
+            (
+                subkey,
+                initial_position[0,0],
+                logpdf(
+                    initial_position, {"temperature": 1.0}
+                ),
+                logpdf,
+                {"temperature": 1.0},
+            ),
+        )
+
+    def test_exchange_step():
+        raise NotImplementedError
+
+    def test_parallel_tempering():
+        raise NotImplementedError

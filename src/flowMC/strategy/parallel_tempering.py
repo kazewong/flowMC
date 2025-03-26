@@ -62,6 +62,11 @@ class ParallelTempering(Strategy):
         ]  # Shape (n_chains, n_temps, n_dims)
         assert isinstance(tempered_positions, Buffer)
 
+        initial_position = jnp.concatenate(
+            [initial_position[:, None, :], tempered_positions.data],
+            axis=1,
+        )
+
         # Take individual steps
 
         rng_key, subkey = jax.random.split(rng_key)
@@ -71,7 +76,7 @@ class ParallelTempering(Strategy):
                 in_axes=(0, 0, None),
             )
         )(
-            subkey, tempered_positions.data, tempered_logpdf, data
+            subkey, initial_position, tempered_logpdf, data
         )  # vmapping over chains
 
         # Exchange between temperatures
@@ -80,35 +85,33 @@ class ParallelTempering(Strategy):
 
         return rng_key, resources, final_position[0]
 
+    @staticmethod
     def _step_body(
-        self,
         kernel: ProposalBase,
         carry: tuple[
             PRNGKeyArray,
-            Float[Array, "n_temps n_dims"],
-            Float[Array, "n_temps 1"],
+            Float[Array, " n_dims"],
+            Float[Array, "1"],
             TemperedPDF,
             dict,
         ],
     ) -> tuple[
         tuple[
             PRNGKeyArray,
-            Float[Array, "n_temps n_dims"],
-            Float[Array, "n_temps 1"],
+            Float[Array, " n_dims"],
+            Float[Array, "1"],
             TemperedPDF,
             dict,
         ],
         tuple[
-            Float[Array, "n_temps n_dims"],
-            Float[Array, "n_temps 1"],
-            Int[Array, "n_temps 1"],
+            Float[Array, " n_dims"],
+            Float[Array, "1"],
+            Int[Array, "1"],
         ],
     ]:
         key, position, log_prob, logpdf, data = carry
         key, subkey = jax.random.split(key)
-        position, log_prob, do_accept = jax.vmap(
-            kernel.kernel, in_axes=(0, 0, 0, None, None)
-        )(subkey, position, log_prob, logpdf, data)
+        position, log_prob, do_accept = kernel.kernel(subkey, position, log_prob, logpdf, data)
         return (key, position, log_prob, logpdf, data), (position, log_prob, do_accept)
 
     def _individal_step(
@@ -119,17 +122,21 @@ class ParallelTempering(Strategy):
         logpdf: TemperedPDF,
         data: dict,
     ):
-        (
-            rng_key,
-            positions,
-            log_prob,
-            logpdf,
-            data,
-        ), (positions, log_prob, do_accept) = jax.lax.scan(
-            jax.tree_util.Partial(self._step_body, kernel),
-            (rng_key, positions, logpdf(positions, data), logpdf, data),
-        )
-        return positions, log_prob, do_accept
+        log_probs = logpdf(positions, data)
+        rng_key = jax.random.split(rng_key, positions.shape[0])
+        jax.vmap(self._step_body, in_axes=(None, (0, 0, 0, None, None)))(kernel, (rng_key, positions, log_probs, logpdf, data))
+        # (
+        #     rng_key,
+        #     positions,
+        #     log_prob,
+        #     logpdf,
+        #     data,
+        # ), (positions, log_prob, do_accept) = jax.lax.scan(
+        #     jax.tree_util.Partial(self._step_body, kernel),
+        #     (rng_key, positions, log_probs, logpdf, data),
+        #     length=self.n_steps,
+        # )
+        # return positions, log_prob, do_accept
 
     def _exchange(
         self,
