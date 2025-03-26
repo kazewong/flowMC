@@ -142,9 +142,18 @@ class ParallelTempering(Strategy):
         logpdf: TemperedPDF,
         data: dict,
     ):
-        jax.vmap(self._individal_step, in_axes=(0, 0, 0, None, {"temperature": 0}))(
+        map_data = {}
+        for key in data:
+            map_data[key] = None
+        map_data['temperature'] = 0
+
+        rng_key = jax.random.split(rng_key, positions.shape[0])
+
+        positions, log_probs, do_accept = jax.vmap(self._individal_step, in_axes=(None, 0, 0, None, map_data))(
             kernel, rng_key, positions, logpdf, data
         )
+
+        return positions, log_probs, do_accept
 
     def _exchange(
         self,

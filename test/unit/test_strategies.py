@@ -312,6 +312,8 @@ class TestTemperingStrategies:
             mala, (key, position, log_prob, logpdf, data), None
         )
 
+        # TODO: Add assertions
+
 
     def test_individual_step(self):
         key, resources, parallel_tempering_strat, initial_position = self.initialize()
@@ -326,6 +328,25 @@ class TestTemperingStrategies:
             {"temperature": jnp.array(1)},
         )
         print(positions, log_probs, do_accept)
+
+        # TODO: Add assertions
+
+    def test_ensemble_step(self):
+        key, resources, parallel_tempering_strat, initial_position = self.initialize()
+        mala = resources["MALA"]
+        logpdf = resources["logpdf"]
+
+        positions, log_probs, do_accept = parallel_tempering_strat._ensemble_step(
+            mala,
+            key,
+            initial_position[0],
+            logpdf,
+            {"temperature": jnp.arange(self.n_temps)+1},
+        )
+
+        print(positions, log_probs, do_accept)
+
+        # TODO: Add assertions
 
 
     def test_exchange_step():
