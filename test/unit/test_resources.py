@@ -43,18 +43,19 @@ class TestLogPDF:
         key, resources, positions = stepper(rng_key, resources, initial_position, data)
 
     def test_tempered_pdf(self):
+        n_temps = 5
         logpdf = TemperedPDF(
             self.posterior,
-            lambda x, data: jnp.zeros(x.shape[0]),
+            lambda x, data: jnp.zeros(1),
             n_dims=self.n_dims,
-            n_temps=5,
+            n_temps=n_temps,
             max_temp=100,
         )
-        inputs = jnp.arange(self.n_dims).astype(jnp.float32)
-        data = {"data": jnp.ones(self.n_dims)}
-        values = logpdf(inputs, data)
-        assert values[0] == self.posterior(inputs, data)
-        assert values.shape == (5,)
+        inputs = jnp.ones((n_temps, self.n_dims)).astype(jnp.float32)
+        data = {"data": jnp.ones(self.n_dims), "temperature": jnp.ones(n_temps)}
+        values = jax.vmap(logpdf, in_axes=(0, {"data":None, "temperature":0}))(inputs, data)
+        assert (values[:, 0] == jax.vmap(self.posterior, in_axes=(0, None))(inputs, data)).all()
+        assert values.shape == (5,1)
 
 
 class TestBuffer:
