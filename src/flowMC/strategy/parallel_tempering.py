@@ -3,7 +3,7 @@ from flowMC.resource.local_kernel.base import ProposalBase
 from flowMC.resource.buffers import Buffer
 from flowMC.resource.logPDF import TemperedPDF
 from flowMC.strategy.base import Strategy
-from jaxtyping import Array, Float, PRNGKeyArray, Int
+from jaxtyping import Array, Float, PRNGKeyArray, Int, Bool
 import jax
 import jax.numpy as jnp
 import equinox as eqx
@@ -70,13 +70,14 @@ class ParallelTempering(Strategy):
         # Take individual steps
 
         rng_key, subkey = jax.random.split(rng_key)
-        positions, log_probs, do_accepts = eqx.filter_jit(
-            eqx.filter_vmap(
-                jax.tree_util.Partial(self._individal_step, kernel),
-                in_axes=(0, 0, None),
+        subkey = jax.random.split(subkey, initial_position.shape[0])
+        positions, log_probs, do_accepts = jax.jit(
+            jax.vmap(
+                self._ensemble_step,
+                in_axes=(None, 0, 0, None, None),
             )
         )(
-            subkey, initial_position, tempered_logpdf, data
+            kernel, subkey, initial_position, tempered_logpdf, data
         )  # vmapping over chains
 
         # Exchange between temperatures
@@ -86,7 +87,7 @@ class ParallelTempering(Strategy):
         return rng_key, resources, final_position[0]
 
     @staticmethod
-    def _step_body(
+    def _individual_step_body(
         kernel: ProposalBase,
         carry: tuple[
             PRNGKeyArray,
@@ -95,7 +96,7 @@ class ParallelTempering(Strategy):
             TemperedPDF,
             dict,
         ],
-        aux
+        aux,
     ) -> tuple[
         tuple[
             PRNGKeyArray,
@@ -126,11 +127,13 @@ class ParallelTempering(Strategy):
         data: dict,
     ):
         log_probs = logpdf(positions, data)
-        
-        (key, position, log_prob, logpdf, data), (positions, log_probs, do_accept) = jax.lax.scan(
-            jax.tree_util.Partial(self._step_body, kernel),
-            ((rng_key, positions, log_probs, logpdf, data)),
-            length=self.n_steps,
+
+        (key, position, log_prob, logpdf, data), (positions, log_probs, do_accept) = (
+            jax.lax.scan(
+                jax.tree_util.Partial(self._individual_step_body, kernel),
+                ((rng_key, positions, log_probs, logpdf, data)),
+                length=self.n_steps,
+            )
         )
         return positions, log_probs, do_accept
 
@@ -145,23 +148,58 @@ class ParallelTempering(Strategy):
         map_data = {}
         for key in data:
             map_data[key] = None
-        map_data['temperature'] = 0
+        map_data["temperature"] = 0
 
         rng_key = jax.random.split(rng_key, positions.shape[0])
 
-        positions, log_probs, do_accept = jax.vmap(self._individal_step, in_axes=(None, 0, 0, None, map_data))(
-            kernel, rng_key, positions, logpdf, data
-        )
+        positions, log_probs, do_accept = jax.vmap(
+            self._individal_step, in_axes=(None, 0, 0, None, map_data)
+        )(kernel, rng_key, positions, logpdf, data)
 
         return positions, log_probs, do_accept
 
+    @staticmethod
+    def _exchange_step_body(
+        carry: tuple[
+            PRNGKeyArray,
+            Float[Array, "n_temps n_dims"],
+            Float[Array, " n_temps"],
+            Float[Array, " n_temps"],
+            int,
+        ],
+        aux,
+    ):
+        key, positions, log_probs, temperatures, idx = carry
+        key, subkey = jax.random.split(key)
+        ratio = (temperatures[idx + 1] - temperatures[idx]) * (
+            log_probs[idx + 1] - log_probs[idx]
+        )
+        log_uniform = jnp.log(jax.random.uniform(subkey))
+        do_accept: Bool[Array, " 1"] = log_uniform < ratio
+        swapped = jnp.flip(jax.lax.dynamic_slice_in_dim(positions, idx, 2, axis=0))
+        positions = jax.lax.cond(
+            do_accept,
+            true_fun=lambda : jax.lax.dynamic_update_slice_in_dim(positions, swapped, idx, axis=0),
+            false_fun=lambda : positions,
+        )
+        swapped = jnp.flip(jax.lax.dynamic_slice_in_dim(log_probs, idx, 2, axis=0))
+        log_probs = jax.lax.cond(
+            do_accept,
+            true_fun=lambda : jax.lax.dynamic_update_slice_in_dim(log_probs, swapped, idx, axis=0),
+            false_fun=lambda : log_probs,
+        )
+        return (key, positions, log_probs, temperatures, idx), do_accept
+
     def _exchange(
         self,
+        key: PRNGKeyArray,
         positions: Float[Array, "n_temps n_dims"],
-        kernel: ProposalBase,
-        logpdf: TemperedPDF,
+        log_probs: Float[Array, " n_temps"],
+        temperatures: Float[Array, " n_temps"],
     ):
-        raise NotImplementedError
-        # log_prob_temps = jax.vmap(logpdf, in_axes=(0, None))(
-        #     positions, None
-        # ) * evaluate_temps(temps_pdf, positions, temperatures)
+        (key, positions, log_probs, temperatures, idx), do_accept = jax.lax.scan(
+            self._exchange_step_body,
+            (key, positions, log_probs, temperatures, 0),
+            length=temperatures.shape[0] - 1,
+        )
+        return positions, log_probs, do_accept
