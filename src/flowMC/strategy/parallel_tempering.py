@@ -95,6 +95,7 @@ class ParallelTempering(Strategy):
             TemperedPDF,
             dict,
         ],
+        aux
     ) -> tuple[
         tuple[
             PRNGKeyArray,
@@ -111,10 +112,29 @@ class ParallelTempering(Strategy):
     ]:
         key, position, log_prob, logpdf, data = carry
         key, subkey = jax.random.split(key)
-        position, log_prob, do_accept = kernel.kernel(subkey, position, log_prob, logpdf, data)
+        position, log_prob, do_accept = kernel.kernel(
+            subkey, position, log_prob, logpdf, data
+        )
         return (key, position, log_prob, logpdf, data), (position, log_prob, do_accept)
 
     def _individal_step(
+        self,
+        kernel: ProposalBase,
+        rng_key: PRNGKeyArray,
+        positions: Float[Array, " n_dims"],
+        logpdf: TemperedPDF,
+        data: dict,
+    ):
+        log_probs = logpdf(positions, data)
+        
+        (key, position, log_prob, logpdf, data), (positions, log_probs, do_accept) = jax.lax.scan(
+            jax.tree_util.Partial(self._step_body, kernel),
+            ((rng_key, positions, log_probs, logpdf, data)),
+            length=self.n_steps,
+        )
+        return positions, log_probs, do_accept
+
+    def _ensemble_step(
         self,
         kernel: ProposalBase,
         rng_key: PRNGKeyArray,
@@ -122,21 +142,9 @@ class ParallelTempering(Strategy):
         logpdf: TemperedPDF,
         data: dict,
     ):
-        log_probs = logpdf(positions, data)
-        rng_key = jax.random.split(rng_key, positions.shape[0])
-        jax.vmap(self._step_body, in_axes=(None, (0, 0, 0, None, None)))(kernel, (rng_key, positions, log_probs, logpdf, data))
-        # (
-        #     rng_key,
-        #     positions,
-        #     log_prob,
-        #     logpdf,
-        #     data,
-        # ), (positions, log_prob, do_accept) = jax.lax.scan(
-        #     jax.tree_util.Partial(self._step_body, kernel),
-        #     (rng_key, positions, log_probs, logpdf, data),
-        #     length=self.n_steps,
-        # )
-        # return positions, log_prob, do_accept
+        jax.vmap(self._individal_step, in_axes=(0, 0, 0, None, {"temperature": 0}))(
+            kernel, rng_key, positions, logpdf, data
+        )
 
     def _exchange(
         self,

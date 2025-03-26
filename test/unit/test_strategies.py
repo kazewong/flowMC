@@ -269,11 +269,12 @@ class TestTemperingStrategies:
     n_temps = 5
     n_dims = 3
     n_chains = 7
+    n_steps = 4
 
     def initialize(self):
         mala = MALA(1.0)
         logpdf = TemperedPDF(
-            log_posterior, lambda x, data: jnp.array(0.0), n_dims=3, n_temps=5
+            log_posterior, lambda x, data: jnp.array(0.0), n_dims=self.n_dims, n_temps=self.n_temps
         )
         tempered_positions = Buffer(
             "tempered_positions", (self.n_chains, self.n_temps, self.n_dims), 2
@@ -286,7 +287,7 @@ class TestTemperingStrategies:
         }
 
         parallel_tempering_strat = ParallelTempering(
-            n_steps=5,
+            n_steps=self.n_steps,
             tempered_logpdf_name="tempered_logpdf",
             kernel_name="MALA",
             tempered_buffer_names=["tempered_positions"],
@@ -304,18 +305,28 @@ class TestTemperingStrategies:
         mala = resources["MALA"]
         logpdf = resources["logpdf"]
         key, subkey = jax.random.split(key)
+        position = initial_position[0, 0]
+        log_prob = logpdf(position, {"temperature": jnp.array(1)})
+        data = {"temperature": jnp.array(1)}
         parallel_tempering_strat._step_body(
-            mala,
-            (
-                subkey,
-                initial_position[0,0],
-                logpdf(
-                    initial_position, {"temperature": 1.0}
-                ),
-                logpdf,
-                {"temperature": 1.0},
-            ),
+            mala, (key, position, log_prob, logpdf, data), None
         )
+
+
+    def test_individual_step(self):
+        key, resources, parallel_tempering_strat, initial_position = self.initialize()
+        mala = resources["MALA"]
+        logpdf = resources["logpdf"]
+
+        positions, log_probs, do_accept = parallel_tempering_strat._individal_step(
+            mala,
+            key,
+            initial_position[0,0],
+            logpdf,
+            {"temperature": jnp.array(1)},
+        )
+        print(positions, log_probs, do_accept)
+
 
     def test_exchange_step():
         raise NotImplementedError
