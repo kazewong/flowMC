@@ -349,8 +349,8 @@ class TestTemperingStrategies:
         # TODO: Add assertions
 
 
-    def test_exchange_step():
+    def test_exchange_step(self):
         raise NotImplementedError
 
-    def test_parallel_tempering():
+    def test_parallel_tempering(self):
         raise NotImplementedError
