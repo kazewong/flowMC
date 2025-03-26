@@ -336,15 +336,25 @@ class TestTemperingStrategies:
         mala = resources["MALA"]
         logpdf = resources["logpdf"]
 
+        key, subkey = jax.random.split(key)
         positions, log_probs, do_accept = parallel_tempering_strat._ensemble_step(
             mala,
-            key,
+            subkey,
             initial_position[0],
             logpdf,
             {"temperature": jnp.arange(self.n_temps)+1},
         )
 
-        print(positions, log_probs, do_accept)
+        # TODO: Add assertions
+
+        keys = jax.random.split(key, self.n_chains)
+        positions, log_probs, do_accept = jax.vmap(parallel_tempering_strat._ensemble_step, in_axes=(None, 0, 0, None, None))(
+            mala,
+            keys,
+            initial_position,
+            logpdf,
+            {"temperature": jnp.arange(self.n_temps)+1},
+        )
 
         # TODO: Add assertions
 
