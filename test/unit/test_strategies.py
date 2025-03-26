@@ -308,6 +308,7 @@ class TestTemperingStrategies:
             tempered_logpdf_name="tempered_logpdf",
             kernel_name="MALA",
             tempered_buffer_names=["tempered_positions"],
+            data_keys=["data"],
         )
 
         return key, resources, parallel_tempering_strat, initial_position
@@ -388,9 +389,9 @@ class TestTemperingStrategies:
             {"temperature": temperatures, "data": jnp.arange(self.n_dims)},
         )
         key = jax.random.split(key, self.n_chains)
-        positions, log_probs, do_accept = jax.vmap(
+        positions, log_probs, do_accept = jax.jit(jax.vmap(
             parallel_tempering_strat._exchange, in_axes=(0, 0, 0, None)
-        )(key, initial_position, log_probs, temperatures)
+        ))(key, initial_position, logpdf, {"temperature": temperatures, "data": jnp.arange(self.n_dims)})
         print(positions, log_probs, do_accept)
 
     # def test_parallel_tempering(self):
