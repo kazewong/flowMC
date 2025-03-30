@@ -76,8 +76,8 @@ class ParallelTempering(Strategy):
 
         rng_key, subkey = jax.random.split(rng_key)
         subkey = jax.random.split(subkey, initial_position.shape[0])
-        positions, log_probs, do_accepts = jax.jit(
-            jax.vmap(
+        positions, log_probs, do_accepts = eqx.filter_jit(
+            eqx.filter_vmap(
                 jax.tree_util.Partial(self._ensemble_step, kernel),
                 in_axes=(0, 0, None, None),
             )
@@ -99,8 +99,8 @@ class ParallelTempering(Strategy):
 
         return rng_key, resources, positions[:, 0]
 
-    @staticmethod
     def _individual_step_body(
+        self,
         kernel: ProposalBase,
         carry: tuple[
             PRNGKeyArray,
