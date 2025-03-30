@@ -85,17 +85,21 @@ class ParallelTempering(Strategy):
             subkey, initial_position, tempered_logpdf, data
         )  # vmapping over chains
 
+        print("do_accepts", do_accepts)
+
         # Exchange between temperatures
 
         rng_key, subkey = jax.random.split(rng_key)
         subkey = jax.random.split(subkey, initial_position.shape[0])
         positions, log_probs, do_accept = jax.jit(
             jax.vmap(self._exchange, in_axes=(0, 0, 0, None))
-        )(subkey, initial_position, tempered_logpdf, data)
+        )(subkey, positions, tempered_logpdf, data)
 
         # Update the buffers
 
         tempered_positions.update_buffer(positions[:, 1:], 0)
+
+        print("do_accepts", do_accepts)
 
         return rng_key, resources, positions[:, 0]
 
@@ -148,7 +152,7 @@ class ParallelTempering(Strategy):
                 length=self.n_steps,
             )
         )
-        return positions, log_probs, do_accept
+        return position, log_prob, do_accept
 
     def _ensemble_step(
         self,

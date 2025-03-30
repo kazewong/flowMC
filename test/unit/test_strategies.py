@@ -20,7 +20,7 @@ from flowMC.strategy.parallel_tempering import ParallelTempering
 
 
 def log_posterior(x, data={}):
-    return -0.5 * jnp.sum((x - data["data"]))
+    return -0.5 * jnp.sum((x - data["data"])**2)
 
 
 class TestOptimizationStrategies:
@@ -321,32 +321,39 @@ class TestTemperingStrategies:
         mala = resources["MALA"]
         logpdf = resources["logpdf"]
         key, subkey = jax.random.split(key)
-        position = initial_position[0, 0]
-        log_prob = logpdf(
-            position, {"temperature": jnp.array(1), "data": jnp.arange(self.n_dims)}
-        )
+        position = initial_position[0]
         data = {"temperature": jnp.array(1), "data": jnp.arange(self.n_dims)}
-        parallel_tempering_strat._individual_step_body(
+
+        log_prob = logpdf(
+            position, data
+        )
+        carry, extras = parallel_tempering_strat._individual_step_body(
             mala, (key, position, log_prob, logpdf, data), None
         )
 
         # TODO: Add assertions
 
+        assert carry[1].shape == (self.n_dims,)
+
     def test_individual_step(self):
         key, resources, parallel_tempering_strat, initial_position = self.initialize()
         mala = resources["MALA"]
         logpdf = resources["logpdf"]
+        initial_position = jnp.concatenate(
+            [initial_position[:, None, :], resources["tempered_positions"].data],
+            axis=1,
+        )
 
         positions, log_probs, do_accept = parallel_tempering_strat._individal_step(
             mala,
             key,
-            initial_position[0, 0],
+            initial_position[0,0],
             logpdf,
             {"temperature": jnp.array(1), "data": jnp.arange(self.n_dims)},
         )
-        print(positions, log_probs, do_accept)
 
         # TODO: Add assertions
+        assert positions.shape == (self.n_dims,)
 
     def test_ensemble_step(self):
         key, resources, parallel_tempering_strat, initial_position = self.initialize()
@@ -384,8 +391,6 @@ class TestTemperingStrategies:
             },
         )
 
-        print(positions, log_probs, do_accept)
-
         # TODO: Add assertions
 
     def test_exchange_step(self):
@@ -409,7 +414,6 @@ class TestTemperingStrategies:
             logpdf,
             {"temperature": temperatures, "data": jnp.arange(self.n_dims)},
         )
-        print(positions, log_probs, do_accept)
 
     def test_parallel_tempering(self):
         key, resources, parallel_tempering_strat, initial_position = self.initialize()
