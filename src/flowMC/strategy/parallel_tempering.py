@@ -85,8 +85,6 @@ class ParallelTempering(Strategy):
             subkey, initial_position, tempered_logpdf, data
         )  # vmapping over chains
 
-        print("do_accepts", do_accepts)
-
         # Exchange between temperatures
 
         rng_key, subkey = jax.random.split(rng_key)
@@ -98,8 +96,6 @@ class ParallelTempering(Strategy):
         # Update the buffers
 
         tempered_positions.update_buffer(positions[:, 1:], 0)
-
-        print("do_accepts", do_accepts)
 
         return rng_key, resources, positions[:, 0]
 
