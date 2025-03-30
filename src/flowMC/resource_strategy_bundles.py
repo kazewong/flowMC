@@ -121,35 +121,6 @@ class RQSpline_MALA_Bundle(ResourceStrategyBundle):
         }
 
         self.strategies = {
-            "local_global_sampler": LocalGlobalNFSample(
-                "logpdf",
-                "local_sampler",
-                "global_sampler",
-                [
-                    "positions_training",
-                    "log_prob_training",
-                    "local_accs_training",
-                    "global_accs_training",
-                ],
-                ["model", "positions_training", "optimizer"],
-                [
-                    "positions_training",
-                    "log_prob_training",
-                    "local_accs_training",
-                    "global_accs_training",
-                ],
-                n_local_steps,
-                n_global_steps,
-                n_training_loops,
-                n_epochs,
-                batch_size=batch_size,
-                n_max_examples=n_max_examples,
-                training=True,
-                verbose=verbose,
-            )
-        }
-
-        self.strategies = {
             "training_sampler": LocalGlobalNFSample(
                 "logpdf",
                 "local_sampler",
