@@ -72,6 +72,7 @@ class Sampler:
                 )
             self.resources = resource_strategy_bundles.resources
             self.strategies = resource_strategy_bundles.strategies
+            self.strategy_order = resource_strategy_bundles.strategy_order
 
         # Set and override any given hyperparameters
         class_keys = list(self.__class__.__dict__.keys())
