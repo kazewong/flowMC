@@ -162,7 +162,8 @@ class RQSpline_MALA_Bundle(ResourceStrategyBundle):
                 training=False,
                 verbose=verbose,
             ),
-        ]
+        }
+        self.strategy_order = ["training_sampler", "production_sampler"]
 
 class ParllelTempering_Bundle(ResourceStrategyBundle):
     """A bundle that uses a Rational Quadratic Spline as a normalizing flow model and
