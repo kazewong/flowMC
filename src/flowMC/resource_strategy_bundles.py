@@ -24,7 +24,8 @@ class ResourceStrategyBundle(ABC):
     """
 
     resources: dict[str, Resource]
-    strategies: list[Strategy]
+    strategies: dict[str, Strategy]
+    strategy_order: list[str]
 
 
 class RQSpline_MALA_Bundle(ResourceStrategyBundle):
@@ -119,8 +120,8 @@ class RQSpline_MALA_Bundle(ResourceStrategyBundle):
             "optimizer": optimizer,
         }
 
-        self.strategies = [
-            LocalGlobalNFSample(
+        self.strategies = {
+            "training_sampler": LocalGlobalNFSample(
                 "logpdf",
                 "local_sampler",
                 "global_sampler",
@@ -137,7 +138,7 @@ class RQSpline_MALA_Bundle(ResourceStrategyBundle):
                 training=True,
                 verbose=verbose,
             ),
-            LocalGlobalNFSample(
+            "production_sampler": LocalGlobalNFSample(
                 "logpdf",
                 "local_sampler",
                 "global_sampler",

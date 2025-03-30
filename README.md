@@ -10,6 +10,9 @@
 </a>
 <a href='https://coveralls.io/github/kazewong/flowMC?branch=main'><img src='https://img.shields.io/coverallsCoverage/github/kazewong/flowMC?style=flat-square' alt='Coverage Status' /></a>
 
+> [!WARNING]
+> Note that `flowMC` has not reached v1.0.0, meaning the API could subject to changes. In general, the higher level the API, the less likely it is going to change. However, intermediate level API such as the resource strategy interface could subject to major revision for performance concerns.
+
 ![flowMC_logo](./docs/logo_0810.png)
 
 flowMC is a Jax-based python package for normalizing-flow enhanced Markov chain Monte Carlo (MCMC) sampling.
