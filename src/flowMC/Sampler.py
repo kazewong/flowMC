@@ -98,7 +98,9 @@ class Sampler:
                 rng_key,
                 self.resources,
                 last_step,
-            ) = self.strategies[strategy](rng_key, self.resources, last_step, data)
+            ) = self.strategies[
+                strategy
+            ](rng_key, self.resources, last_step, data)
 
     # TODO: Implement quick access and summary functions that operates on buffer
 
