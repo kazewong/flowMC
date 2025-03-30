@@ -162,3 +162,35 @@ class RQSpline_MALA_Bundle(ResourceStrategyBundle):
                 verbose=verbose,
             ),
         ]
+
+class ParllelTempering_Bundle(ResourceStrategyBundle):
+    """A bundle that uses a Rational Quadratic Spline as a normalizing flow model and
+    the Metropolis Adjusted Langevin Algorithm as a local sampler.
+
+    """
+
+    def __repr__(self):
+        return "Parallel Tempering"
+
+    def __init__(
+        self,
+        rng_key: PRNGKeyArray,
+        n_chains: int,
+        n_dims: int,
+        n_temps: int,
+        logpdf: Callable[[Float[Array, " n_dim"], dict], Float],
+        n_steps: int,
+        n_loops: int,
+        data_keys: list[str],
+        verbose: bool = False,
+    ):
+        positions = Buffer("positions", (n_chains, n_dims), 1)
+        log_prob = Buffer("log_prob", (n_chains,), 1)
+        acceptance = Buffer("acceptance", (n_chains,), 1)
+        tempered_positions = Buffer(
+            "tempered_positions", (n_chains, n_temps, n_dims), 1
+        )
+
+
+        normal_stepper = MALA(step_size=1e-1)
+        
