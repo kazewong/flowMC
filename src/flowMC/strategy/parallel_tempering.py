@@ -78,18 +78,26 @@ class ParallelTempering(Strategy):
         subkey = jax.random.split(subkey, initial_position.shape[0])
         positions, log_probs, do_accepts = jax.jit(
             jax.vmap(
-                self._ensemble_step,
-                in_axes=(None, 0, 0, None, None),
+                jax.tree_util.Partial(self._ensemble_step, kernel),
+                in_axes=(0, 0, None, None),
             )
         )(
-            kernel, subkey, initial_position, tempered_logpdf, data
+            subkey, initial_position, tempered_logpdf, data
         )  # vmapping over chains
 
         # Exchange between temperatures
 
-        position
+        rng_key, subkey = jax.random.split(rng_key)
+        subkey = jax.random.split(subkey, initial_position.shape[0])
+        positions, log_probs, do_accept = jax.jit(
+            jax.vmap(self._exchange, in_axes=(0, 0, 0, None))
+        )(subkey, initial_position, tempered_logpdf, data)
 
-        return rng_key, resources, final_position[0]
+        # Update the buffers
+
+        tempered_positions.update_buffer(positions[:, 1:], 0)
+
+        return rng_key, resources, positions[:, 0]
 
     @staticmethod
     def _individual_step_body(
@@ -175,7 +183,9 @@ class ParallelTempering(Strategy):
 
         temperatures = data["temperature"]
         local_data = {key: data[key] for key in self.map_data.keys()}
-        local_data["temperature"] = jax.lax.dynamic_slice_in_dim(temperatures, idx, 2, axis=0)
+        local_data["temperature"] = jax.lax.dynamic_slice_in_dim(
+            temperatures, idx, 2, axis=0
+        )
         key, subkey = jax.random.split(key)
         ratio = (temperatures[idx + 1] - temperatures[idx]) * (
             log_probs[idx + 1] - log_probs[idx]
@@ -190,7 +200,9 @@ class ParallelTempering(Strategy):
             ),
             false_fun=lambda: positions,
         )
-        swapped_log_probs = jax.vmap(logpdf, in_axes=(0, self.map_data))(swapped, local_data)
+        swapped_log_probs = jax.vmap(logpdf, in_axes=(0, self.map_data))(
+            swapped, local_data
+        )
         log_probs = jax.lax.cond(
             do_accept,
             true_fun=lambda: jax.lax.dynamic_update_slice_in_dim(
@@ -208,11 +220,9 @@ class ParallelTempering(Strategy):
         data: dict,
     ):
         log_probs = jax.vmap(logpdf, in_axes=(0, self.map_data))(positions, data)
-        (key, positions, log_probs, idx, logpdf, data), do_accept = (
-            jax.lax.scan(
-                self._exchange_step_body,
-                (key, positions, log_probs, 0, logpdf, data),
-                length=positions.shape[0] - 1,
-            )
+        (key, positions, log_probs, idx, logpdf, data), do_accept = jax.lax.scan(
+            self._exchange_step_body,
+            (key, positions, log_probs, 0, logpdf, data),
+            length=positions.shape[0] - 1,
         )
         return positions, log_probs, do_accept

@@ -286,16 +286,19 @@ class TestTemperingStrategies:
             n_dims=self.n_dims,
             n_temps=self.n_temps,
         )
-        tempered_positions = Buffer(
-            "tempered_positions", (self.n_chains, self.n_temps, self.n_dims), 2
-        )
+
         key = jax.random.PRNGKey(42)
         key, subkey = jax.random.split(key)
 
-        initial_position = jax.random.normal(
-            subkey, shape=(self.n_chains, self.n_temps, self.n_dims)
+        initial_position = jax.random.normal(subkey, shape=(self.n_chains, self.n_dims))
+        key, subkey = jax.random.split(key)
+        tempered_initial_position = jax.random.normal(
+            subkey, shape=(self.n_chains, self.n_temps - 1, self.n_dims)
         )
-        tempered_positions.update_buffer(initial_position)
+        tempered_positions = Buffer(
+            "tempered_positions", (self.n_chains, self.n_temps - 1, self.n_dims), 2
+        )
+        tempered_positions.update_buffer(tempered_initial_position)
 
         resources = {
             "logpdf": logpdf,
@@ -305,7 +308,7 @@ class TestTemperingStrategies:
 
         parallel_tempering_strat = ParallelTempering(
             n_steps=self.n_steps,
-            tempered_logpdf_name="tempered_logpdf",
+            tempered_logpdf_name="logpdf",
             kernel_name="MALA",
             tempered_buffer_names=["tempered_positions"],
             data_keys=["data"],
@@ -349,7 +352,10 @@ class TestTemperingStrategies:
         key, resources, parallel_tempering_strat, initial_position = self.initialize()
         mala = resources["MALA"]
         logpdf = resources["logpdf"]
-
+        initial_position = jnp.concatenate(
+            [initial_position[:, None, :], resources["tempered_positions"].data],
+            axis=1,
+        )
         key, subkey = jax.random.split(key)
         positions, log_probs, do_accept = parallel_tempering_strat._ensemble_step(
             mala,
@@ -378,21 +384,43 @@ class TestTemperingStrategies:
             },
         )
 
+        print(positions, log_probs, do_accept)
+
         # TODO: Add assertions
 
     def test_exchange_step(self):
         key, resources, parallel_tempering_strat, initial_position = self.initialize()
         logpdf = resources["logpdf"]
-        temperatures = jnp.arange(self.n_temps)*0.3 + 1
+        temperatures = jnp.arange(self.n_temps) * 0.3 + 1
         log_probs = jax.vmap(logpdf, in_axes=(0, None))(
             initial_position,
             {"temperature": temperatures, "data": jnp.arange(self.n_dims)},
         )
         key = jax.random.split(key, self.n_chains)
-        positions, log_probs, do_accept = jax.jit(jax.vmap(
-            parallel_tempering_strat._exchange, in_axes=(0, 0, 0, None)
-        ))(key, initial_position, logpdf, {"temperature": temperatures, "data": jnp.arange(self.n_dims)})
+        initial_position = jnp.concatenate(
+            [initial_position[:, None, :], resources["tempered_positions"].data],
+            axis=1,
+        )
+        positions, log_probs, do_accept = jax.jit(
+            jax.vmap(parallel_tempering_strat._exchange, in_axes=(0, 0, 0, None))
+        )(
+            key,
+            initial_position,
+            logpdf,
+            {"temperature": temperatures, "data": jnp.arange(self.n_dims)},
+        )
         print(positions, log_probs, do_accept)
 
-    # def test_parallel_tempering(self):
-    #     raise NotImplementedError
+    def test_parallel_tempering(self):
+        key, resources, parallel_tempering_strat, initial_position = self.initialize()
+        key, subkey = jax.random.split(key)
+        rng_key, resources, positions = parallel_tempering_strat(
+            key,
+            resources,
+            initial_position,
+            {
+                "temperature": jnp.arange(self.n_temps) + 1,
+                "data": jnp.arange(self.n_dims),
+            },
+        )
+        print(positions)
