@@ -24,7 +24,8 @@ class ResourceStrategyBundle(ABC):
     """
 
     resources: dict[str, Resource]
-    strategies: list[Strategy]
+    strategies: dict[str, Strategy]
+    strategy_order: list[str]
 
 
 class RQSpline_MALA_Bundle(ResourceStrategyBundle):
@@ -119,25 +120,63 @@ class RQSpline_MALA_Bundle(ResourceStrategyBundle):
             "optimizer": optimizer,
         }
 
-        self.strategies = [
-            LocalGlobalNFSample(
+        self.strategies = {
+            "local_global_sampler": LocalGlobalNFSample(
                 "logpdf",
                 "local_sampler",
                 "global_sampler",
-                ["positions_training", "log_prob_training", "local_accs_training"],
+                [
+                    "positions_training",
+                    "log_prob_training",
+                    "local_accs_training",
+                    "global_accs_training",
+                ],
                 ["model", "positions_training", "optimizer"],
-                ["positions_training", "log_prob_training", "global_accs_training"],
+                [
+                    "positions_training",
+                    "log_prob_training",
+                    "local_accs_training",
+                    "global_accs_training",
+                ],
                 n_local_steps,
                 n_global_steps,
                 n_training_loops,
                 n_epochs,
-                loss_buffer_name="loss_buffer",
+                batch_size=batch_size,
+                n_max_examples=n_max_examples,
+                training=True,
+                verbose=verbose,
+            )
+        }
+
+        self.strategies = {
+            "training_sampler": LocalGlobalNFSample(
+                "logpdf",
+                "local_sampler",
+                "global_sampler",
+                [
+                    "positions_training",
+                    "log_prob_training",
+                    "local_accs_training",
+                    "global_accs_training",
+                ],
+                ["model", "positions_training", "optimizer"],
+                [
+                    "positions_training",
+                    "log_prob_training",
+                    "local_accs_training",
+                    "global_accs_training",
+                ],
+                n_local_steps,
+                n_global_steps,
+                n_training_loops,
+                n_epochs,
                 batch_size=batch_size,
                 n_max_examples=n_max_examples,
                 training=True,
                 verbose=verbose,
             ),
-            LocalGlobalNFSample(
+            "production_sampler": LocalGlobalNFSample(
                 "logpdf",
                 "local_sampler",
                 "global_sampler",
@@ -145,11 +184,13 @@ class RQSpline_MALA_Bundle(ResourceStrategyBundle):
                     "positions_production",
                     "log_prob_production",
                     "local_accs_production",
+                    "global_accs_production",
                 ],
                 ["model", "positions_production", "optimizer"],
                 [
                     "positions_production",
                     "log_prob_production",
+                    "local_accs_production",
                     "global_accs_production",
                 ],
                 n_local_steps,
@@ -161,4 +202,5 @@ class RQSpline_MALA_Bundle(ResourceStrategyBundle):
                 training=False,
                 verbose=verbose,
             ),
-        ]
+        }
+        self.strategy_order = ["training_sampler", "production_sampler"]
