@@ -103,6 +103,10 @@ class TemperedPDF(LogPDF):
         temperature = data['temperature']
         base_pdf = super().__call__(x, data)
         return (1.0 / temperature) * base_pdf + self.log_prior(x, data)
+    
+    def original_log_pdf(self, x, data):
+        """Returns the original log pdf (without temperature)"""
+        return super().__call__(x, data)
 
     def tree_flatten(self):  # type: ignore
         children = ()

@@ -93,6 +93,8 @@ class ParallelTempering(Strategy):
             jax.vmap(self._exchange, in_axes=(0, 0, 0, None))
         )(subkey, positions, tempered_logpdf, data)
 
+        print("do_accept", do_accept)
+
         # Update the buffers
 
         tempered_positions.update_buffer(positions[:, 1:], 0)
@@ -187,9 +189,10 @@ class ParallelTempering(Strategy):
             temperatures, idx, 2, axis=0
         )
         key, subkey = jax.random.split(key)
-        ratio = (temperatures[idx + 1] - temperatures[idx]) * (
-            log_probs[idx + 1] - log_probs[idx]
+        ratio = (1./temperatures[idx + 1] - 1./temperatures[idx]) * (
+            log_probs[idx] - log_probs[idx + 1]
         )
+        # jax.debug.print("ratio: {}, temperature 1: {}, temperature 2: {}, log_probs1: {}, log_probs2: {}", ratio, temperatures[idx], temperatures[idx + 1], log_probs[idx], log_probs[idx + 1])
         log_uniform = jnp.log(jax.random.uniform(subkey))
         do_accept: Bool[Array, " 1"] = log_uniform < ratio
         swapped = jnp.flip(jax.lax.dynamic_slice_in_dim(positions, idx, 2, axis=0))
@@ -219,7 +222,7 @@ class ParallelTempering(Strategy):
         logpdf: TemperedPDF,
         data: dict,
     ):
-        log_probs = jax.vmap(logpdf, in_axes=(0, self.map_data))(positions, data)
+        log_probs = jax.vmap(logpdf.original_log_pdf, in_axes=(0, None))(positions, data)
         (key, positions, log_probs, idx, logpdf, data), do_accept = jax.lax.scan(
             self._exchange_step_body,
             (key, positions, log_probs, 0, logpdf, data),
