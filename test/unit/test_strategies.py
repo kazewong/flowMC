@@ -1,7 +1,6 @@
 import jax
 import jax.numpy as jnp
 from jaxtyping import Array, Float
-import equinox as eqx
 
 from flowMC.resource.nf_model.rqSpline import MaskedCouplingRQSpline
 from flowMC.resource.optimizer import Optimizer
@@ -20,7 +19,7 @@ from flowMC.strategy.parallel_tempering import ParallelTempering
 
 
 def log_posterior(x, data={}):
-    return -0.5 * jnp.sum((x - data["data"])**2)
+    return -0.5 * jnp.sum((x - data["data"]) ** 2)
 
 
 class TestOptimizationStrategies:
@@ -299,18 +298,21 @@ class TestTemperingStrategies:
             "tempered_positions", (self.n_chains, self.n_temps - 1, self.n_dims), 2
         )
         tempered_positions.update_buffer(tempered_initial_position)
+        temperatures = Buffer("temperatures", (self.n_temps,), 0)
+        temperatures.update_buffer(jnp.arange(self.n_temps) + 1.0)
 
         resources = {
             "logpdf": logpdf,
             "MALA": mala,
             "tempered_positions": tempered_positions,
+            "temperatures": temperatures,
         }
 
         parallel_tempering_strat = ParallelTempering(
             n_steps=self.n_steps,
             tempered_logpdf_name="logpdf",
             kernel_name="MALA",
-            tempered_buffer_names=["tempered_positions"],
+            tempered_buffer_names=["tempered_positions", "temperatures"],
             data_keys=["data"],
         )
 
@@ -322,13 +324,11 @@ class TestTemperingStrategies:
         logpdf = resources["logpdf"]
         key, subkey = jax.random.split(key)
         position = initial_position[0]
-        data = {"temperature": jnp.array(1), "data": jnp.arange(self.n_dims)}
+        data = {"data": jnp.arange(self.n_dims)}
 
-        log_prob = logpdf(
-            position, data
-        )
+        log_prob = logpdf(position, data)
         carry, extras = parallel_tempering_strat._individual_step_body(
-            mala, (key, position, log_prob, logpdf, data), None
+            mala, (key, position, log_prob, logpdf, jnp.array(1.0), data), None
         )
 
         # TODO: Add assertions
@@ -347,9 +347,10 @@ class TestTemperingStrategies:
         positions, log_probs, do_accept = parallel_tempering_strat._individal_step(
             mala,
             key,
-            initial_position[0,0],
+            initial_position[0, 0],
             logpdf,
-            {"temperature": jnp.array(1), "data": jnp.arange(self.n_dims)},
+            jnp.array(1),
+            {"data": jnp.arange(self.n_dims)},
         )
 
         # TODO: Add assertions
@@ -369,8 +370,8 @@ class TestTemperingStrategies:
             subkey,
             initial_position[0],
             logpdf,
+            jnp.arange(self.n_temps) + 1.0,
             {
-                "temperature": jnp.arange(self.n_temps) + 1,
                 "data": jnp.arange(self.n_dims),
             },
         )
@@ -379,14 +380,15 @@ class TestTemperingStrategies:
 
         keys = jax.random.split(key, self.n_chains)
         positions, log_probs, do_accept = jax.vmap(
-            parallel_tempering_strat._ensemble_step, in_axes=(None, 0, 0, None, None)
+            parallel_tempering_strat._ensemble_step,
+            in_axes=(None, 0, 0, None, None, None),
         )(
             mala,
             keys,
             initial_position,
             logpdf,
+            jnp.arange(self.n_temps) + 1.0,
             {
-                "temperature": jnp.arange(self.n_temps) + 1,
                 "data": jnp.arange(self.n_dims),
             },
         )
@@ -397,9 +399,11 @@ class TestTemperingStrategies:
         key, resources, parallel_tempering_strat, initial_position = self.initialize()
         logpdf = resources["logpdf"]
         temperatures = jnp.arange(self.n_temps) * 0.3 + 1
-        log_probs = jax.vmap(logpdf, in_axes=(0, None))(
+        data = {"data": jnp.arange(self.n_dims)}
+        log_probs = jax.vmap(logpdf.tempered_log_pdf, in_axes=(None, 0, None))(
+            temperatures,
             initial_position,
-            {"temperature": temperatures, "data": jnp.arange(self.n_dims)},
+            data,
         )
         key = jax.random.split(key, self.n_chains)
         initial_position = jnp.concatenate(
@@ -407,12 +411,13 @@ class TestTemperingStrategies:
             axis=1,
         )
         positions, log_probs, do_accept = jax.jit(
-            jax.vmap(parallel_tempering_strat._exchange, in_axes=(0, 0, 0, None))
+            jax.vmap(parallel_tempering_strat._exchange, in_axes=(0, 0, 0, None, None))
         )(
             key,
             initial_position,
             logpdf,
-            {"temperature": temperatures, "data": jnp.arange(self.n_dims)},
+            temperatures,
+            {"data": jnp.arange(self.n_dims)},
         )
 
     def test_parallel_tempering(self):
@@ -423,7 +428,6 @@ class TestTemperingStrategies:
             resources,
             initial_position,
             {
-                "temperature": jnp.arange(self.n_temps) + 1,
                 "data": jnp.arange(self.n_dims),
             },
         )
