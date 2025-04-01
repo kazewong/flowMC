@@ -52,10 +52,15 @@ class TestLogPDF:
             max_temp=100,
         )
         inputs = jnp.ones((n_temps, self.n_dims)).astype(jnp.float32)
-        data = {"data": jnp.ones(self.n_dims), "temperature": jnp.ones(n_temps)}
-        values = jax.vmap(logpdf, in_axes=(0, {"data":None, "temperature":0}))(inputs, data)
-        assert (values[:, 0] == jax.vmap(self.posterior, in_axes=(0, None))(inputs, data)).all()
-        assert values.shape == (5,1)
+        data = {"data": jnp.ones(self.n_dims)}
+        temperatures = jnp.arange(n_temps) + 1.
+        values = jax.vmap(logpdf.tempered_log_pdf, in_axes=(0, 0, None))(
+            temperatures, inputs, data
+        )
+        assert (
+            values[:, 0] == jax.vmap(self.posterior, in_axes=(0, None))(inputs, data)
+        ).all()
+        assert values.shape == (5, 1)
 
 
 class TestBuffer:

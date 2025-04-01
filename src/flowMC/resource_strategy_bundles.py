@@ -165,6 +165,7 @@ class RQSpline_MALA_Bundle(ResourceStrategyBundle):
         }
         self.strategy_order = ["training_sampler", "production_sampler"]
 
+
 class ParllelTempering_Bundle(ResourceStrategyBundle):
     """A bundle that uses a Rational Quadratic Spline as a normalizing flow model and
     the Metropolis Adjusted Langevin Algorithm as a local sampler.
@@ -193,6 +194,4 @@ class ParllelTempering_Bundle(ResourceStrategyBundle):
             "tempered_positions", (n_chains, n_temps, n_dims), 1
         )
 
-
         normal_stepper = MALA(step_size=1e-1)
-        
