@@ -94,6 +94,11 @@ class Sampler:
         last_step = initial_position
         assert isinstance(self.strategy_order, list)
         for strategy in self.strategy_order:
+            if strategy not in self.strategies:
+                raise ValueError(
+                    f"Invalid strategy name '{strategy}' provided. "
+                    f"Available strategies are: {list(self.strategies.keys())}."
+                )
             (
                 rng_key,
                 self.resources,
