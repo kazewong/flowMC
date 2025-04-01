@@ -3,7 +3,6 @@ from typing import Callable, Optional
 from flowMC.resource.base import Resource
 from jaxtyping import Array, Float, PyTree
 import jax
-import jax.numpy as jnp
 
 
 @dataclass
@@ -100,13 +99,11 @@ class TemperedPDF(LogPDF):
         self.log_prior = log_prior
 
     def __call__(self, x, data):
-        temperature = data['temperature']
-        base_pdf = super().__call__(x, data)
-        return (1.0 / temperature) * base_pdf + self.log_prior(x, data)
-    
-    def original_log_pdf(self, x, data):
-        """Returns the original log pdf (without temperature)"""
         return super().__call__(x, data)
+
+    def tempered_log_pdf(self, temperatures, x, data):
+        base_pdf = super().__call__(x, data)
+        return (1.0 / temperatures) * base_pdf + self.log_prior(x, data)
 
     def tree_flatten(self):  # type: ignore
         children = ()
