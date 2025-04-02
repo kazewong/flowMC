@@ -53,7 +53,7 @@ class TestLogPDF:
         )
         inputs = jnp.ones((n_temps, self.n_dims)).astype(jnp.float32)
         data = {"data": jnp.ones(self.n_dims)}
-        temperatures = jnp.arange(n_temps) + 1.
+        temperatures = jnp.arange(n_temps) + 1.0
         values = jax.vmap(logpdf.tempered_log_pdf, in_axes=(0, 0, None))(
             temperatures, inputs, data
         )

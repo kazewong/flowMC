@@ -87,13 +87,18 @@ class ParallelTempering(Strategy):
 
         rng_key, subkey = jax.random.split(rng_key)
         subkey = jax.random.split(subkey, initial_position.shape[0])
-        positions, log_probs, do_accept = jax.jit(
+        positions, log_probs, do_accepts = jax.jit(
             jax.vmap(self._exchange, in_axes=(0, 0, 0, None, None))
         )(subkey, positions, tempered_logpdf, temperatures.data, data)
 
         # Update the buffers
 
         tempered_positions.update_buffer(positions[:, 1:], 0)
+
+        # Adapt the temperatures
+        temperatures.update_buffer(
+            self._adapt_temperature(temperatures.data, do_accepts), 0
+        )
 
         return rng_key, resources, positions[:, 0]
 
@@ -235,3 +240,20 @@ class ParallelTempering(Strategy):
             )
         )
         return positions, log_probs, do_accept
+
+    def _adapt_temperature(
+        self,
+        temperatures: Float[Array, " n_temps"],
+        do_accept: Float[Array, " n_chains n_temps 1"],
+    ) -> Float[Array, " n_temps"]:
+        # Adapt the temperature based on the acceptance rate
+
+        acceptance_rate = jnp.mean(do_accept, axis=0)
+        damping_factor = acceptance_rate[:-1] - acceptance_rate[1:]
+        for i in range(1, temperatures.shape[0] - 1):
+            temperatures = temperatures.at[i].set(
+                temperatures[i - 1]
+                + (temperatures[i] - temperatures[i - 1]) * jnp.exp(damping_factor[i])
+            )
+
+        return temperatures

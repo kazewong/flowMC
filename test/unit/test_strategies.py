@@ -420,6 +420,15 @@ class TestTemperingStrategies:
             {"data": jnp.arange(self.n_dims)},
         )
 
+    def test_adapt_temperatures(self):
+        key, resources, parallel_tempering_strat, initial_position = self.initialize()
+        temperatures = jnp.arange(self.n_temps) * 0.3 + 1
+        parallel_tempering_strat._adapt_temperature(
+            temperatures,
+            jnp.ones((self.n_chains, self.n_temps)),
+        )
+        assert temperatures.shape == (self.n_temps,)
+
     def test_parallel_tempering(self):
         key, resources, parallel_tempering_strat, initial_position = self.initialize()
         key, subkey = jax.random.split(key)
