@@ -61,7 +61,7 @@ class ParallelTempering(Strategy):
         2. Exchange the samples between the temperatures
         3. Adapt the temperatures based on the acceptance rate
 
-        TODO: Add way to turn of temperature adaptation to maintain detail balance.        
+        TODO: Add way to turn of temperature adaptation to maintain detail balance.
         """
 
         rng_key, subkey = jax.random.split(rng_key)
@@ -147,25 +147,26 @@ class ParallelTempering(Strategy):
         Args:
             kernel (ProposalBase): The kernel to use.
             carry (tuple): The current state of the chain.
-                - key: The random key.
-                - position: The current position.
-                - log_prob: The current log probability.
-                - logpdf: The tempered logpdf.
-                - temperatures: The temperatures.
-                - data: The data to pass to the logpdf.
-            aux: Not used.
+                - key (PRNGKeyArray): jax random key.
+                - position (Float[Array, " n_dims"]): Current position of the chain.
+                - log_prob (Float[Array, "1"]): Current log probability of the chain.
+                - logpdf (TemperedPDF): The tempered LogPDF class.
+                - temperatures (Float[Array, " n_temps"]): Array of temperatures.
+                - data (dict): Additional data to pass to the logpdf.
+            aux (None): Not used.
         Returns:
-            tuple: The new state of the chain.
-                - key: The random key.
-                - position: The new position.
-                - log_prob: The new log probability.
-                - logpdf: The tempered logpdf.
-                - temperatures: The temperatures.
-                - data: The data to pass to the logpdf.
-            tuple: The acceptance information.
-                - position: The new position.
-                - log_prob: The new log probability.
-                - do_accept: Whether the step was accepted or not.
+            tuple: Updated carry and the result of the kernel step.
+                - carry (tuple): Updated state of the chain.
+                    - key (PRNGKeyArray): jax random key.
+                    - position (Float[Array, " n_dims"]): New position of the chain.
+                    - log_prob (Float[Array, "1"]): New log probability of the chain.
+                    - logpdf (TemperedPDF): The tempered LogPDF class.
+                    - temperatures (Float[Array, " n_temps"]): Array of temperatures.
+                    - data (dict): Additional data to pass to the logpdf.
+                - result (tuple): Result of the kernel step.
+                    - position (Float[Array, " n_dims"]): New position of the chain.
+                    - log_prob (Float[Array, "1"]): New log probability of the chain.
+                    - do_accept (Int[Array, "1"]): Whether the new position is accepted.
         """
         key, position, log_prob, logpdf, temperatures, data = carry
         key, subkey = jax.random.split(key)
@@ -190,9 +191,27 @@ class ParallelTempering(Strategy):
         logpdf: TemperedPDF,
         temperatures: Float[Array, " n_temps"],
         data: dict,
-    ):
+    ) -> tuple[
+        Float[Array, " n_dims"],
+        Float[Array, "1"],
+        Int[Array, "1"],
+    ]:
         """
-        
+        Perform a series of individual steps for a single chain using the kernel.
+
+        Args:
+            kernel (ProposalBase): The kernel to use for proposing new positions.
+            rng_key (PRNGKeyArray): jax random key for reproducibility.
+            positions (Float[Array, " n_dims"]): Current positions of the chain.
+            logpdf (TemperedPDF): The tempered log probability density function.
+            temperatures (Float[Array, " n_temps"]): Array of temperatures.
+            data (dict): Additional data to pass to the logpdf.
+
+        Returns:
+            tuple:
+                - positions (Float[Array, " n_dims"]): Updated positions of the chain.
+                - log_probs (Float[Array, "1"]): Log probabilities of the chain.
+                - do_accept (Int[Array, "1"]): Acceptance flag for the new position.
         """
         log_probs = logpdf(positions, data)
 
@@ -215,7 +234,28 @@ class ParallelTempering(Strategy):
         logpdf: TemperedPDF,
         temperatures: Float[Array, " n_temps"],
         data: dict,
-    ):
+    ) -> tuple[
+        Float[Array, "n_temps n_dims"],
+        Float[Array, " n_temps"],
+        Int[Array, " n_temps"],
+    ]:
+        """
+        Perform ensemble steps for all chains and temperatures.
+
+        Args:
+            kernel (ProposalBase): The kernel to use for proposing new positions.
+            rng_key (PRNGKeyArray): Random key for reproducibility.
+            positions (Float[Array, "n_temps n_dims"]): Current positions for all temperatures.
+            logpdf (TemperedPDF): The tempered log probability density function.
+            temperatures (Float[Array, " n_temps"]): Array of temperatures.
+            data (dict): Additional data to pass to the logpdf.
+
+        Returns:
+            tuple:
+                - positions (Float[Array, "n_temps n_dims"]): Updated positions for all temperatures.
+                - log_probs (Float[Array, " n_temps"]): Log probabilities for all temperatures.
+                - do_accept (Int[Array, " n_temps"]): Acceptance flags for each temperature.
+        """
         rng_key = jax.random.split(rng_key, positions.shape[0])
 
         positions, log_probs, do_accept = jax.vmap(
@@ -235,8 +275,19 @@ class ParallelTempering(Strategy):
             Float[Array, " n_temps"],
             dict,
         ],
-        aux,
-    ):
+        aux: None,
+    ) -> tuple[
+        tuple[
+            PRNGKeyArray,
+            Float[Array, "n_temps n_dims"],
+            Float[Array, " n_temps"],
+            int,
+            TemperedPDF,
+            Float[Array, " n_temps"],
+            dict,
+        ],
+        Int[Array, "1"],
+    ]:
 
         key, positions, log_probs, idx, logpdf, temperatures, data = carry
 
@@ -271,7 +322,27 @@ class ParallelTempering(Strategy):
         logpdf: TemperedPDF,
         temperatures: Float[Array, " n_temps"],
         data: dict,
-    ):
+    ) -> tuple[
+        Float[Array, "n_temps n_dims"],
+        Float[Array, " n_temps"],
+        Int[Array, " n_temps - 1"],
+    ]:
+        """
+        Perform exchange steps between adjacent temperatures.
+
+        Args:
+            key (PRNGKeyArray): jax random key for reproducibility.
+            positions (Float[Array, "n_temps n_dims"]): Current positions for all temperatures.
+            logpdf (TemperedPDF): The tempered log probability density function.
+            temperatures (Float[Array, " n_temps"]): Array of temperatures.
+            data (dict): Additional data to pass to the logpdf.
+
+        Returns:
+            tuple:
+                - positions (Float[Array, "n_temps n_dims"]): Updated positions for all temperatures.
+                - log_probs (Float[Array, " n_temps"]): Log probabilities for all temperatures.
+                - do_accept (Int[Array, " n_temps - 1"]): Acceptance flags for each temperature.
+        """
         log_probs = jax.vmap(logpdf, in_axes=(0, None))(positions, data)
         (key, positions, log_probs, idx, logpdf, temperatures, data), do_accept = (
             jax.lax.scan(
@@ -285,8 +356,18 @@ class ParallelTempering(Strategy):
     def _adapt_temperature(
         self,
         temperatures: Float[Array, " n_temps"],
-        do_accept: Float[Array, " n_chains n_temps 1"],
+        do_accept: Int[Array, " n_chains n_temps 1"],
     ) -> Float[Array, " n_temps"]:
+        """
+        Adapt the temperatures based on the acceptance rates.
+
+        Args:
+            temperatures (Float[Array, " n_temps"]): Current temperatures.
+            do_accept (Int[Array, " n_chains n_temps 1"]): Acceptance flags for each chain and temperature.
+
+        Returns:
+            Float[Array, " n_temps"]: Updated temperatures.
+        """
         # Adapt the temperature based on the acceptance rate
 
         acceptance_rate = jnp.mean(do_accept, axis=0)
