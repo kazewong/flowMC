@@ -51,10 +51,10 @@ class ParallelTempering(Strategy):
     ]:
         """
         Resources must contain:
-        - TemperedPDF
-        - Local kernel
-        - A buffer holding the tempered positions
-        - A buffer holding the temperatures
+            - TemperedPDF
+            - Local kernel
+            - A buffer holding the tempered positions
+            - A buffer holding the temperatures
 
         This strategy has 3 main steps:
         1. Sample from the tempered PDF using the local kernel for n_steps
