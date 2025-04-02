@@ -10,7 +10,7 @@ from flowMC.strategy.train_model import TrainModel
 class LocalGlobalNFSample(Strategy):
     n_loops: int
 
-    def __str__(self):
+    def __repr__(self):
         return "Local Global NF Sampling"
 
     def __init__(

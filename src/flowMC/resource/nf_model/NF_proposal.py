@@ -4,6 +4,7 @@ import jax
 import jax.numpy as jnp
 from jax import random
 from jaxtyping import Array, Float, Int, PRNGKeyArray, PyTree
+from typing import Callable
 
 from flowMC.resource.nf_model.base import NFModel
 from flowMC.resource.local_kernel.base import ProposalBase
@@ -26,7 +27,7 @@ class NFProposal(ProposalBase):
         rng_key: PRNGKeyArray,
         position: Float[Array, " n_dim"],
         log_prob: Float[Array, "1"],
-        logpdf: LogPDF,
+        logpdf: LogPDF | Callable[[Float[Array, " n_dim"], PyTree], Float[Array, "1"]],
         data: PyTree,
     ) -> tuple[
         Float[Array, "n_step n_dim"], Float[Array, "n_step 1"], Int[Array, "n_step 1"]

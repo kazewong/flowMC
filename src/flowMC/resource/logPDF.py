@@ -79,3 +79,37 @@ class LogPDF(Resource):
     @classmethod
     def tree_unflatten(cls, aux_data, children):
         return cls(aux_data[0], aux_data[1])
+
+
+@jax.tree_util.register_pytree_node_class
+class TemperedPDF(LogPDF):
+
+    log_prior: Callable[[Float[Array, " n_dim"], PyTree], Float[Array, "1"]]
+
+    def __init__(
+        self,
+        log_likelihood: Callable[[Float[Array, " n_dim"], PyTree], Float[Array, "1"]],
+        log_prior: Callable[[Float[Array, " n_dim"], PyTree], Float[Array, "1"]],
+        variables=None,
+        n_dims=None,
+        n_temps=5,
+        max_temp=100,
+    ):
+        super().__init__(log_likelihood, variables, n_dims)
+        self.log_prior = log_prior
+
+    def __call__(self, x, data):
+        return super().__call__(x, data)
+
+    def tempered_log_pdf(self, temperatures, x, data):
+        base_pdf = super().__call__(x, data)
+        return (1.0 / temperatures) * base_pdf + self.log_prior(x, data)
+
+    def tree_flatten(self):  # type: ignore
+        children = ()
+        aux_data = (self.log_pdf, self.log_prior, self.variables)
+        return (children, aux_data)
+
+    @classmethod
+    def tree_unflatten(cls, aux_data, children):
+        return cls(*aux_data, *children)

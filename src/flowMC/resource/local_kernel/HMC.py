@@ -97,7 +97,7 @@ class HMC(ProposalBase):
         rng_key: PRNGKeyArray,
         position: Float[Array, " n_dim"],
         log_prob: Float[Array, "1"],
-        logpdf: LogPDF,
+        logpdf: LogPDF | Callable[[Float[Array, " n_dim"], PyTree], Float[Array, "1"]],
         data: PyTree,
     ) -> tuple[Float[Array, " n_dim"], Float[Array, "1"], Int[Array, "1"]]:
         """Note that since the potential function is the negative log likelihood,

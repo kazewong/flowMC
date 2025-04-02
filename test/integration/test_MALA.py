@@ -62,7 +62,8 @@ nf_sampler = Sampler(
     n_chains=n_chains,
     rng_key=rng_key,
     resources=resource,
-    strategies=[strategy],
+    strategies={"take_steps": strategy},
+    strategy_order=["take_steps"],
 )
 
 nf_sampler.sample(initial_position, data)

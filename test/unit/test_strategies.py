@@ -9,16 +9,17 @@ from flowMC.resource.local_kernel.MALA import MALA
 from flowMC.resource.local_kernel.Gaussian_random_walk import GaussianRandomWalk
 from flowMC.resource.local_kernel.HMC import HMC
 from flowMC.resource.buffers import Buffer
-from flowMC.resource.logPDF import LogPDF
+from flowMC.resource.logPDF import LogPDF, TemperedPDF
 
 # from flowMC.strategy.optimization import optimization_Adam
 from flowMC.strategy.take_steps import TakeSerialSteps, TakeGroupSteps
 from flowMC.strategy.optimization import AdamOptimization
 from flowMC.strategy.train_model import TrainModel
+from flowMC.strategy.parallel_tempering import ParallelTempering
 
 
 def log_posterior(x, data={}):
-    return -0.5 * jnp.sum(x**2)
+    return -0.5 * jnp.sum((x - data["data"]) ** 2)
 
 
 class TestOptimizationStrategies:
@@ -42,7 +43,9 @@ class TestOptimizationStrategies:
             jax.random.normal(subkey, shape=(self.n_chains, self.n_dim)) * 1 + 10
         )
 
-        _, _, optimized_position = self.strategy(key, {}, initial_position, {})
+        _, _, optimized_position = self.strategy(
+            key, {}, initial_position, {"data": jnp.arange(self.n_dim)}
+        )
 
         assert optimized_position.shape == (self.n_chains, self.n_dim)
         assert jnp.all(
@@ -58,10 +61,10 @@ class TestOptimizationStrategies:
         )
 
         def loss_fn(params: Float[Array, " n_dim"]) -> Float:
-            return -log_posterior(params, {})
+            return -log_posterior(params, {"data": jnp.arange(self.n_dim)})
 
         rng_key, optimized_position = self.strategy.optimize(
-            key, loss_fn, initial_position, {}
+            key, loss_fn, initial_position, {"data": jnp.arange(self.n_dim)}
         )
 
         assert optimized_position.shape == (self.n_chains, self.n_dim)
@@ -70,7 +73,7 @@ class TestOptimizationStrategies:
         )
 
 
-class TestStrategies:
+class TestLocalStep:
     def test_take_local_step(self):
         n_chains = 5
         n_steps = 25
@@ -112,7 +115,7 @@ class TestStrategies:
                 rng_key=subkey1,
                 resources=resources,
                 initial_position=positions,
-                data={},
+                data={"data": jnp.arange(n_dims)},
             )
 
         key, subkey1, subkey2 = jax.random.split(key, 3)
@@ -121,7 +124,7 @@ class TestStrategies:
             rng_key=subkey1,
             resources=resources,
             initial_position=positions,
-            data={},
+            data={"data": jnp.arange(n_dims)},
         )
 
         key, subkey1, subkey2 = jax.random.split(key, 3)
@@ -131,7 +134,7 @@ class TestStrategies:
             rng_key=subkey1,
             resources=resources,
             initial_position=positions,
-            data={},
+            data={"data": jnp.arange(n_dims)},
         )
 
         strategy.kernel_name = "HMC"
@@ -139,7 +142,7 @@ class TestStrategies:
             rng_key=subkey1,
             resources=resources,
             initial_position=positions,
-            data={},
+            data={"data": jnp.arange(n_dims)},
         )
 
 
@@ -154,8 +157,7 @@ class TestNFStrategies:
     n_layers = 3
     n_bins = 8
 
-    def test_training(self):
-        # TODO: Need to check for accuracy still
+    def initialize(self):
         rng_key, rng_subkey = jax.random.split(jax.random.PRNGKey(0), 2)
         model = MaskedCouplingRQSpline(
             self.n_features,
@@ -179,6 +181,12 @@ class TestNFStrategies:
             "model": model,
         }
 
+        return rng_key, resources
+
+    def test_training(self):
+        # TODO: Need to check for accuracy still
+        rng_key, resources = self.initialize()
+
         strategy = TrainModel(
             "model",
             "test_data",
@@ -197,7 +205,7 @@ class TestNFStrategies:
             key,
             resources,
             jax.random.normal(key, shape=(self.n_chains, self.n_dims)),
-            {},
+            {"data": jnp.arange(self.n_dims)},
         )
         assert isinstance(resources["model"], MaskedCouplingRQSpline)
         print(resources["model"].data_mean, resources["model"].data_cov)
@@ -243,7 +251,7 @@ class TestNFStrategies:
             rng_key=key,
             resources=resources,
             initial_position=positions,
-            data={},
+            data={"data": jnp.arange(self.n_dims)},
         )
         print(test_position.data[:, :, 0])
 
@@ -261,3 +269,174 @@ class TestNFStrategies:
         )
 
         NFProposal(model)
+
+
+class TestTemperingStrategies:
+    n_temps = 5
+    n_dims = 3
+    n_chains = 7
+    n_steps = 4
+
+    def initialize(self):
+        mala = MALA(1.0)
+        logpdf = TemperedPDF(
+            log_posterior,
+            lambda x, data: jnp.array(0.0),
+            n_dims=self.n_dims,
+            n_temps=self.n_temps,
+        )
+
+        key = jax.random.PRNGKey(42)
+        key, subkey = jax.random.split(key)
+
+        initial_position = jax.random.normal(subkey, shape=(self.n_chains, self.n_dims))
+        key, subkey = jax.random.split(key)
+        tempered_initial_position = jax.random.normal(
+            subkey, shape=(self.n_chains, self.n_temps - 1, self.n_dims)
+        )
+        tempered_positions = Buffer(
+            "tempered_positions", (self.n_chains, self.n_temps - 1, self.n_dims), 2
+        )
+        tempered_positions.update_buffer(tempered_initial_position)
+        temperatures = Buffer("temperatures", (self.n_temps,), 0)
+        temperatures.update_buffer(jnp.arange(self.n_temps) + 1.0)
+
+        resources = {
+            "logpdf": logpdf,
+            "MALA": mala,
+            "tempered_positions": tempered_positions,
+            "temperatures": temperatures,
+        }
+
+        parallel_tempering_strat = ParallelTempering(
+            n_steps=self.n_steps,
+            tempered_logpdf_name="logpdf",
+            kernel_name="MALA",
+            tempered_buffer_names=["tempered_positions", "temperatures"],
+        )
+
+        return key, resources, parallel_tempering_strat, initial_position
+
+    def test_individual_step_body(self):
+        key, resources, parallel_tempering_strat, initial_position = self.initialize()
+        mala = resources["MALA"]
+        logpdf = resources["logpdf"]
+        key, subkey = jax.random.split(key)
+        position = initial_position[0]
+        data = {"data": jnp.arange(self.n_dims)}
+
+        log_prob = logpdf(position, data)
+        carry, extras = parallel_tempering_strat._individual_step_body(
+            mala, (key, position, log_prob, logpdf, jnp.array(1.0), data), None
+        )
+
+        # TODO: Add assertions
+
+        assert carry[1].shape == (self.n_dims,)
+
+    def test_individual_step(self):
+        key, resources, parallel_tempering_strat, initial_position = self.initialize()
+        mala = resources["MALA"]
+        logpdf = resources["logpdf"]
+        initial_position = jnp.concatenate(
+            [initial_position[:, None, :], resources["tempered_positions"].data],
+            axis=1,
+        )
+
+        positions, log_probs, do_accept = parallel_tempering_strat._individal_step(
+            mala,
+            key,
+            initial_position[0, 0],
+            logpdf,
+            jnp.array(1),
+            {"data": jnp.arange(self.n_dims)},
+        )
+
+        # TODO: Add assertions
+        assert positions.shape == (self.n_dims,)
+
+    def test_ensemble_step(self):
+        key, resources, parallel_tempering_strat, initial_position = self.initialize()
+        mala = resources["MALA"]
+        logpdf = resources["logpdf"]
+        initial_position = jnp.concatenate(
+            [initial_position[:, None, :], resources["tempered_positions"].data],
+            axis=1,
+        )
+        key, subkey = jax.random.split(key)
+        positions, log_probs, do_accept = parallel_tempering_strat._ensemble_step(
+            mala,
+            subkey,
+            initial_position[0],
+            logpdf,
+            jnp.arange(self.n_temps) + 1.0,
+            {
+                "data": jnp.arange(self.n_dims),
+            },
+        )
+
+        # TODO: Add assertions
+
+        keys = jax.random.split(key, self.n_chains)
+        positions, log_probs, do_accept = jax.vmap(
+            parallel_tempering_strat._ensemble_step,
+            in_axes=(None, 0, 0, None, None, None),
+        )(
+            mala,
+            keys,
+            initial_position,
+            logpdf,
+            jnp.arange(self.n_temps) + 1.0,
+            {
+                "data": jnp.arange(self.n_dims),
+            },
+        )
+
+        # TODO: Add assertions
+
+    def test_exchange_step(self):
+        key, resources, parallel_tempering_strat, initial_position = self.initialize()
+        logpdf = resources["logpdf"]
+        temperatures = jnp.arange(self.n_temps) * 0.3 + 1
+        data = {"data": jnp.arange(self.n_dims)}
+        log_probs = jax.vmap(logpdf.tempered_log_pdf, in_axes=(None, 0, None))(
+            temperatures,
+            initial_position,
+            data,
+        )
+        key = jax.random.split(key, self.n_chains)
+        initial_position = jnp.concatenate(
+            [initial_position[:, None, :], resources["tempered_positions"].data],
+            axis=1,
+        )
+        positions, log_probs, do_accept = jax.jit(
+            jax.vmap(parallel_tempering_strat._exchange, in_axes=(0, 0, 0, None, None))
+        )(
+            key,
+            initial_position,
+            logpdf,
+            temperatures,
+            {"data": jnp.arange(self.n_dims)},
+        )
+
+    def test_adapt_temperatures(self):
+        key, resources, parallel_tempering_strat, initial_position = self.initialize()
+        temperatures = jnp.arange(self.n_temps) * 0.3 + 1
+        parallel_tempering_strat._adapt_temperature(
+            temperatures,
+            jnp.ones((self.n_chains, self.n_temps)),
+        )
+        assert temperatures.shape == (self.n_temps,)
+
+    def test_parallel_tempering(self):
+        key, resources, parallel_tempering_strat, initial_position = self.initialize()
+        key, subkey = jax.random.split(key)
+        rng_key, resources, positions = parallel_tempering_strat(
+            key,
+            resources,
+            initial_position,
+            {
+                "data": jnp.arange(self.n_dims),
+            },
+        )
+        print(positions)
