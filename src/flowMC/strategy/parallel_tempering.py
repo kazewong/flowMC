@@ -25,6 +25,7 @@ class ParallelTempering(Strategy):
     tempered_logpdf_name: str
     kernel_name: str
     tempered_buffer_names: list[str]
+    verbose: bool = False
 
     def __init__(
         self,
@@ -32,11 +33,13 @@ class ParallelTempering(Strategy):
         tempered_logpdf_name: str,
         kernel_name: str,
         tempered_buffer_names: list[str],
+        verbose: bool = False,
     ):
         self.n_steps = n_steps
         self.tempered_logpdf_name = tempered_logpdf_name
         self.kernel_name = kernel_name
         self.tempered_buffer_names = tempered_buffer_names
+        self.verbose = verbose
 
     def __call__(
         self,
@@ -98,8 +101,8 @@ class ParallelTempering(Strategy):
 
         rng_key, subkey = jax.random.split(rng_key)
         subkey = jax.random.split(subkey, initial_position.shape[0])
-        positions, log_probs, do_accepts = jax.jit(
-            jax.vmap(self._exchange, in_axes=(0, 0, 0, None, None))
+        positions, log_probs, do_accepts = eqx.filter_jit(
+            eqx.filter_vmap(self._exchange, in_axes=(0, 0, 0, None, None))
         )(subkey, positions, tempered_logpdf, temperatures.data, data)
 
         # Update the buffers
@@ -108,7 +111,7 @@ class ParallelTempering(Strategy):
 
         # Adapt the temperatures
         temperatures.update_buffer(
-            self._adapt_temperature(temperatures.data, do_accepts), 0
+            eqx.filter_jit(self._adapt_temperature)(temperatures.data, do_accepts), 0
         )
 
         return rng_key, resources, positions[:, 0]
@@ -256,6 +259,9 @@ class ParallelTempering(Strategy):
                 - log_probs (Float[Array, " n_temps"]): Log probabilities for all temperatures.
                 - do_accept (Int[Array, " n_temps"]): Acceptance flags for each temperature.
         """
+
+        if self.verbose:
+            print("Taking individual steps")
         rng_key = jax.random.split(rng_key, positions.shape[0])
 
         positions, log_probs, do_accept = jax.vmap(
@@ -343,6 +349,10 @@ class ParallelTempering(Strategy):
                 - log_probs (Float[Array, " n_temps"]): Log probabilities for all temperatures.
                 - do_accept (Int[Array, " n_temps - 1"]): Acceptance flags for each temperature.
         """
+
+        if self.verbose:
+            print("Exchanging walkers")
+
         log_probs = jax.vmap(logpdf, in_axes=(0, None))(positions, data)
         (key, positions, log_probs, idx, logpdf, temperatures, data), do_accept = (
             jax.lax.scan(
@@ -369,6 +379,9 @@ class ParallelTempering(Strategy):
             Float[Array, " n_temps"]: Updated temperatures.
         """
         # Adapt the temperature based on the acceptance rate
+
+        if self.verbose:
+            print("Adapting temperatures")
 
         acceptance_rate = jnp.mean(do_accept, axis=0)
         damping_factor = acceptance_rate[:-1] - acceptance_rate[1:]
