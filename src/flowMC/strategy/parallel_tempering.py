@@ -19,8 +19,6 @@ class ParallelTempering(Strategy):
     There should be a version of this class that saves the extra
     information in the temperature not equal to 1, which could be
     used for other purposes such as diagnostics or training.
-
-
     """
 
     n_steps: int
@@ -34,7 +32,6 @@ class ParallelTempering(Strategy):
         tempered_logpdf_name: str,
         kernel_name: str,
         tempered_buffer_names: list[str],
-        data_keys: list[str],
     ):
         self.n_steps = n_steps
         self.tempered_logpdf_name = tempered_logpdf_name
@@ -52,6 +49,20 @@ class ParallelTempering(Strategy):
         dict[str, Resource],
         Float[Array, "n_chains n_dim"],
     ]:
+        """
+        Resources must contain:
+        - TemperedPDF
+        - Local kernel
+        - A buffer holding the tempered positions
+        - A buffer holding the temperatures
+
+        This strategy has 3 main steps:
+        1. Sample from the tempered PDF using the local kernel for n_steps
+        2. Exchange the samples between the temperatures
+        3. Adapt the temperatures based on the acceptance rate
+
+        TODO: Add way to turn of temperature adaptation to maintain detail balance.        
+        """
 
         rng_key, subkey = jax.random.split(rng_key)
         kernel = resources[self.kernel_name]
@@ -129,6 +140,33 @@ class ParallelTempering(Strategy):
             Int[Array, "1"],
         ],
     ]:
+        """Take a step using the kernel and the tempered logpdf.
+        This should not be called directly but instead used in a
+        jax.lax.scan to take multiple steps.
+
+        Args:
+            kernel (ProposalBase): The kernel to use.
+            carry (tuple): The current state of the chain.
+                - key: The random key.
+                - position: The current position.
+                - log_prob: The current log probability.
+                - logpdf: The tempered logpdf.
+                - temperatures: The temperatures.
+                - data: The data to pass to the logpdf.
+            aux: Not used.
+        Returns:
+            tuple: The new state of the chain.
+                - key: The random key.
+                - position: The new position.
+                - log_prob: The new log probability.
+                - logpdf: The tempered logpdf.
+                - temperatures: The temperatures.
+                - data: The data to pass to the logpdf.
+            tuple: The acceptance information.
+                - position: The new position.
+                - log_prob: The new log probability.
+                - do_accept: Whether the step was accepted or not.
+        """
         key, position, log_prob, logpdf, temperatures, data = carry
         key, subkey = jax.random.split(key)
         position, log_prob, do_accept = kernel.kernel(
@@ -153,6 +191,9 @@ class ParallelTempering(Strategy):
         temperatures: Float[Array, " n_temps"],
         data: dict,
     ):
+        """
+        
+        """
         log_probs = logpdf(positions, data)
 
         (key, position, log_prob, logpdf, temperatures, data), (
