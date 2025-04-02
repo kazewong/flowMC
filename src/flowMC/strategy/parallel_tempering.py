@@ -377,6 +377,9 @@ class ParallelTempering(Strategy):
 
         Returns:
             Float[Array, " n_temps"]: Updated temperatures.
+
+        TODO: The adaptation now let's the temperature to go above the maximum temperature.
+        Need to add a check to prevent this.
         """
         # Adapt the temperature based on the acceptance rate
 
@@ -385,10 +388,11 @@ class ParallelTempering(Strategy):
 
         acceptance_rate = jnp.mean(do_accept, axis=0)
         damping_factor = acceptance_rate[:-1] - acceptance_rate[1:]
+        new_temperatures = temperatures
         for i in range(1, temperatures.shape[0] - 1):
-            temperatures = temperatures.at[i].set(
-                temperatures[i - 1]
+            new_temperatures = new_temperatures.at[i].set(
+                new_temperatures[i - 1]
                 + (temperatures[i] - temperatures[i - 1]) * jnp.exp(damping_factor[i])
             )
 
-        return temperatures
+        return new_temperatures

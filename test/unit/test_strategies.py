@@ -313,7 +313,6 @@ class TestTemperingStrategies:
             tempered_logpdf_name="logpdf",
             kernel_name="MALA",
             tempered_buffer_names=["tempered_positions", "temperatures"],
-            data_keys=["data"],
         )
 
         return key, resources, parallel_tempering_strat, initial_position
