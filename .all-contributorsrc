@@ -16,6 +16,18 @@
       "contributions": [
         "bug"
       ]
+    },
+    {
+      "login": "daniel-dodd",
+      "name": "Daniel Dodd",
+      "avatar_url": "https://avatars.githubusercontent.com/u/68821880?v=4",
+      "profile": "https://github.com/daniel-dodd",
+      "contributions": [
+        "doc",
+        "review",
+        "test",
+        "bug"
+      ]
     }
   ]
 }
