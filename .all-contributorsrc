@@ -1,4 +1,21 @@
 {
   "projectName": "flowMC",
-  "projectOwner": "kazewong"
+  "projectOwner": "kazewong",
+  "files": [
+    "README.md"
+  ],
+  "commitType": "docs",
+  "commitConvention": "angular",
+  "contributorsPerLine": 7,
+  "contributors": [
+    {
+      "login": "HajimeKawahara",
+      "name": "Hajime Kawahara",
+      "avatar_url": "https://avatars.githubusercontent.com/u/15956904?v=4",
+      "profile": "http://secondearths.sakura.ne.jp/en/index.html",
+      "contributions": [
+        "bug"
+      ]
+    }
+  ]
 }
