@@ -119,6 +119,7 @@ Gabrié M., Rotskoff G. M., Vanden-Eijnden E. - PNAS 2022 - [doi](https://www.pn
   <tbody>
     <tr>
       <td align="center" valign="top" width="14.28%"><a href="http://secondearths.sakura.ne.jp/en/index.html"><img src="https://avatars.githubusercontent.com/u/15956904?v=4?s=100" width="100px;" alt="Hajime Kawahara"/><br /><sub><b>Hajime Kawahara</b></sub></a><br /><a href="#bug-HajimeKawahara" title="Bug reports">🐛</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="http://matt-graham.github.io"><img src="https://avatars.githubusercontent.com/u/6746980?v=4?s=100" width="100px;" alt="Matt Graham"/><br /><sub><b>Matt Graham</b></sub></a><br /><a href="#bug-matt-graham" title="Bug reports">🐛</a> <a href="#test-matt-graham" title="Tests">⚠️</a> <a href="#review-matt-graham" title="Reviewed Pull Requests">👀</a> <a href="#doc-matt-graham" title="Documentation">📖</a></td>
     </tr>
   </tbody>
 </table>
