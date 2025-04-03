@@ -27,7 +27,7 @@
         "review",
         "test",
         "bug"
-      ],
+      ]
     },
     {
       "login": "matt-graham",
@@ -40,6 +40,52 @@
         "review",
         "doc"
       ]
+    },
+    {
+      "login": "kazewong",
+      "name": "Kaze Wong",
+      "avatar_url": "https://avatars.githubusercontent.com/u/8803931?v=4",
+      "profile": "https://www.kaze-wong.com/",
+      "contributions": [
+        "bug"
+      ]
+    },
+    {
+      "login": "marylou-gabrie",
+      "name": "Marylou Gabrié",
+      "avatar_url": "https://avatars.githubusercontent.com/u/11092071?v=4",
+      "profile": "https://marylou-gabrie.github.io/",
+      "contributions": [
+        "bug"
+      ]
+    },
+    {
+      "login": "Qazalbash",
+      "name": "Meesum Qazalbash",
+      "avatar_url": "https://avatars.githubusercontent.com/u/62182585?v=4",
+      "profile": "https://github.com/Qazalbash",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "thomasckng",
+      "name": "Thomas Ng",
+      "avatar_url": "https://avatars.githubusercontent.com/u/97585527?v=4",
+      "profile": "https://github.com/thomasckng",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "tedwards2412",
+      "name": "Thomas Edwards",
+      "avatar_url": "https://avatars.githubusercontent.com/u/6105841?v=4",
+      "profile": "https://github.com/tedwards2412",
+      "contributions": [
+        "bug"
+      ]
     }
-  ]
+  ],
+  "repoType": "github"
 }
