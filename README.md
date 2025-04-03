@@ -119,6 +119,7 @@ Gabrié M., Rotskoff G. M., Vanden-Eijnden E. - PNAS 2022 - [doi](https://www.pn
   <tbody>
     <tr>
       <td align="center" valign="top" width="14.28%"><a href="http://secondearths.sakura.ne.jp/en/index.html"><img src="https://avatars.githubusercontent.com/u/15956904?v=4?s=100" width="100px;" alt="Hajime Kawahara"/><br /><sub><b>Hajime Kawahara</b></sub></a><br /><a href="#bug-HajimeKawahara" title="Bug reports">🐛</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/daniel-dodd"><img src="https://avatars.githubusercontent.com/u/68821880?v=4?s=100" width="100px;" alt="Daniel Dodd"/><br /><sub><b>Daniel Dodd</b></sub></a><br /><a href="#doc-daniel-dodd" title="Documentation">📖</a> <a href="#review-daniel-dodd" title="Reviewed Pull Requests">👀</a> <a href="#test-daniel-dodd" title="Tests">⚠️</a> <a href="#bug-daniel-dodd" title="Bug reports">🐛</a></td>
     </tr>
   </tbody>
 </table>
