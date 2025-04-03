@@ -16,6 +16,18 @@
       "contributions": [
         "bug"
       ]
+    },
+    {
+      "login": "matt-graham",
+      "name": "Matt Graham",
+      "avatar_url": "https://avatars.githubusercontent.com/u/6746980?v=4",
+      "profile": "http://matt-graham.github.io",
+      "contributions": [
+        "bug",
+        "test",
+        "review",
+        "doc"
+      ]
     }
   ]
 }
