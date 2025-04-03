@@ -47,7 +47,18 @@
       "avatar_url": "https://avatars.githubusercontent.com/u/8803931?v=4",
       "profile": "https://www.kaze-wong.com/",
       "contributions": [
-        "bug"
+        "bug",
+        "blog",
+        "code",
+        "content",
+        "doc",
+        "example",
+        "infra",
+        "maintenance",
+        "research",
+        "review",
+        "test",
+        "tutorial"
       ]
     },
     {
@@ -56,7 +67,15 @@
       "avatar_url": "https://avatars.githubusercontent.com/u/11092071?v=4",
       "profile": "https://marylou-gabrie.github.io/",
       "contributions": [
-        "bug"
+        "bug",
+        "code",
+        "content",
+        "doc",
+        "example",
+        "maintenance",
+        "research",
+        "test",
+        "tutorial"
       ]
     },
     {
@@ -65,7 +84,8 @@
       "avatar_url": "https://avatars.githubusercontent.com/u/62182585?v=4",
       "profile": "https://github.com/Qazalbash",
       "contributions": [
-        "code"
+        "code",
+        "maintenance"
       ]
     },
     {
@@ -74,7 +94,8 @@
       "avatar_url": "https://avatars.githubusercontent.com/u/97585527?v=4",
       "profile": "https://github.com/thomasckng",
       "contributions": [
-        "code"
+        "code",
+        "maintenance"
       ]
     },
     {
@@ -83,7 +104,8 @@
       "avatar_url": "https://avatars.githubusercontent.com/u/6105841?v=4",
       "profile": "https://github.com/tedwards2412",
       "contributions": [
-        "bug"
+        "bug",
+        "code"
       ]
     }
   ],
