@@ -115,6 +115,13 @@ Gabrié M., Rotskoff G. M., Vanden-Eijnden E. - PNAS 2022 - [doi](https://www.pn
 <!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
 <!-- prettier-ignore-start -->
 <!-- markdownlint-disable -->
+<table>
+  <tbody>
+    <tr>
+      <td align="center" valign="top" width="14.28%"><a href="http://secondearths.sakura.ne.jp/en/index.html"><img src="https://avatars.githubusercontent.com/u/15956904?v=4?s=100" width="100px;" alt="Hajime Kawahara"/><br /><sub><b>Hajime Kawahara</b></sub></a><br /><a href="#bug-HajimeKawahara" title="Bug reports">🐛</a></td>
+    </tr>
+  </tbody>
+</table>
 
 <!-- markdownlint-restore -->
 <!-- prettier-ignore-end -->
