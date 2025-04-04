@@ -34,8 +34,24 @@ class RQSpline_MALA_Bundle(ResourceStrategyBundle):
 
     This is the base algorithm described in https://www.pnas.org/doi/full/10.1073/pnas.2109420119
 
-
-
+    Args:
+        rng_key(PRNGKeyArray): Random key for JAX
+        n_chains(int): Number of chains to sample
+        n_dims(int): Number of dimensions of the problem
+        logpdf(Callable[[Float[Array, " n_dim"], dict], Float]): The log probability density function
+        n_local_steps(int): Number of local steps to take
+        n_global_steps(int): Number of global steps to take
+        n_training_loops(int): Number of training loops to perform
+        n_production_loops(int): Number of production loops to perform
+        n_epochs(int): Number of epochs to train the normalizing flow for
+        mala_step_size(float): Step size for the MALA sampler
+        rq_spline_hidden_units(list[int]): Number of hidden units in the rational quadratic spline
+        rq_spline_n_bins(int): Number of bins in the rational quadratic spline
+        rq_spline_n_layers(int): Number of layers in the rational quadratic spline
+        learning_rate(float): Learning rate for the optimizer
+        batch_size(int): Batch size for training the normalizing flow
+        n_max_examples(int): Maximum number of examples to use for training the normalizing flow
+        verbose(bool): Whether to print out information during training
     """
 
     def __repr__(self):
