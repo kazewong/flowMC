@@ -19,7 +19,6 @@ from flowMC.strategy.train_model import TrainModel
 from flowMC.strategy.update_state import UpdateState
 
 
-
 class ResourceStrategyBundle(ABC):
     """Resource-Strategy Bundle is aim to be the highest level of abstraction in the
     flowMC library.
@@ -172,15 +171,27 @@ class RQSpline_MALA_Bundle(ResourceStrategyBundle):
 
         update_state = UpdateState(
             "sampler_state",
-            ["target_positions", "target_log_prob", "target_local_accs", "target_global_accs","training"],
-            ["positions_production", "log_prob_production", "local_accs_production", "global_accs_production", False],
+            [
+                "target_positions",
+                "target_log_prob",
+                "target_local_accs",
+                "target_global_accs",
+                "training",
+            ],
+            [
+                "positions_production",
+                "log_prob_production",
+                "local_accs_production",
+                "global_accs_production",
+                False,
+            ],
         )
 
         def reset_steppers(
-                rng_key: PRNGKeyArray,
-                resources: dict[str, Resource],
-                initial_position: Float[Array, "n_chains n_dim"],
-                data: dict,
+            rng_key: PRNGKeyArray,
+            resources: dict[str, Resource],
+            initial_position: Float[Array, "n_chains n_dim"],
+            data: dict,
         ) -> tuple[
             PRNGKeyArray,
             dict[str, Resource],
@@ -197,10 +208,21 @@ class RQSpline_MALA_Bundle(ResourceStrategyBundle):
             )
         )
 
-        update_global_step = Lambda(lambda rng_key, resources, initial_position, data: global_stepper.set_current_position(local_stepper.current_position))
-        update_local_step = Lambda(lambda rng_key, resources, initial_position, data: local_stepper.set_current_position(global_stepper.current_position))
-        update_model = Lambda(lambda rng_key, resources, initial_position, data: resources['global_sampler'].update_model(resources['model']))
-
+        update_global_step = Lambda(
+            lambda rng_key, resources, initial_position, data: global_stepper.set_current_position(
+                local_stepper.current_position
+            )
+        )
+        update_local_step = Lambda(
+            lambda rng_key, resources, initial_position, data: local_stepper.set_current_position(
+                global_stepper.current_position
+            )
+        )
+        update_model = Lambda(
+            lambda rng_key, resources, initial_position, data: global_sampler.update_model(
+                resources["model"]
+            )
+        )
 
         self.strategies = {
             "local_stepper": local_stepper,
@@ -230,9 +252,9 @@ class RQSpline_MALA_Bundle(ResourceStrategyBundle):
         strategy_order = []
         for _ in range(n_training_loops):
             strategy_order.extend(training_phase)
-        
+
         strategy_order.append("reset_steppers")
-        strategy_order.append("update_state")            
+        strategy_order.append("update_state")
         for _ in range(n_production_loops):
             strategy_order.extend(production_phase)
 
