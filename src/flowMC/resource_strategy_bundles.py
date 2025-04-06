@@ -13,9 +13,10 @@ from flowMC.resource.nf_model.NF_proposal import NFProposal
 from flowMC.resource.nf_model.rqSpline import MaskedCouplingRQSpline
 from flowMC.resource.optimizer import Optimizer
 from flowMC.strategy.base import Strategy
-# from flowMC.strategy.global_tuning import LocalGlobalNFSample
+from flowMC.strategy.lambda_function import Lambda
 from flowMC.strategy.take_steps import TakeSerialSteps, TakeGroupSteps
 from flowMC.strategy.train_model import TrainModel
+from flowMC.strategy.update_state import UpdateState
 
 
 
@@ -169,25 +170,69 @@ class RQSpline_MALA_Bundle(ResourceStrategyBundle):
             verbose=verbose,
         )
 
+        update_state = UpdateState(
+            "sampler_state",
+            ["target_positions", "target_log_prob", "target_local_accs", "target_global_accs","training"],
+            ["positions_production", "log_prob_production", "local_accs_production", "global_accs_production", False],
+        )
+
+        def reset_steppers(
+                rng_key: PRNGKeyArray,
+                resources: dict[str, Resource],
+                initial_position: Float[Array, "n_chains n_dim"],
+                data: dict,
+        ) -> tuple[
+            PRNGKeyArray,
+            dict[str, Resource],
+            Float[Array, "n_chains n_dim"],
+        ]:
+            """Reset the steppers to the initial position."""
+            local_stepper.set_current_position(0)
+            global_stepper.set_current_position(0)
+            return rng_key, resources, initial_position
+
+        reset_steppers_lambda = Lambda(
+            lambda rng_key, resources, initial_position, data: reset_steppers(
+                rng_key, resources, initial_position, data
+            )
+        )
+
+        update_global_step = Lambda(lambda rng_key, resources, initial_position, data: global_stepper.set_current_position(local_stepper.current_position))
+        update_local_step = Lambda(lambda rng_key, resources, initial_position, data: local_stepper.set_current_position(global_stepper.current_position))
+        update_model = Lambda(lambda rng_key, resources, initial_position, data: resources['global_sampler'].update_model(resources['model']))
+
+
         self.strategies = {
             "local_stepper": local_stepper,
             "global_stepper": global_stepper,
             "model_trainer": model_trainer,
+            "update_state": update_state,
+            "update_global_step": update_global_step,
+            "update_local_step": update_local_step,
+            "reset_steppers": reset_steppers_lambda,
+            "update_model": update_model,
         }
 
         training_phase = [
             "local_stepper",
+            "update_global_step",
             "model_trainer",
+            "update_model",
             "global_stepper",
+            "update_local_step",
         ]
         production_phase = [
             "local_stepper",
+            "update_global_step",
             "global_stepper",
+            "update_local_step",
         ]
         strategy_order = []
         for _ in range(n_training_loops):
             strategy_order.extend(training_phase)
-            
+        
+        strategy_order.append("reset_steppers")
+        strategy_order.append("update_state")            
         for _ in range(n_production_loops):
             strategy_order.extend(production_phase)
 

@@ -22,6 +22,10 @@ class NFProposal(ProposalBase):
         self.model = model
         self.n_flow_sample = n_flow_sample
 
+    def update_model(self, model: NFModel):
+        """Update the model used for the proposal."""
+        self.model = model
+
     def kernel(
         self,
         rng_key: PRNGKeyArray,

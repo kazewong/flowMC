@@ -30,7 +30,7 @@ class State(Resource):
         self.name = name
         self.data = data
 
-    def update_state(self, key: str, value: int | bool | str):
+    def update(self, key: list[str], value: list[int | bool | str]):
         """Update the state with new data.
 
         This will modify the state in place.
@@ -39,7 +39,9 @@ class State(Resource):
             key (str): The key to update.
             value (int | bool): The value to update.
         """
-        self.data[key] = value
+        for k, v in zip(key, value):
+            self.data[k] = v
+            print(f"Updated state {k} to {v}")
 
     def print_parameters(self):
         print(
