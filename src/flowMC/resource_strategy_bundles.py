@@ -6,6 +6,7 @@ from jaxtyping import Array, Float, PRNGKeyArray
 
 from flowMC.resource.base import Resource
 from flowMC.resource.buffers import Buffer
+from flowMC.resource.states import State
 from flowMC.resource.logPDF import LogPDF
 from flowMC.resource.local_kernel.MALA import MALA
 from flowMC.resource.nf_model.NF_proposal import NFProposal
@@ -103,6 +104,16 @@ class RQSpline_MALA_Bundle(ResourceStrategyBundle):
         optimizer = Optimizer(model=model, learning_rate=learning_rate)
         logpdf = LogPDF(logpdf, n_dims=n_dims)
 
+        sampler_state = State(
+            {
+                "target_positions": "positions_training",
+                "target_log_prob": "log_prob_training",
+                "target_accs": "local_accs_training",
+                "training": True,
+            },
+            name="sampler_state",
+        )
+
         self.resources = {
             "logpdf": logpdf,
             "positions_training": positions_training,
@@ -118,6 +129,7 @@ class RQSpline_MALA_Bundle(ResourceStrategyBundle):
             "global_sampler": global_sampler,
             "model": model,
             "optimizer": optimizer,
+            "sampler_state": sampler_state,
         }
 
         self.strategies = {
@@ -125,9 +137,10 @@ class RQSpline_MALA_Bundle(ResourceStrategyBundle):
                 "logpdf",
                 "local_sampler",
                 "global_sampler",
-                ["positions_training", "log_prob_training", "local_accs_training"],
+                "sampler_state",
+                ["target_positions", "target_log_prob", "target_accs"],
                 ["model", "positions_training", "optimizer"],
-                ["positions_training", "log_prob_training", "global_accs_training"],
+                ["target_positions", "target_log_prob", "target_accs"],
                 n_local_steps,
                 n_global_steps,
                 n_training_loops,
@@ -135,32 +148,31 @@ class RQSpline_MALA_Bundle(ResourceStrategyBundle):
                 loss_buffer_name="loss_buffer",
                 batch_size=batch_size,
                 n_max_examples=n_max_examples,
-                training=True,
                 verbose=verbose,
             ),
-            "production_sampler": LocalGlobalNFSample(
-                "logpdf",
-                "local_sampler",
-                "global_sampler",
-                [
-                    "positions_production",
-                    "log_prob_production",
-                    "local_accs_production",
-                ],
-                ["model", "positions_production", "optimizer"],
-                [
-                    "positions_production",
-                    "log_prob_production",
-                    "global_accs_production",
-                ],
-                n_local_steps,
-                n_global_steps,
-                n_production_loops,
-                n_epochs,
-                batch_size=batch_size,
-                n_max_examples=n_max_examples,
-                training=False,
-                verbose=verbose,
-            ),
+            # "production_sampler": LocalGlobalNFSample(
+            #     "logpdf",
+            #     "local_sampler",
+            #     "global_sampler",
+            #     [
+            #         "positions_production",
+            #         "log_prob_production",
+            #         "local_accs_production",
+            #     ],
+            #     ["model", "positions_production", "optimizer"],
+            #     [
+            #         "positions_production",
+            #         "log_prob_production",
+            #         "global_accs_production",
+            #     ],
+            #     n_local_steps,
+            #     n_global_steps,
+            #     n_production_loops,
+            #     n_epochs,
+            #     batch_size=batch_size,
+            #     n_max_examples=n_max_examples,
+            #     training=False,
+            #     verbose=verbose,
+            # ),
         }
         self.strategy_order = ["training_sampler", "production_sampler"]
