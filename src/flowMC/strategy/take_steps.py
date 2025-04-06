@@ -73,13 +73,26 @@ class TakeSteps(Strategy):
         ), "State resource must be a State"
 
         assert isinstance(
-            position_buffer := state_resource.data[self.buffer_names[0]], Buffer
+            position_buffer_name := state_resource.data[self.buffer_names[0]], str
+        ), "Position buffer resource name must be a string"
+
+        assert isinstance(
+            log_prob_buffer_name := state_resource.data[self.buffer_names[1]], str
+        ), "Log probability buffer resource name must be a string"
+
+        assert isinstance(
+            acceptance_buffer_name := state_resource.data[self.buffer_names[2]], str
+        ), "Acceptance buffer resource name must be a string"
+
+
+        assert isinstance(
+            position_buffer := resources[position_buffer_name], Buffer
         ), "Position buffer resource must be a Buffer"
         assert isinstance(
-            log_prob_buffer := state_resource.data[self.buffer_names[1]], Buffer
+            log_prob_buffer := resources[log_prob_buffer_name], Buffer
         ), "Log probability buffer resource must be a Buffer"
         assert isinstance(
-            acceptance_buffer := state_resource.data[self.buffer_names[2]], Buffer
+            acceptance_buffer := resources[acceptance_buffer_name], Buffer
         ), "Acceptance buffer resource must be a Buffer"
 
         kernel = resources[self.kernel_name]

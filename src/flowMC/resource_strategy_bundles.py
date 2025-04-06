@@ -175,5 +175,20 @@ class RQSpline_MALA_Bundle(ResourceStrategyBundle):
             "model_trainer": model_trainer,
         }
 
-        sampling_phase = []
-        self.strategy_order = ["training_sampler"]
+        training_phase = [
+            "local_stepper",
+            "model_trainer",
+            "global_stepper",
+        ]
+        production_phase = [
+            "local_stepper",
+            "global_stepper",
+        ]
+        strategy_order = []
+        for _ in range(n_training_loops):
+            strategy_order.extend(training_phase)
+            
+        for _ in range(n_production_loops):
+            strategy_order.extend(production_phase)
+
+        self.strategy_order = strategy_order
