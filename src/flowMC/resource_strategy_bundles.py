@@ -13,7 +13,10 @@ from flowMC.resource.nf_model.NF_proposal import NFProposal
 from flowMC.resource.nf_model.rqSpline import MaskedCouplingRQSpline
 from flowMC.resource.optimizer import Optimizer
 from flowMC.strategy.base import Strategy
-from flowMC.strategy.global_tuning import LocalGlobalNFSample
+# from flowMC.strategy.global_tuning import LocalGlobalNFSample
+from flowMC.strategy.take_steps import TakeSerialSteps, TakeGroupSteps
+from flowMC.strategy.train_model import TrainModel
+
 
 
 class ResourceStrategyBundle(ABC):
@@ -60,6 +63,8 @@ class RQSpline_MALA_Bundle(ResourceStrategyBundle):
         learning_rate: float = 1e-3,
         batch_size: int = 10000,
         n_max_examples: int = 10000,
+        local_thinning: int = 1,
+        global_thinning: int = 1,
         verbose: bool = False,
     ):
         n_training_steps = (
@@ -108,7 +113,8 @@ class RQSpline_MALA_Bundle(ResourceStrategyBundle):
             {
                 "target_positions": "positions_training",
                 "target_log_prob": "log_prob_training",
-                "target_accs": "local_accs_training",
+                "target_local_accs": "local_accs_training",
+                "target_global_accs": "global_accs_training",
                 "training": True,
             },
             name="sampler_state",
@@ -132,47 +138,42 @@ class RQSpline_MALA_Bundle(ResourceStrategyBundle):
             "sampler_state": sampler_state,
         }
 
+        local_stepper = TakeSerialSteps(
+            "logpdf",
+            "local_sampler",
+            "sampler_state",
+            ["target_positions", "target_log_prob", "target_local_accs"],
+            n_local_steps,
+            thinning=local_thinning,
+            verbose=verbose,
+        )
+
+        global_stepper = TakeGroupSteps(
+            "logpdf",
+            "global_sampler",
+            "sampler_state",
+            ["target_positions", "target_log_prob", "target_global_accs"],
+            n_global_steps,
+            thinning=global_thinning,
+            verbose=verbose,
+        )
+
+        model_trainer = TrainModel(
+            "model",
+            "positions_training",
+            "optimizer",
+            loss_buffer_name="loss_buffer",
+            n_epochs=n_epochs,
+            batch_size=batch_size,
+            n_max_examples=n_max_examples,
+            verbose=verbose,
+        )
+
         self.strategies = {
-            "training_sampler": LocalGlobalNFSample(
-                "logpdf",
-                "local_sampler",
-                "global_sampler",
-                "sampler_state",
-                ["target_positions", "target_log_prob", "target_accs"],
-                ["model", "positions_training", "optimizer"],
-                ["target_positions", "target_log_prob", "target_accs"],
-                n_local_steps,
-                n_global_steps,
-                n_training_loops,
-                n_epochs,
-                loss_buffer_name="loss_buffer",
-                batch_size=batch_size,
-                n_max_examples=n_max_examples,
-                verbose=verbose,
-            ),
-            # "production_sampler": LocalGlobalNFSample(
-            #     "logpdf",
-            #     "local_sampler",
-            #     "global_sampler",
-            #     [
-            #         "positions_production",
-            #         "log_prob_production",
-            #         "local_accs_production",
-            #     ],
-            #     ["model", "positions_production", "optimizer"],
-            #     [
-            #         "positions_production",
-            #         "log_prob_production",
-            #         "global_accs_production",
-            #     ],
-            #     n_local_steps,
-            #     n_global_steps,
-            #     n_production_loops,
-            #     n_epochs,
-            #     batch_size=batch_size,
-            #     n_max_examples=n_max_examples,
-            #     training=False,
-            #     verbose=verbose,
-            # ),
+            "local_stepper": local_stepper,
+            "global_stepper": global_stepper,
+            "model_trainer": model_trainer,
         }
-        self.strategy_order = ["training_sampler", "production_sampler"]
+
+        sampling_phase = []
+        self.strategy_order = ["training_sampler"]
