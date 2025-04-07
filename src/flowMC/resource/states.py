@@ -1,9 +1,6 @@
 from flowMC.resource.base import Resource
 from typing import TypeVar
 import numpy as np
-from jaxtyping import Array, Float
-import jax.numpy as jnp
-import jax
 
 TState = TypeVar("TState", bound="State")
 
@@ -44,15 +41,13 @@ class State(Resource):
             print(f"Updated state {k} to {v}")
 
     def print_parameters(self):
-        print(
-            f"State: {self.name} with shape {len(self.data)} and data {self.data}"
-        )
+        print(f"State: {self.name} with shape {len(self.data)} and data {self.data}")
 
     def save_resource(self, path: str):
         np.savez(
             path + self.name,
             name=self.name,
-            data=self.data, # type: ignore
+            data=self.data,  # type: ignore
         )
 
     def load_resource(self: TState, path: str) -> TState:

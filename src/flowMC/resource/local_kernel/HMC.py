@@ -25,7 +25,6 @@ class HMC(ProposalBase):
     @property
     def n_leapfrog(self) -> Int:
         return self.leapfrog_coefs.shape[0] - 2
-    
 
     def __repr__(self):
         return (

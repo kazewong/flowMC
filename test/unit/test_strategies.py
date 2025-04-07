@@ -241,7 +241,7 @@ class TestNFStrategies:
 
         def test_target(x, data={}):
             return model.log_prob(x)
-        
+
         sampler_state = State(
             {
                 "test_position": "test_position",

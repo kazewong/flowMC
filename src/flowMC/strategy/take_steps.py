@@ -84,7 +84,6 @@ class TakeSteps(Strategy):
             acceptance_buffer_name := state_resource.data[self.buffer_names[2]], str
         ), "Acceptance buffer resource name must be a string"
 
-
         assert isinstance(
             position_buffer := resources[position_buffer_name], Buffer
         ), "Position buffer resource must be a Buffer"

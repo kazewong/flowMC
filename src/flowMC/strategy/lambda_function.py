@@ -3,6 +3,7 @@ from flowMC.resource.base import Resource
 from jaxtyping import Array, Float, PRNGKeyArray
 from typing import Callable
 
+
 class Lambda(Strategy):
     """Lambda strategy for flowMC."""
 
@@ -13,7 +14,6 @@ class Lambda(Strategy):
             lambda: A callable that takes a resource and applies the lambda function.
         """
         self.lambda_function = lambda_function
-
 
     def __call__(
         self,

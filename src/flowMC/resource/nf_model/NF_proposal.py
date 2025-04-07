@@ -10,6 +10,7 @@ from flowMC.resource.nf_model.base import NFModel
 from flowMC.resource.local_kernel.base import ProposalBase
 from flowMC.resource.logPDF import LogPDF
 
+
 class NFProposal(ProposalBase):
     model: NFModel
     n_flow_sample: int
@@ -22,7 +23,6 @@ class NFProposal(ProposalBase):
         self.model = model
         self.n_flow_sample = n_flow_sample
 
-
     def kernel(
         self,
         rng_key: PRNGKeyArray,
@@ -33,7 +33,7 @@ class NFProposal(ProposalBase):
     ) -> tuple[
         Float[Array, "n_step n_dim"], Float[Array, "n_step 1"], Int[Array, "n_step 1"]
     ]:
-        
+
         print("Compiling NF proposal kernel")
         n_steps = data["n_steps"]
         n_dims = position.shape[-1]

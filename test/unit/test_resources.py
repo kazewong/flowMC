@@ -48,7 +48,11 @@ class TestLogPDF:
             "sampler_state": sampler_state,
         }
         stepper = TakeSerialSteps(
-            "logpdf", "MALA", "sampler_state", ["target_positions", "target_log_probs", "target_acceptances"], 1
+            "logpdf",
+            "MALA",
+            "sampler_state",
+            ["target_positions", "target_log_probs", "target_acceptances"],
+            1,
         )
         key, resources, positions = stepper(rng_key, resources, initial_position, data)
 

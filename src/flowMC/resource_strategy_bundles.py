@@ -232,7 +232,7 @@ class RQSpline_MALA_Bundle(ResourceStrategyBundle):
         ]:
             """Update the model."""
             model = resources["model"]
-            resources['global_sampler'] = eqx.tree_at(
+            resources["global_sampler"] = eqx.tree_at(
                 lambda x: x.model,
                 resources["global_sampler"],
                 model,
