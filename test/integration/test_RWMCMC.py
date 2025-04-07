@@ -6,6 +6,7 @@ from jaxtyping import Array, Float
 from flowMC.resource.local_kernel.Gaussian_random_walk import GaussianRandomWalk
 from flowMC.strategy.take_steps import TakeSerialSteps
 from flowMC.resource.buffers import Buffer
+from flowMC.resource.logPDF import LogPDF
 from flowMC.Sampler import Sampler
 
 
@@ -45,6 +46,7 @@ acceptance = Buffer("acceptance", (n_chains, n_local_steps), 1)
 rng_key, subkey = jax.random.split(rng_key)
 
 resource = {
+    "logpdf": LogPDF(dual_moon_pe, n_dims=n_dims),
     "positions": positions,
     "log_prob": log_prob,
     "acceptance": acceptance,
@@ -53,7 +55,7 @@ resource = {
 
 # Define strategy
 strategy = TakeSerialSteps(
-    logpdf=dual_moon_pe,
+    "logpdf",
     kernel_name="RWMCMC",
     buffer_names=["positions", "log_prob", "acceptance"],
     n_steps=n_local_steps,
@@ -67,7 +69,8 @@ nf_sampler = Sampler(
     n_chains=n_chains,
     rng_key=rng_key,
     resources=resource,
-    strategies=[strategy],
+    strategies={"take_steps": strategy},
+    strategy_order=["take_steps"],
 )
 
 nf_sampler.sample(initial_position, data)

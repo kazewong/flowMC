@@ -18,7 +18,7 @@ class TrainModel(Strategy):
     verbose: bool
     thinning: int
 
-    def __str__(self):
+    def __repr__(self):
         return "Train " + self.model_resource
 
     def __init__(

@@ -1,0 +1,113 @@
+{
+  "projectName": "flowMC",
+  "projectOwner": "kazewong",
+  "files": [
+    "README.md"
+  ],
+  "commitType": "docs",
+  "commitConvention": "angular",
+  "contributorsPerLine": 7,
+  "contributors": [
+    {
+      "login": "HajimeKawahara",
+      "name": "Hajime Kawahara",
+      "avatar_url": "https://avatars.githubusercontent.com/u/15956904?v=4",
+      "profile": "http://secondearths.sakura.ne.jp/en/index.html",
+      "contributions": [
+        "bug"
+      ]
+    },
+    {
+      "login": "daniel-dodd",
+      "name": "Daniel Dodd",
+      "avatar_url": "https://avatars.githubusercontent.com/u/68821880?v=4",
+      "profile": "https://github.com/daniel-dodd",
+      "contributions": [
+        "doc",
+        "review",
+        "test",
+        "bug"
+      ]
+    },
+    {
+      "login": "matt-graham",
+      "name": "Matt Graham",
+      "avatar_url": "https://avatars.githubusercontent.com/u/6746980?v=4",
+      "profile": "http://matt-graham.github.io",
+      "contributions": [
+        "bug",
+        "test",
+        "review",
+        "doc"
+      ]
+    },
+    {
+      "login": "kazewong",
+      "name": "Kaze Wong",
+      "avatar_url": "https://avatars.githubusercontent.com/u/8803931?v=4",
+      "profile": "https://www.kaze-wong.com/",
+      "contributions": [
+        "bug",
+        "blog",
+        "code",
+        "content",
+        "doc",
+        "example",
+        "infra",
+        "maintenance",
+        "research",
+        "review",
+        "test",
+        "tutorial"
+      ]
+    },
+    {
+      "login": "marylou-gabrie",
+      "name": "Marylou Gabrié",
+      "avatar_url": "https://avatars.githubusercontent.com/u/11092071?v=4",
+      "profile": "https://marylou-gabrie.github.io/",
+      "contributions": [
+        "bug",
+        "code",
+        "content",
+        "doc",
+        "example",
+        "maintenance",
+        "research",
+        "test",
+        "tutorial"
+      ]
+    },
+    {
+      "login": "Qazalbash",
+      "name": "Meesum Qazalbash",
+      "avatar_url": "https://avatars.githubusercontent.com/u/62182585?v=4",
+      "profile": "https://github.com/Qazalbash",
+      "contributions": [
+        "code",
+        "maintenance"
+      ]
+    },
+    {
+      "login": "thomasckng",
+      "name": "Thomas Ng",
+      "avatar_url": "https://avatars.githubusercontent.com/u/97585527?v=4",
+      "profile": "https://github.com/thomasckng",
+      "contributions": [
+        "code",
+        "maintenance"
+      ]
+    },
+    {
+      "login": "tedwards2412",
+      "name": "Thomas Edwards",
+      "avatar_url": "https://avatars.githubusercontent.com/u/6105841?v=4",
+      "profile": "https://github.com/tedwards2412",
+      "contributions": [
+        "bug",
+        "code"
+      ]
+    }
+  ],
+  "repoType": "github"
+}

@@ -62,6 +62,7 @@ plugins:
                     - jaxtyping.set_array_name_format("array")
 
                 optional:
+                    docstring_style: google
                     inherited_members: true  # Allow looking up inherited methods
                     show_root_heading: true  # actually display anything at all...
                     show_root_full_path: true  # display "diffrax.asdf" not just "asdf"
@@ -70,6 +71,7 @@ plugins:
                     show_source: false  # don't include source code
                     members_order: source  # order methods according to their order of definition in the source code, not alphabetical order
                     heading_level: 4
+
 
 extra_css:
   - stylesheets/extra.css

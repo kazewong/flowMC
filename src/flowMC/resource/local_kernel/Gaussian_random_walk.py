@@ -1,10 +1,10 @@
-from typing import Callable
-
 import jax
 import jax.numpy as jnp
 from jaxtyping import Array, Float, Int, PRNGKeyArray, PyTree
+from typing import Callable
 
 from flowMC.resource.local_kernel.base import ProposalBase
+from flowMC.resource.logPDF import LogPDF
 
 
 class GaussianRandomWalk(ProposalBase):
@@ -25,9 +25,9 @@ class GaussianRandomWalk(ProposalBase):
     def kernel(
         self,
         rng_key: PRNGKeyArray,
-        log_pdf: Callable[[Float[Array, " n_dim"], PyTree], Float[Array, "1"]],
         position: Float[Array, " n_dim"],
         log_prob: Float[Array, "1"],
+        logpdf: LogPDF | Callable[[Float[Array, " n_dim"], PyTree], Float[Array, "1"]],
         data: PyTree,
     ) -> tuple[Float[Array, " n_dim"], Float[Array, "1"], Int[Array, "1"]]:
         """Random walk gaussian kernel. This is a kernel that only evolve a single
@@ -51,7 +51,7 @@ class GaussianRandomWalk(ProposalBase):
         )
 
         proposal = position + move_proposal
-        proposal_log_prob: Float[Array, " n_dim"] = log_pdf(proposal, data)
+        proposal_log_prob: Float[Array, " n_dim"] = logpdf(proposal, data)
 
         log_uniform = jnp.log(jax.random.uniform(key2))
         do_accept = log_uniform < proposal_log_prob - log_prob

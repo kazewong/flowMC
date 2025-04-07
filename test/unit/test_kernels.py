@@ -7,10 +7,15 @@ from flowMC.resource.local_kernel.HMC import HMC
 from flowMC.resource.local_kernel.MALA import MALA
 from flowMC.strategy.take_steps import TakeSerialSteps
 from flowMC.resource.buffers import Buffer
+from flowMC.resource.logPDF import LogPDF
 
 
 def log_posterior(x, data=None):
     return -0.5 * jnp.sum(x**2)
+
+
+n_dims = 2
+logpdf = LogPDF(log_posterior, n_dims=2)
 
 
 class TestHMC:
@@ -29,18 +34,17 @@ class TestHMC:
         )
 
     def test_HMC_deterministic(self):
-        n_dim = 2
         n_chains = 1
         HMC_obj = HMC(
             step_size=1,
             n_leapfrog=5,
-            condition_matrix=jnp.eye(n_dim),
+            condition_matrix=jnp.eye(n_dims),
         )
 
         rng_key = jax.random.PRNGKey(42)
         rng_key, subkey = jax.random.split(rng_key)
 
-        initial_position = jax.random.normal(subkey, shape=(n_chains, n_dim)) * 1
+        initial_position = jax.random.normal(subkey, shape=(n_chains, n_dims)) * 1
         initial_PE = jax.vmap(lambda x, data: -log_posterior(x, data))(
             initial_position, None
         )
@@ -48,12 +52,8 @@ class TestHMC:
         # Test whether the HMC kernel is deterministic
 
         rng_key, subkey = jax.random.split(rng_key)
-        result1 = HMC_obj.kernel(
-            subkey, log_posterior, initial_position[0], initial_PE, None
-        )
-        result2 = HMC_obj.kernel(
-            subkey, log_posterior, initial_position[0], initial_PE, None
-        )
+        result1 = HMC_obj.kernel(subkey, initial_position[0], initial_PE, logpdf, None)
+        result2 = HMC_obj.kernel(subkey, initial_position[0], initial_PE, logpdf, None)
 
         assert jnp.allclose(result1[0], result2[0])
         assert result1[1] == result2[1]
@@ -61,28 +61,27 @@ class TestHMC:
 
     def test_leapfrog_reversible(self):
         # Test whether the leapfrog kernel is reversible
-        n_dim = 2
         n_chains = 1
         HMC_obj = HMC(
             step_size=1,
             n_leapfrog=5,
-            condition_matrix=jnp.eye(n_dim),
+            condition_matrix=jnp.eye(n_dims),
         )
 
         rng_key = jax.random.PRNGKey(42)
         rng_key, subkey = jax.random.split(rng_key)
-        initial_position = jax.random.normal(subkey, shape=(n_chains, n_dim)) * 1
+        initial_position = jax.random.normal(subkey, shape=(n_chains, n_dims)) * 1
         initial_PE = jax.vmap(lambda x, data: -log_posterior(x, data))(
             initial_position, None
         )
         rng_key, subkey = jax.random.split(rng_key)
         key1, key2 = jax.random.split(subkey)
 
-        def potential(x: Float[Array, " n_dim"], data: PyTree) -> Float[Array, "1"]:
+        def potential(x: Float[Array, " n_dims"], data: PyTree) -> Float[Array, "1"]:
             return -log_posterior(x, data)
 
         def kinetic(
-            p: Float[Array, " n_dim"], metric: Float[Array, " n_dim"]
+            p: Float[Array, " n_dims"], metric: Float[Array, " n_dims"]
         ) -> Float[Array, "1"]:
             return 0.5 * (p**2 * metric).sum()
 
@@ -92,17 +91,17 @@ class TestHMC:
 
         initial_momentum = (
             jax.random.normal(key1, shape=initial_position.shape)
-            * jnp.ones(n_dim) ** -0.5
+            * jnp.ones(n_dims) ** -0.5
         )
         new_position, new_momentum = HMC_obj.leapfrog_step(
             leapfrog_kernel,
             initial_position,
             initial_momentum,
             None,
-            jnp.eye(n_dim),
+            jnp.eye(n_dims),
         )
         rev_position, rev_momentum = HMC_obj.leapfrog_step(
-            leapfrog_kernel, new_position, -new_momentum, None, jnp.eye(n_dim)
+            leapfrog_kernel, new_position, -new_momentum, None, jnp.eye(n_dims)
         )
 
         assert jnp.allclose(rev_position, initial_position)
@@ -111,30 +110,28 @@ class TestHMC:
     def test_HMC_acceptance_rate(self):
         # Test acceptance rate goes to one when step size is small
 
-        n_dim = 2
         HMC_obj = HMC(
             step_size=0.0000001,
             n_leapfrog=5,
-            condition_matrix=jnp.eye(n_dim),
+            condition_matrix=jnp.eye(n_dims),
         )
 
         n_chains = 100
         rng_key = jax.random.PRNGKey(42)
         rng_key, subkey = jax.random.split(rng_key)
 
-        initial_position = jax.random.normal(subkey, shape=(n_chains, n_dim)) * 1
+        initial_position = jax.random.normal(subkey, shape=(n_chains, n_dims)) * 1
         initial_logp = jax.vmap(log_posterior)(initial_position, None)
 
         rng_key, subkey = jax.random.split(rng_key)
         subkey = jax.random.split(subkey, n_chains)
-        result = jax.vmap(HMC_obj.kernel, in_axes=(0, None, 0, 0, None))(
-            subkey, log_posterior, initial_position, initial_logp, None
+        result = jax.vmap(HMC_obj.kernel, in_axes=(0, 0, 0, None, None))(
+            subkey, initial_position, initial_logp, logpdf, None
         )
 
         assert result[2].all()
 
     def test_HMC_close_gaussian(self):
-        n_dims = 2
         n_chains = 1
         n_local_steps = 30000
         HMC_obj = HMC(
@@ -151,12 +148,13 @@ class TestHMC:
             "log_prob": log_prob,
             "acceptance": acceptance,
             "HMC": HMC_obj,
+            "logpdf": logpdf,
         }
 
         # Defining strategy
 
         strategy = TakeSerialSteps(
-            logpdf=log_posterior,
+            "logpdf",
             kernel_name="HMC",
             buffer_names=["positions", "log_prob", "acceptance"],
             n_steps=n_local_steps,
@@ -189,22 +187,21 @@ class TestMALA:
         assert captured.out == "MALA parameters:\nstep_size: 1\n"
 
     def test_MALA_deterministic(self):
-        n_dim = 2
         n_chains = 1
         MALA_obj = MALA(step_size=1)
 
         rng_key = jax.random.PRNGKey(42)
         rng_key, subkey = jax.random.split(rng_key)
 
-        initial_position = jax.random.normal(subkey, shape=(n_chains, n_dim)) * 1
+        initial_position = jax.random.normal(subkey, shape=(n_chains, n_dims)) * 1
         initial_logp = log_posterior(initial_position, None)
 
         rng_key, subkey = jax.random.split(rng_key)
         result1 = MALA_obj.kernel(
-            subkey, log_posterior, initial_position[0], initial_logp, None
+            subkey, initial_position[0], initial_logp, logpdf, None
         )
         result2 = MALA_obj.kernel(
-            subkey, log_posterior, initial_position[0], initial_logp, None
+            subkey, initial_position[0], initial_logp, logpdf, None
         )
 
         assert jnp.allclose(result1[0], result2[0])
@@ -217,17 +214,16 @@ class TestMALA:
         MALA_obj = MALA(step_size=0.00001)
 
         n_chains = 100
-        n_dim = 2
         rng_key = jax.random.PRNGKey(42)
         rng_key, subkey = jax.random.split(rng_key)
 
-        initial_position = jax.random.normal(subkey, shape=(n_chains, n_dim)) * 1
+        initial_position = jax.random.normal(subkey, shape=(n_chains, n_dims)) * 1
         initial_logp = jax.vmap(log_posterior)(initial_position, None)
 
         rng_key, subkey = jax.random.split(rng_key)
         subkey = jax.random.split(subkey, n_chains)
-        result = jax.vmap(MALA_obj.kernel, in_axes=(0, None, 0, 0, None))(
-            subkey, log_posterior, initial_position, initial_logp, None
+        result = jax.vmap(MALA_obj.kernel, in_axes=(0, 0, 0, None, None))(
+            subkey, initial_position, initial_logp, logpdf, None
         )
 
         assert result[2].all()
@@ -246,12 +242,13 @@ class TestMALA:
             "log_prob": log_prob,
             "acceptance": acceptance,
             "MALA": MALA_Sampler,
+            "logpdf": logpdf,
         }
 
         # Defining strategy
 
         strategy = TakeSerialSteps(
-            logpdf=log_posterior,
+            "logpdf",
             kernel_name="MALA",
             buffer_names=["positions", "log_prob", "acceptance"],
             n_steps=n_local_steps,
@@ -284,21 +281,20 @@ class TestGRW:
         assert captured.out == "Gaussian Random Walk parameters:\nstep_size: 1\n"
 
     def test_Gaussian_random_walk_deterministic(self):
-        n_dim = 2
         n_chains = 1
         GRW_obj = GaussianRandomWalk(step_size=1)
         rng_key = jax.random.PRNGKey(42)
         rng_key, subkey = jax.random.split(rng_key)
 
-        initial_position = jax.random.normal(subkey, shape=(n_chains, n_dim)) * 1
+        initial_position = jax.random.normal(subkey, shape=(n_chains, n_dims)) * 1
         initial_logp = log_posterior(initial_position)
 
         rng_key, subkey = jax.random.split(rng_key)
         result1 = GRW_obj.kernel(
-            subkey, log_posterior, initial_position[0], initial_logp, None
+            subkey, initial_position[0], initial_logp, logpdf, None
         )
         result2 = GRW_obj.kernel(
-            subkey, log_posterior, initial_position[0], initial_logp, None
+            subkey, initial_position[0], initial_logp, logpdf, None
         )
 
         assert jnp.allclose(result1[0], result2[0])
@@ -320,13 +316,12 @@ class TestGRW:
 
         rng_key, subkey = jax.random.split(rng_key)
         subkey = jax.random.split(subkey, n_chains)
-        result = jax.vmap(GRW_obj.kernel, in_axes=(0, None, 0, 0, None))(
-            subkey, log_posterior, initial_position, initial_logp, None
+        result = jax.vmap(GRW_obj.kernel, in_axes=(0, 0, 0, None, None))(
+            subkey, initial_position, initial_logp, logpdf, None
         )
         assert result[2].all()
 
     def test_Gaussian_random_walk_close_gaussian(self):
-        n_dims = 2
         n_chains = 1
         n_local_steps = 50000
         GRW_Sampler = GaussianRandomWalk(step_size=1)
@@ -340,12 +335,13 @@ class TestGRW:
             "log_prob": log_prob,
             "acceptance": acceptance,
             "GRW": GRW_Sampler,
+            "logpdf": logpdf,
         }
 
         # Defining strategy
 
         strategy = TakeSerialSteps(
-            logpdf=log_posterior,
+            "logpdf",
             kernel_name="GRW",
             buffer_names=["positions", "log_prob", "acceptance"],
             n_steps=n_local_steps,

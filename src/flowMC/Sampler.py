@@ -1,5 +1,6 @@
 import jax.numpy as jnp
 from jaxtyping import Array, Float, PRNGKeyArray
+from typing import Optional
 
 from flowMC.strategy.base import Strategy
 from flowMC.resource.base import Resource
@@ -16,7 +17,7 @@ class Sampler:
         logpdf (Callable[[Float[Array, "n_dim"], dict], Float):
             Log probability function.
         resources (dict[str, Resource]): Resources to be used by the sampler.
-        strategies (list[Strategy]): List of strategies to be used by the sampler.
+        strategies (dict[str, Strategy]): Strategies to be used by the sampler.
         verbose (bool): Whether to print out progress. Defaults to False.
         logging (bool): Whether to log the progress. Defaults to True.
         outdir (str): Directory to save the logs. Defaults to "./outdir/".
@@ -27,7 +28,8 @@ class Sampler:
     n_chains: int
     rng_key: PRNGKeyArray
     resources: dict[str, Resource]
-    strategies: list[Strategy]
+    strategies: dict[str, Strategy]
+    strategy_order: Optional[list[str]]
 
     # Logging hyperparameters
     verbose: bool = False
@@ -40,7 +42,8 @@ class Sampler:
         n_chains: int,
         rng_key: PRNGKeyArray,
         resources: None | dict[str, Resource] = None,
-        strategies: None | list[Strategy] = None,
+        strategies: None | dict[str, Strategy] = None,
+        strategy_order: None | list[str] = None,
         resource_strategy_bundles: None | ResourceStrategyBundle = None,
         **kwargs,
     ):
@@ -56,6 +59,8 @@ class Sampler:
             )
             self.resources = resources
             self.strategies = strategies
+            self.strategy_order = strategy_order
+
         else:
             print(
                 "Resources or strategies not provided. Using resource strategy bundles."
@@ -67,6 +72,7 @@ class Sampler:
                 )
             self.resources = resource_strategy_bundles.resources
             self.strategies = resource_strategy_bundles.strategies
+            self.strategy_order = resource_strategy_bundles.strategy_order
 
         # Set and override any given hyperparameters
         class_keys = list(self.__class__.__dict__.keys())
@@ -86,12 +92,20 @@ class Sampler:
         initial_position = jnp.atleast_2d(initial_position)  # type: ignore
         rng_key = self.rng_key
         last_step = initial_position
-        for strategy in self.strategies:
+        assert isinstance(self.strategy_order, list)
+        for strategy in self.strategy_order:
+            if strategy not in self.strategies:
+                raise ValueError(
+                    f"Invalid strategy name '{strategy}' provided. "
+                    f"Available strategies are: {list(self.strategies.keys())}."
+                )
             (
                 rng_key,
                 self.resources,
                 last_step,
-            ) = strategy(rng_key, self.resources, last_step, data)
+            ) = self.strategies[
+                strategy
+            ](rng_key, self.resources, last_step, data)
 
     # TODO: Implement quick access and summary functions that operates on buffer
 

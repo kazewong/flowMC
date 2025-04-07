@@ -1,17 +1,17 @@
 from flowMC.resource.base import Resource
 from flowMC.resource.local_kernel.base import ProposalBase
 from flowMC.resource.buffers import Buffer
+from flowMC.resource.logPDF import LogPDF
 from flowMC.strategy.base import Strategy
 from jaxtyping import Array, Float, PRNGKeyArray
 import jax
 import jax.numpy as jnp
 import equinox as eqx
-from typing import Callable
 from abc import abstractmethod
 
 
 class TakeSteps(Strategy):
-    logpdf: Callable[[Float[Array, " n_dim"], dict], Float]
+    logpdf_name: str
     kernel_name: str
     buffer_names: list[str]
     n_steps: int
@@ -21,14 +21,14 @@ class TakeSteps(Strategy):
 
     def __init__(
         self,
-        logpdf: Callable[[Float[Array, " n_dim"], dict], Float],
+        logpdf_name: str,
         kernel_name: str,
         buffer_names: list[str],
         n_steps: int,
         thinning: int = 1,
         verbose: bool = False,
     ):
-        self.logpdf = logpdf
+        self.logpdf_name = logpdf_name
         self.kernel_name = kernel_name
         self.buffer_names = buffer_names
         self.n_steps = n_steps
@@ -42,6 +42,7 @@ class TakeSteps(Strategy):
         kernel: ProposalBase,
         rng_key: PRNGKeyArray,
         initial_position: Float[Array, " n_dim"],
+        logpdf: LogPDF,
         data: dict,
     ):
         raise NotImplementedError
@@ -76,18 +77,19 @@ class TakeSteps(Strategy):
         ), "Acceptance buffer resource must be a Buffer"
 
         kernel = resources[self.kernel_name]
+        logpdf = resources[self.logpdf_name]
 
         # Filter jit will bypass the compilation of
         # the function if not clearing the cache
         positions, log_probs, do_accepts = eqx.filter_jit(
             eqx.filter_vmap(
-                jax.tree_util.Partial(self.sample, kernel), in_axes=(0, 0, None)
+                jax.tree_util.Partial(self.sample, kernel), in_axes=(0, 0, None, None)
             )
-        )(subkey, initial_position, data)
+        )(subkey, initial_position, logpdf, data)
 
         positions = positions[:, :: self.thinning]
         log_probs = log_probs[:, :: self.thinning]
-        do_accepts = do_accepts[:, :: self.thinning].astype(jnp.float32)
+        do_accepts = do_accepts[:, :: self.thinning].astype(jnp.floating)
 
         position_buffer.update_buffer(positions, self.current_position)
         log_prob_buffer.update_buffer(log_probs, self.current_position)
@@ -105,27 +107,28 @@ class TakeSerialSteps(TakeSteps):
     the previous step.
     """
 
-    def body(self, kernel, carry, aux):
-        key, position, log_prob, data = carry
+    def body(self, kernel: ProposalBase, carry, aux):
+        key, position, log_prob, logpdf, data = carry
         key, subkey = jax.random.split(key)
         position, log_prob, do_accept = kernel.kernel(
-            subkey, self.logpdf, position, log_prob, data
+            subkey, position, log_prob, logpdf, data
         )
-        return (key, position, log_prob, data), (position, log_prob, do_accept)
+        return (key, position, log_prob, logpdf, data), (position, log_prob, do_accept)
 
     def sample(
         self,
         kernel: ProposalBase,
         rng_key: PRNGKeyArray,
         initial_position: Float[Array, " n_dim"],
+        logpdf: LogPDF,
         data: dict,
     ):
         (
-            (last_key, last_position, last_log_prob, data),
+            (last_key, last_position, last_log_prob, logpdf, data),
             (positions, log_probs, do_accepts),
         ) = jax.lax.scan(
             jax.tree_util.Partial(self.body, kernel),
-            (rng_key, initial_position, self.logpdf(initial_position, data), data),
+            (rng_key, initial_position, logpdf(initial_position, data), logpdf, data),
             length=self.n_steps,
         )
         return positions, log_probs, do_accepts
@@ -144,13 +147,14 @@ class TakeGroupSteps(TakeSteps):
         kernel: ProposalBase,
         rng_key: PRNGKeyArray,
         initial_position: Float[Array, " n_dim"],
+        logpdf: LogPDF,
         data: dict,
     ):
         (positions, log_probs, do_accepts) = kernel.kernel(
             rng_key,
-            self.logpdf,
             initial_position,
-            self.logpdf(initial_position, data),
+            logpdf(initial_position, data),
+            logpdf,
             {**data, "n_steps": self.n_steps},
         )
         return positions, log_probs, do_accepts
