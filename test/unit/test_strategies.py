@@ -9,6 +9,7 @@ from flowMC.resource.local_kernel.MALA import MALA
 from flowMC.resource.local_kernel.Gaussian_random_walk import GaussianRandomWalk
 from flowMC.resource.local_kernel.HMC import HMC
 from flowMC.resource.buffers import Buffer
+from flowMC.resource.states import State
 from flowMC.resource.logPDF import LogPDF, TemperedPDF
 
 # from flowMC.strategy.optimization import optimization_Adam
@@ -90,6 +91,15 @@ class TestLocalStep:
 
         logpdf = LogPDF(log_posterior, n_dims=n_dims)
 
+        sampler_state = State(
+            {
+                "test_position": "test_position",
+                "test_log_prob": "test_log_prob",
+                "test_acceptance": "test_acceptance",
+            },
+            name="sampler_state",
+        )
+
         resources = {
             "test_position": test_position,
             "test_log_prob": test_log_prob,
@@ -98,11 +108,13 @@ class TestLocalStep:
             "MALA": mala_kernel,
             "GRW": grw_kernel,
             "HMC": hmc_kernel,
+            "sampler_state": sampler_state,
         }
 
         strategy = TakeSerialSteps(
             "logpdf",
             "MALA",
+            "sampler_state",
             ["test_position", "test_log_prob", "test_acceptance"],
             n_batch,
         )
@@ -229,6 +241,15 @@ class TestNFStrategies:
 
         def test_target(x, data={}):
             return model.log_prob(x)
+        
+        sampler_state = State(
+            {
+                "test_position": "test_position",
+                "test_log_prob": "test_log_prob",
+                "test_acceptance": "test_acceptance",
+            },
+            name="sampler_state",
+        )
 
         resources = {
             "test_position": test_position,
@@ -236,11 +257,13 @@ class TestNFStrategies:
             "test_acceptance": test_acceptance,
             "NFProposal": proposal,
             "logpdf": LogPDF(test_target, n_dims=self.n_dims),
+            "sampler_state": sampler_state,
         }
 
         strategy = TakeGroupSteps(
             "logpdf",
             "NFProposal",
+            "sampler_state",
             ["test_position", "test_log_prob", "test_acceptance"],
             self.n_steps,
         )
