@@ -6,6 +6,7 @@ from jaxtyping import Array, Float
 from flowMC.resource.local_kernel.HMC import HMC
 from flowMC.strategy.take_steps import TakeSerialSteps
 from flowMC.resource.buffers import Buffer
+from flowMC.resource.states import State
 from flowMC.resource.logPDF import LogPDF
 from flowMC.Sampler import Sampler
 
@@ -47,18 +48,29 @@ positions = Buffer("positions", (n_chains, n_local_steps, n_dims), 1)
 log_prob = Buffer("log_prob", (n_chains, n_local_steps), 1)
 acceptance = Buffer("acceptance", (n_chains, n_local_steps), 1)
 
+sampler_state = State(
+    {
+        "positions": "positions",
+        "log_prob": "log_prob",
+        "acceptance": "acceptance",
+    },
+    name="sampler_state",
+)
+
 resource = {
     "positions": positions,
     "log_prob": log_prob,
     "acceptance": acceptance,
     "HMC": HMC_sampler,
     "logpdf": LogPDF(dual_moon_pe, n_dims=n_dims),
+    "sampler_state": sampler_state,
 }
 
 # Define strategy
 strategy = TakeSerialSteps(
     "logpdf",
     kernel_name="HMC",
+    state_name="sampler_state",
     buffer_names=["positions", "log_prob", "acceptance"],
     n_steps=n_local_steps,
 )
