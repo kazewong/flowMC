@@ -5,13 +5,14 @@ import jax.numpy as jnp
 from jax import random
 from jaxtyping import Array, Float, Int, PRNGKeyArray, PyTree
 from typing import Callable
+import equinox as eqx
 
 from flowMC.resource.nf_model.base import NFModel
 from flowMC.resource.local_kernel.base import ProposalBase
 from flowMC.resource.logPDF import LogPDF
 
-
-class NFProposal(ProposalBase):
+class NFProposal(eqx.Module, ProposalBase):
+    model: NFModel
     n_flow_sample: int
 
     def __repr__(self):
@@ -22,9 +23,6 @@ class NFProposal(ProposalBase):
         self.model = model
         self.n_flow_sample = n_flow_sample
 
-    def update_model(self, model: NFModel):
-        """Update the model used for the proposal."""
-        self.model = model
 
     def kernel(
         self,
@@ -36,6 +34,8 @@ class NFProposal(ProposalBase):
     ) -> tuple[
         Float[Array, "n_step n_dim"], Float[Array, "n_step 1"], Int[Array, "n_step 1"]
     ]:
+        
+        print("Compiling NF proposal kernel")
         n_steps = data["n_steps"]
         n_dims = position.shape[-1]
 

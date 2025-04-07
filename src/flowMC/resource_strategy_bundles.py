@@ -3,6 +3,7 @@ from typing import Callable
 
 import jax
 from jaxtyping import Array, Float, PRNGKeyArray
+import equinox as eqx
 
 from flowMC.resource.base import Resource
 from flowMC.resource.buffers import Buffer
@@ -218,9 +219,29 @@ class RQSpline_MALA_Bundle(ResourceStrategyBundle):
                 global_stepper.current_position
             )
         )
-        update_model = Lambda(
-            lambda rng_key, resources, initial_position, data: global_sampler.update_model(
-                resources["model"]
+
+        def update_model(
+            rng_key: PRNGKeyArray,
+            resources: dict[str, Resource],
+            initial_position: Float[Array, "n_chains n_dim"],
+            data: dict,
+        ) -> tuple[
+            PRNGKeyArray,
+            dict[str, Resource],
+            Float[Array, "n_chains n_dim"],
+        ]:
+            """Update the model."""
+            model = resources["model"]
+            resources['global_sampler'] = eqx.tree_at(
+                lambda x: x.model,
+                resources["global_sampler"],
+                model,
+            )
+            return rng_key, resources, initial_position
+
+        update_model_lambda = Lambda(
+            lambda rng_key, resources, initial_position, data: update_model(
+                rng_key, resources, initial_position, data
             )
         )
 
@@ -232,7 +253,7 @@ class RQSpline_MALA_Bundle(ResourceStrategyBundle):
             "update_global_step": update_global_step,
             "update_local_step": update_local_step,
             "reset_steppers": reset_steppers_lambda,
-            "update_model": update_model,
+            "update_model": update_model_lambda,
         }
 
         training_phase = [
