@@ -34,12 +34,10 @@ pip install flowMC
 This will install the latest stable release and its dependencies.
 flowMC is based on [Jax](https://github.com/google/jax) and [Equinox](https://github.com/patrick-kidger/equinox).
 By default, installing flowMC will automatically install Jax and Equinox available on [PyPI](https://pypi.org).
-Jax does not install GPU support by default.
-If you want to use GPU with Jax, you need to install Jax with GPU support according to their document.
-At the time of writing this documentation page, this is the command to install Jax with GPU support:
+By default this install the CPU version of Jax. If you have a GPU and want to use it, you can install the GPU version of Jax by running:
 
 ```
-pip install --upgrade "jax[cuda12_pip]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+pip install flowMC[cuda]
 ```
 
 If you want to install the latest version of flowMC, you can clone this repo and install it locally:
@@ -50,23 +48,12 @@ cd flowMC
 pip install -e .
 ```
 
-## Requirements
+There are a couple more extras that you can install with flowMC, including:
+- `flowMC[docs]`: Install the documentation dependencies.
+- `flowMC[codeqa]`: Install the code quality dependencies.
+- `flowMC[visualize]`: Install the visualization dependencies.
 
-Here is a list of packages we use in the main library
-
-    * Python 3.9+
-    * Jax
-    * Jaxlib
-    * equinox
-
-To visualize the inference results in the examples, we requrie the following packages in addtion to the above:
-
-    * matplotlib
-    * corner
-    * arviz
-
-The test suite is based on pytest. To run the tests, one needs to install `pytest` and run `pytest` at the root directory of this repo.
-
+On top of `pip` installation, we highly encourage you to use [uv](https://docs.astral.sh/uv/) to manage your python environment. Once you clone the repo, you can run `uv sync` to create a virtual environment with all the dependencies installed.
 # Attribution
 
 If you used `flowMC` in your research, we would really appericiate it if you could at least cite the following papers:
