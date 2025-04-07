@@ -3,6 +3,7 @@ import jax.numpy as jnp
 from flowMC.resource.buffers import Buffer
 from flowMC.resource.logPDF import LogPDF, Variable, TemperedPDF
 from flowMC.resource.local_kernel.MALA import MALA
+from flowMC.resource.states import State
 from flowMC.strategy.take_steps import TakeSerialSteps
 
 
@@ -30,15 +31,24 @@ class TestLogPDF:
         rng_key = jax.random.PRNGKey(0)
         initial_position = jnp.zeros(self.n_dims)
         data = {"data": jnp.ones(self.n_dims)}
+        sampler_state = State(
+            {
+                "target_positions": "test_positions",
+                "target_log_probs": "test_log_probs",
+                "target_acceptances": "test_acceptances",
+            },
+            name="sampler_state",
+        )
         resources = {
-            "test_position": Buffer("test_position", (self.n_dims, 1), 1),
-            "test_log_prob": Buffer("test_log_prob", (self.n_dims, 1), 1),
-            "test_acceptance": Buffer("test_acceptance", (self.n_dims, 1), 1),
+            "test_positions": Buffer("test_positions", (self.n_dims, 1), 1),
+            "test_log_probs": Buffer("test_log_probs", (self.n_dims, 1), 1),
+            "test_acceptances": Buffer("test_acceptances", (self.n_dims, 1), 1),
             "MALA": mala,
             "logpdf": logpdf,
+            "sampler_state": sampler_state,
         }
         stepper = TakeSerialSteps(
-            "logpdf", "MALA", ["test_position", "test_log_prob", "test_acceptance"], 1
+            "logpdf", "MALA", "sampler_state", ["target_positions", "target_log_probs", "target_acceptances"], 1
         )
         key, resources, positions = stepper(rng_key, resources, initial_position, data)
 
