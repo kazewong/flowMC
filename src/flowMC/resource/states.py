@@ -24,6 +24,13 @@ class State(Resource):
         return "State " + self.name + " with shape " + str(len(self.data))
 
     def __init__(self, data: dict[str, int | bool | str], name: str = "State"):
+        """Initialize the state.
+        
+        Args:
+            data (dict): The data to initialize the state with.
+            name (str): The name of the state.
+        """
+
         self.name = name
         self.data = data
 
@@ -34,7 +41,7 @@ class State(Resource):
 
         Args:
             key (str): The key to update.
-            value (int | bool): The value to update.
+            value (int | bool | str): The value to update.
         """
         for k, v in zip(key, value):
             self.data[k] = v

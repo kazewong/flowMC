@@ -5,7 +5,14 @@ from typing import Callable
 
 
 class Lambda(Strategy):
-    """Lambda strategy for flowMC."""
+    """A strategy that applies a function to the resources.
+
+    This should be used for simple functions or calling methods from
+    a class.
+    If you find yourself writing a Lambda strategy that is more than a few lines
+    long, consider writing a custom strategy instead.
+
+    """
 
     def __init__(self, lambda_function: Callable):
         """Initialize the lambda strategy.
