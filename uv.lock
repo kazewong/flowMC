@@ -515,7 +515,7 @@ wheels = [
 
 [[package]]
 name = "flowmc"
-version = "0.3.5"
+version = "0.4.2"
 source = { editable = "." }
 dependencies = [
     { name = "chex" },
