@@ -12,6 +12,7 @@ from flowMC.resource.logPDF import LogPDF
 
 
 class NFProposal(ProposalBase):
+    model: NFModel
     n_flow_sample: int
 
     def __repr__(self):
@@ -32,6 +33,8 @@ class NFProposal(ProposalBase):
     ) -> tuple[
         Float[Array, "n_step n_dim"], Float[Array, "n_step 1"], Int[Array, "n_step 1"]
     ]:
+
+        print("Compiling NF proposal kernel")
         n_steps = data["n_steps"]
         n_dims = position.shape[-1]
 

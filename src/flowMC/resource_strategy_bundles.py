@@ -3,16 +3,21 @@ from typing import Callable
 
 import jax
 from jaxtyping import Array, Float, PRNGKeyArray
+import equinox as eqx
 
 from flowMC.resource.base import Resource
 from flowMC.resource.buffers import Buffer
+from flowMC.resource.states import State
 from flowMC.resource.logPDF import LogPDF
 from flowMC.resource.local_kernel.MALA import MALA
 from flowMC.resource.nf_model.NF_proposal import NFProposal
 from flowMC.resource.nf_model.rqSpline import MaskedCouplingRQSpline
 from flowMC.resource.optimizer import Optimizer
 from flowMC.strategy.base import Strategy
-from flowMC.strategy.global_tuning import LocalGlobalNFSample
+from flowMC.strategy.lambda_function import Lambda
+from flowMC.strategy.take_steps import TakeSerialSteps, TakeGroupSteps
+from flowMC.strategy.train_model import TrainModel
+from flowMC.strategy.update_state import UpdateState
 
 
 class ResourceStrategyBundle(ABC):
@@ -59,6 +64,8 @@ class RQSpline_MALA_Bundle(ResourceStrategyBundle):
         learning_rate: float = 1e-3,
         batch_size: int = 10000,
         n_max_examples: int = 10000,
+        local_thinning: int = 1,
+        global_thinning: int = 1,
         n_flow_sample: int = 10000,
         verbose: bool = False,
     ):
@@ -104,6 +111,17 @@ class RQSpline_MALA_Bundle(ResourceStrategyBundle):
         optimizer = Optimizer(model=model, learning_rate=learning_rate)
         logpdf = LogPDF(logpdf, n_dims=n_dims)
 
+        sampler_state = State(
+            {
+                "target_positions": "positions_training",
+                "target_log_prob": "log_prob_training",
+                "target_local_accs": "local_accs_training",
+                "target_global_accs": "global_accs_training",
+                "training": True,
+            },
+            name="sampler_state",
+        )
+
         self.resources = {
             "logpdf": logpdf,
             "positions_training": positions_training,
@@ -119,49 +137,147 @@ class RQSpline_MALA_Bundle(ResourceStrategyBundle):
             "global_sampler": global_sampler,
             "model": model,
             "optimizer": optimizer,
+            "sampler_state": sampler_state,
         }
 
+        local_stepper = TakeSerialSteps(
+            "logpdf",
+            "local_sampler",
+            "sampler_state",
+            ["target_positions", "target_log_prob", "target_local_accs"],
+            n_local_steps,
+            thinning=local_thinning,
+            verbose=verbose,
+        )
+
+        global_stepper = TakeGroupSteps(
+            "logpdf",
+            "global_sampler",
+            "sampler_state",
+            ["target_positions", "target_log_prob", "target_global_accs"],
+            n_global_steps,
+            thinning=global_thinning,
+            verbose=verbose,
+        )
+
+        model_trainer = TrainModel(
+            "model",
+            "positions_training",
+            "optimizer",
+            loss_buffer_name="loss_buffer",
+            n_epochs=n_epochs,
+            batch_size=batch_size,
+            n_max_examples=n_max_examples,
+            verbose=verbose,
+        )
+
+        update_state = UpdateState(
+            "sampler_state",
+            [
+                "target_positions",
+                "target_log_prob",
+                "target_local_accs",
+                "target_global_accs",
+                "training",
+            ],
+            [
+                "positions_production",
+                "log_prob_production",
+                "local_accs_production",
+                "global_accs_production",
+                False,
+            ],
+        )
+
+        def reset_steppers(
+            rng_key: PRNGKeyArray,
+            resources: dict[str, Resource],
+            initial_position: Float[Array, "n_chains n_dim"],
+            data: dict,
+        ) -> tuple[
+            PRNGKeyArray,
+            dict[str, Resource],
+            Float[Array, "n_chains n_dim"],
+        ]:
+            """Reset the steppers to the initial position."""
+            local_stepper.set_current_position(0)
+            global_stepper.set_current_position(0)
+            return rng_key, resources, initial_position
+
+        reset_steppers_lambda = Lambda(
+            lambda rng_key, resources, initial_position, data: reset_steppers(
+                rng_key, resources, initial_position, data
+            )
+        )
+
+        update_global_step = Lambda(
+            lambda rng_key, resources, initial_position, data: global_stepper.set_current_position(
+                local_stepper.current_position
+            )
+        )
+        update_local_step = Lambda(
+            lambda rng_key, resources, initial_position, data: local_stepper.set_current_position(
+                global_stepper.current_position
+            )
+        )
+
+        def update_model(
+            rng_key: PRNGKeyArray,
+            resources: dict[str, Resource],
+            initial_position: Float[Array, "n_chains n_dim"],
+            data: dict,
+        ) -> tuple[
+            PRNGKeyArray,
+            dict[str, Resource],
+            Float[Array, "n_chains n_dim"],
+        ]:
+            """Update the model."""
+            model = resources["model"]
+            resources["global_sampler"] = eqx.tree_at(
+                lambda x: x.model,
+                resources["global_sampler"],
+                model,
+            )
+            return rng_key, resources, initial_position
+
+        update_model_lambda = Lambda(
+            lambda rng_key, resources, initial_position, data: update_model(
+                rng_key, resources, initial_position, data
+            )
+        )
+
         self.strategies = {
-            "training_sampler": LocalGlobalNFSample(
-                "logpdf",
-                "local_sampler",
-                "global_sampler",
-                ["positions_training", "log_prob_training", "local_accs_training"],
-                ["model", "positions_training", "optimizer"],
-                ["positions_training", "log_prob_training", "global_accs_training"],
-                n_local_steps,
-                n_global_steps,
-                n_training_loops,
-                n_epochs,
-                loss_buffer_name="loss_buffer",
-                batch_size=batch_size,
-                n_max_examples=n_max_examples,
-                training=True,
-                verbose=verbose,
-            ),
-            "production_sampler": LocalGlobalNFSample(
-                "logpdf",
-                "local_sampler",
-                "global_sampler",
-                [
-                    "positions_production",
-                    "log_prob_production",
-                    "local_accs_production",
-                ],
-                ["model", "positions_production", "optimizer"],
-                [
-                    "positions_production",
-                    "log_prob_production",
-                    "global_accs_production",
-                ],
-                n_local_steps,
-                n_global_steps,
-                n_production_loops,
-                n_epochs,
-                batch_size=batch_size,
-                n_max_examples=n_max_examples,
-                training=False,
-                verbose=verbose,
-            ),
+            "local_stepper": local_stepper,
+            "global_stepper": global_stepper,
+            "model_trainer": model_trainer,
+            "update_state": update_state,
+            "update_global_step": update_global_step,
+            "update_local_step": update_local_step,
+            "reset_steppers": reset_steppers_lambda,
+            "update_model": update_model_lambda,
         }
-        self.strategy_order = ["training_sampler", "production_sampler"]
+
+        training_phase = [
+            "local_stepper",
+            "update_global_step",
+            "model_trainer",
+            "update_model",
+            "global_stepper",
+            "update_local_step",
+        ]
+        production_phase = [
+            "local_stepper",
+            "update_global_step",
+            "global_stepper",
+            "update_local_step",
+        ]
+        strategy_order = []
+        for _ in range(n_training_loops):
+            strategy_order.extend(training_phase)
+
+        strategy_order.append("reset_steppers")
+        strategy_order.append("update_state")
+        for _ in range(n_production_loops):
+            strategy_order.extend(production_phase)
+
+        self.strategy_order = strategy_order

@@ -9,6 +9,7 @@ from flowMC.strategy.train_model import TrainModel
 
 class LocalGlobalNFSample(Strategy):
     n_loops: int
+    train_state_name: str
 
     def __repr__(self):
         return "Local Global NF Sampling"
@@ -18,6 +19,7 @@ class LocalGlobalNFSample(Strategy):
         logpdf_name: str,
         local_kernel_name: str,
         global_kernel_name: str,
+        state_name: str,
         local_buffers_names: list[str],
         training_buffers_names: list[str],
         global_buffers_names: list[str],
@@ -28,12 +30,12 @@ class LocalGlobalNFSample(Strategy):
         loss_buffer_name: str = "",
         batch_size: int = 10000,
         n_max_examples: int = 10000,
-        training: bool = True,
         verbose: bool = False,
     ):
         self.local_stepper = TakeSerialSteps(
             logpdf_name,
             local_kernel_name,
+            state_name,
             local_buffers_names,
             n_local_steps,
             verbose=verbose,
@@ -41,6 +43,7 @@ class LocalGlobalNFSample(Strategy):
         self.global_stepper = TakeGroupSteps(
             logpdf_name,
             global_kernel_name,
+            state_name,
             global_buffers_names,
             n_global_steps,
             verbose=verbose,
@@ -56,7 +59,7 @@ class LocalGlobalNFSample(Strategy):
             verbose=verbose,
         )
         self.n_loops = n_loops
-        self.training = training
+        self.train_state_name = training_buffers_names[3]
 
     def __call__(
         self,
@@ -69,7 +72,8 @@ class LocalGlobalNFSample(Strategy):
         dict[str, Resource],
         Float[Array, "n_chains n_dim"],
     ]:
-        if self.training is True:
+        training = resources[self.train_state_name]
+        if training is True:
             iterator = tqdm(
                 range(self.n_loops),
                 desc="Tuning Phase",
@@ -90,7 +94,7 @@ class LocalGlobalNFSample(Strategy):
             self.global_stepper.set_current_position(
                 self.local_stepper.current_position
             )
-            if self.training is True:
+            if training is True:
                 rng_key, resources, initial_position = self.training_stepper(
                     rng_key,
                     resources,

@@ -1,6 +1,7 @@
 from flowMC.resource.base import Resource
 from flowMC.resource.local_kernel.base import ProposalBase
 from flowMC.resource.buffers import Buffer
+from flowMC.resource.states import State
 from flowMC.resource.logPDF import LogPDF
 from flowMC.strategy.base import Strategy
 from jaxtyping import Array, Float, PRNGKeyArray
@@ -13,6 +14,7 @@ from abc import abstractmethod
 class TakeSteps(Strategy):
     logpdf_name: str
     kernel_name: str
+    state_name: str
     buffer_names: list[str]
     n_steps: int
     current_position: int
@@ -23,6 +25,7 @@ class TakeSteps(Strategy):
         self,
         logpdf_name: str,
         kernel_name: str,
+        state_name: str,
         buffer_names: list[str],
         n_steps: int,
         thinning: int = 1,
@@ -30,6 +33,7 @@ class TakeSteps(Strategy):
     ):
         self.logpdf_name = logpdf_name
         self.kernel_name = kernel_name
+        self.state_name = state_name
         self.buffer_names = buffer_names
         self.n_steps = n_steps
         self.current_position = 0
@@ -63,17 +67,31 @@ class TakeSteps(Strategy):
     ]:
         rng_key, subkey = jax.random.split(rng_key)
         subkey = jax.random.split(subkey, initial_position.shape[0])
-        position_buffer = resources[self.buffer_names[0]]
+
         assert isinstance(
-            position_buffer, Buffer
+            state_resource := resources[self.state_name], State
+        ), "State resource must be a State"
+
+        assert isinstance(
+            position_buffer_name := state_resource.data[self.buffer_names[0]], str
+        ), "Position buffer resource name must be a string"
+
+        assert isinstance(
+            log_prob_buffer_name := state_resource.data[self.buffer_names[1]], str
+        ), "Log probability buffer resource name must be a string"
+
+        assert isinstance(
+            acceptance_buffer_name := state_resource.data[self.buffer_names[2]], str
+        ), "Acceptance buffer resource name must be a string"
+
+        assert isinstance(
+            position_buffer := resources[position_buffer_name], Buffer
         ), "Position buffer resource must be a Buffer"
-        log_prob_buffer = resources[self.buffer_names[1]]
         assert isinstance(
-            log_prob_buffer, Buffer
+            log_prob_buffer := resources[log_prob_buffer_name], Buffer
         ), "Log probability buffer resource must be a Buffer"
-        acceptance_buffer = resources[self.buffer_names[2]]
         assert isinstance(
-            acceptance_buffer, Buffer
+            acceptance_buffer := resources[acceptance_buffer_name], Buffer
         ), "Acceptance buffer resource must be a Buffer"
 
         kernel = resources[self.kernel_name]

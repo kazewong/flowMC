@@ -1,19 +1,17 @@
 from abc import abstractmethod
-import jax
+import equinox as eqx
 from jaxtyping import Array, Float, Int, PRNGKeyArray, PyTree
 from flowMC.resource.base import Resource
 from flowMC.resource.logPDF import LogPDF
 from typing import Callable
 
 
-@jax.tree_util.register_pytree_node_class
-class ProposalBase(Resource):
+class ProposalBase(eqx.Module, Resource):
+    @abstractmethod
     def __init__(
         self,
-        **kwargs,
     ):
         """Initialize the sampler class."""
-        self.kwargs = kwargs
 
     @abstractmethod
     def kernel(
@@ -27,13 +25,3 @@ class ProposalBase(Resource):
         Float[Array, "nstep  n_dim"], Float[Array, "nstep 1"], Int[Array, "n_step 1"]
     ]:
         """Kernel for one step in the proposal cycle."""
-
-    def tree_flatten(self):
-        children = ()
-
-        aux_data = {"kwargs": self.kwargs}
-        return (children, aux_data)
-
-    @classmethod
-    def tree_unflatten(cls, aux_data, children):
-        return cls(*children, **aux_data)
