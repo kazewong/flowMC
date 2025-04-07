@@ -6,7 +6,7 @@ from jaxtyping import Array, Float, PRNGKeyArray
 
 class UpdateState(Strategy):
     """Update a state resource in place.
-    
+
     This strategy is meant to be used to update the state not too frequently.
     If you are looking for an option that iterates over some parameters,
     say the paramters of a neural network, you should write a custom strategy
@@ -17,7 +17,7 @@ class UpdateState(Strategy):
         self, state_name: str, keys: list[str], values: list[int | bool | str]
     ):
         """Initialize the update state strategy.
-        
+
         Args:
             state_name (str): The name of the state resource to update.
             keys (list[str]): The keys to update in the state resource.

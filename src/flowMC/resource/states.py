@@ -25,7 +25,7 @@ class State(Resource):
 
     def __init__(self, data: dict[str, int | bool | str], name: str = "State"):
         """Initialize the state.
-        
+
         Args:
             data (dict): The data to initialize the state with.
             name (str): The name of the state.
