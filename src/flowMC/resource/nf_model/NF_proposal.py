@@ -5,13 +5,12 @@ import jax.numpy as jnp
 from jax import random
 from jaxtyping import Array, Float, Int, PRNGKeyArray, PyTree
 from typing import Callable
-import equinox as eqx
 
 from flowMC.resource.nf_model.base import NFModel
 from flowMC.resource.local_kernel.base import ProposalBase
 from flowMC.resource.logPDF import LogPDF
 
-class NFProposal(eqx.Module, ProposalBase):
+class NFProposal(ProposalBase):
     model: NFModel
     n_flow_sample: int
 
