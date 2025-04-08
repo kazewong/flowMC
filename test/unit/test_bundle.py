@@ -3,11 +3,14 @@ from flowMC.resource_strategy_bundle.RQSpline_MALA import RQSpline_MALA_Bundle
 from flowMC.resource_strategy_bundle.RQSpline_MALA_PT import RQSpline_MALA_PT_Bundle
 
 
+def logpdf(x, _):
+    return -0.5 * (x**2).sum()
+
+
 def test_rqspline_mala_bundle_initialization():
     rng_key = jax.random.PRNGKey(0)
     n_chains = 2
     n_dims = 3
-    logpdf = lambda x, _: -0.5 * (x**2).sum()
     n_local_steps = 10
     n_global_steps = 5
     n_training_loops = 2
@@ -33,7 +36,6 @@ def test_rqspline_mala_pt_bundle_initialization():
     rng_key = jax.random.PRNGKey(0)
     n_chains = 2
     n_dims = 3
-    logpdf = lambda x, _: -0.5 * (x**2).sum()
     n_local_steps = 10
     n_global_steps = 5
     n_training_loops = 2
