@@ -287,13 +287,12 @@ class RQSpline_MALA_PT_Bundle(ResourceStrategyBundle):
                 jnp.repeat(initial_position[:, None], n_temperatures - 1, axis=1)
             )
             return rng_key, resources, initial_position
-        
+
         initialize_tempered_positions_lambda = Lambda(
             lambda rng_key, resources, initial_position, data: initialize_tempered_positions(
                 rng_key, resources, initial_position, data
             )
         )
-
 
         self.strategies = {
             "local_stepper": local_stepper,

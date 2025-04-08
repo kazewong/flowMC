@@ -9,6 +9,7 @@ import jax
 import jax.numpy as jnp
 import equinox as eqx
 
+
 class ParallelTempering(Strategy):
     """Sample a tempered PDF with one exchange step.
     This is in essence closer to TakeSteps than global tuning.
@@ -110,13 +111,14 @@ class ParallelTempering(Strategy):
         )(subkey, positions, tempered_logpdf, temperatures.data, data)
 
         # Update the buffers
-        if state.data['training']:
+        if state.data["training"]:
 
             tempered_positions.update_buffer(positions[:, 1:], 0)
 
             # Adapt the temperatures
             temperatures.update_buffer(
-                eqx.filter_jit(self._adapt_temperature)(temperatures.data, do_accepts), 0
+                eqx.filter_jit(self._adapt_temperature)(temperatures.data, do_accepts),
+                0,
             )
 
         return rng_key, resources, positions[:, 0]
