@@ -324,11 +324,22 @@ class TestTemperingStrategies:
         temperatures = Buffer("temperatures", (self.n_temps,), 0)
         temperatures.update_buffer(jnp.arange(self.n_temps) + 1.0)
 
+        sampler_state = State(
+            {
+                "target_positions": "tempered_positions",
+                "target_log_prob": "logpdf",
+                "target_temperatures": "temperatures",
+                "training": False,
+            },
+            name="sampler_state",
+        )
+
         resources = {
             "logpdf": logpdf,
             "MALA": mala,
             "tempered_positions": tempered_positions,
             "temperatures": temperatures,
+            "sampler_state": sampler_state,
         }
 
         parallel_tempering_strat = ParallelTempering(
@@ -336,6 +347,7 @@ class TestTemperingStrategies:
             tempered_logpdf_name="logpdf",
             kernel_name="MALA",
             tempered_buffer_names=["tempered_positions", "temperatures"],
+            state_name="sampler_state",
         )
 
         return key, resources, parallel_tempering_strat, initial_position

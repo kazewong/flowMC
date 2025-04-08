@@ -1,50 +1,40 @@
-from abc import ABC
 from typing import Callable
 
 import jax
+import jax.numpy as jnp
 from jaxtyping import Array, Float, PRNGKeyArray
 import equinox as eqx
 
 from flowMC.resource.base import Resource
 from flowMC.resource.buffers import Buffer
 from flowMC.resource.states import State
-from flowMC.resource.logPDF import LogPDF
+from flowMC.resource.logPDF import LogPDF, TemperedPDF
 from flowMC.resource.local_kernel.MALA import MALA
 from flowMC.resource.nf_model.NF_proposal import NFProposal
 from flowMC.resource.nf_model.rqSpline import MaskedCouplingRQSpline
 from flowMC.resource.optimizer import Optimizer
-from flowMC.strategy.base import Strategy
 from flowMC.strategy.lambda_function import Lambda
 from flowMC.strategy.take_steps import TakeSerialSteps, TakeGroupSteps
 from flowMC.strategy.train_model import TrainModel
 from flowMC.strategy.update_state import UpdateState
+from flowMC.strategy.parallel_tempering import ParallelTempering
+
+from flowMC.resource_strategy_bundle.base import ResourceStrategyBundle
 
 
-class ResourceStrategyBundle(ABC):
-    """Resource-Strategy Bundle is aim to be the highest level of abstraction in the
-    flowMC library.
-
-    It is a collection of resources and strategies that are used to perform a specific
-    task.
-    """
-
-    resources: dict[str, Resource]
-    strategies: dict[str, Strategy]
-    strategy_order: list[str]
-
-
-class RQSpline_MALA_Bundle(ResourceStrategyBundle):
+class RQSpline_MALA_PT_Bundle(ResourceStrategyBundle):
     """A bundle that uses a Rational Quadratic Spline as a normalizing flow model and
     the Metropolis Adjusted Langevin Algorithm as a local sampler.
 
-    This is the base algorithm described in https://www.pnas.org/doi/full/10.1073/pnas.2109420119
+    The main difference between this and the RQSpline_MALA_Bundle is that this bundle
+    uses an additional parallel tempering step to sample from the target distribution.
 
-
-
+    In this bundle, the sampler requires an additional logpdf function that is the prior
+    distribution. If the log prior is not provided, it will be set to 0.
     """
 
     def __repr__(self):
-        return "Local Global NF Sampling"
+        return "RQSpline MALA PT Bundle"
 
     def __init__(
         self,
@@ -68,6 +58,10 @@ class RQSpline_MALA_Bundle(ResourceStrategyBundle):
         global_thinning: int = 1,
         n_flow_sample: int = 10000,
         verbose: bool = False,
+        n_temperatures: int = 5,
+        max_temperature: float = 5.0,
+        n_tempered_steps: int = -1,
+        logprior: Callable[[Float[Array, " n_dim"], dict], Float] = lambda x, _: 0.0,
     ):
         n_training_steps = (
             n_local_steps * n_training_loops + n_global_steps * n_training_loops
@@ -111,6 +105,22 @@ class RQSpline_MALA_Bundle(ResourceStrategyBundle):
         optimizer = Optimizer(model=model, learning_rate=learning_rate)
         logpdf = LogPDF(logpdf, n_dims=n_dims)
 
+        # Here are the resources for the parallel tempering
+        tempered_logpdf = TemperedPDF(
+            logpdf,
+            logprior,
+            n_dims=n_dims,
+            n_temps=n_temperatures,
+        )
+        tempered_positions = Buffer(
+            "tempered_positions", (n_chains, n_temperatures - 1, n_dims), 2
+        )
+
+        temperatures = Buffer("temperature", (n_temperatures,), 0)
+        temperatures.update_buffer(
+            jax.numpy.linspace(1.0, max_temperature, n_temperatures)
+        )
+
         sampler_state = State(
             {
                 "target_positions": "positions_training",
@@ -138,6 +148,9 @@ class RQSpline_MALA_Bundle(ResourceStrategyBundle):
             "model": model,
             "optimizer": optimizer,
             "sampler_state": sampler_state,
+            "tempered_logpdf": tempered_logpdf,
+            "tempered_positions": tempered_positions,
+            "temperatures": temperatures,
         }
 
         local_stepper = TakeSerialSteps(
@@ -246,6 +259,41 @@ class RQSpline_MALA_Bundle(ResourceStrategyBundle):
             )
         )
 
+        if n_tempered_steps <= 0:
+            print("n_tempered_steps value is not valid. Setting to n_local_steps")
+            n_tempered_steps = n_local_steps
+
+        parallel_tempering_strat = ParallelTempering(
+            n_steps=n_tempered_steps,
+            tempered_logpdf_name="tempered_logpdf",
+            kernel_name="local_sampler",
+            tempered_buffer_names=["tempered_positions", "temperatures"],
+            state_name="sampler_state",
+            verbose=verbose,
+        )
+
+        def initialize_tempered_positions(
+            rng_key: PRNGKeyArray,
+            resources: dict[str, Resource],
+            initial_position: Float[Array, "n_chains n_dim"],
+            data: dict,
+        ) -> tuple[
+            PRNGKeyArray,
+            dict[str, Resource],
+            Float[Array, "n_chains n_dim"],
+        ]:
+            """Initialize the tempered positions."""
+            tempered_positions.update_buffer(
+                jnp.repeat(initial_position[:, None], n_temperatures - 1, axis=1)
+            )
+            return rng_key, resources, initial_position
+
+        initialize_tempered_positions_lambda = Lambda(
+            lambda rng_key, resources, initial_position, data: initialize_tempered_positions(
+                rng_key, resources, initial_position, data
+            )
+        )
+
         self.strategies = {
             "local_stepper": local_stepper,
             "global_stepper": global_stepper,
@@ -255,11 +303,14 @@ class RQSpline_MALA_Bundle(ResourceStrategyBundle):
             "update_local_step": update_local_step,
             "reset_steppers": reset_steppers_lambda,
             "update_model": update_model_lambda,
+            "parallel_tempering": parallel_tempering_strat,
+            "initialize_tempered_positions": initialize_tempered_positions_lambda,
         }
 
         training_phase = [
             "local_stepper",
             "update_global_step",
+            "parallel_tempering",
             "model_trainer",
             "update_model",
             "global_stepper",
@@ -268,10 +319,11 @@ class RQSpline_MALA_Bundle(ResourceStrategyBundle):
         production_phase = [
             "local_stepper",
             "update_global_step",
+            "parallel_tempering",
             "global_stepper",
             "update_local_step",
         ]
-        strategy_order = []
+        strategy_order = ["initialize_tempered_positions"]
         for _ in range(n_training_loops):
             strategy_order.extend(training_phase)
 
