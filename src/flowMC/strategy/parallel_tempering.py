@@ -1,13 +1,13 @@
 from flowMC.resource.base import Resource
 from flowMC.resource.local_kernel.base import ProposalBase
 from flowMC.resource.buffers import Buffer
+from flowMC.resource.states import State
 from flowMC.resource.logPDF import TemperedPDF
 from flowMC.strategy.base import Strategy
 from jaxtyping import Array, Float, PRNGKeyArray, Int, Bool
 import jax
 import jax.numpy as jnp
 import equinox as eqx
-
 
 class ParallelTempering(Strategy):
     """Sample a tempered PDF with one exchange step.
@@ -33,6 +33,7 @@ class ParallelTempering(Strategy):
         tempered_logpdf_name: str,
         kernel_name: str,
         tempered_buffer_names: list[str],
+        state_name: str,
         verbose: bool = False,
     ):
         self.n_steps = n_steps
@@ -40,6 +41,7 @@ class ParallelTempering(Strategy):
         self.kernel_name = kernel_name
         self.tempered_buffer_names = tempered_buffer_names
         self.verbose = verbose
+        self.state_name = state_name
 
     def __call__(
         self,
@@ -68,16 +70,18 @@ class ParallelTempering(Strategy):
         """
 
         rng_key, subkey = jax.random.split(rng_key)
-        kernel = resources[self.kernel_name]
-        assert isinstance(kernel, ProposalBase)
-        tempered_logpdf = resources[self.tempered_logpdf_name]
-        assert isinstance(tempered_logpdf, TemperedPDF)
-        tempered_positions = resources[
-            self.tempered_buffer_names[0]
-        ]  # Shape (n_chains, n_temps, n_dims)
-        assert isinstance(tempered_positions, Buffer)
-        temperatures = resources[self.tempered_buffer_names[1]]
-        assert isinstance(temperatures, Buffer)
+        assert isinstance(kernel := resources[self.kernel_name], ProposalBase)
+        assert isinstance(
+            tempered_logpdf := resources[self.tempered_logpdf_name], TemperedPDF
+        )
+        assert isinstance(
+            tempered_positions := resources[self.tempered_buffer_names[0]], Buffer
+        )  # Shape (n_chains, n_temps, n_dims)
+
+        assert isinstance(
+            temperatures := resources[self.tempered_buffer_names[1]], Buffer
+        )
+        assert isinstance(state := resources[self.state_name], State)
 
         initial_position = jnp.concatenate(
             [initial_position[:, None, :], tempered_positions.data],
@@ -106,13 +110,14 @@ class ParallelTempering(Strategy):
         )(subkey, positions, tempered_logpdf, temperatures.data, data)
 
         # Update the buffers
+        if state.data['training']:
 
-        tempered_positions.update_buffer(positions[:, 1:], 0)
+            tempered_positions.update_buffer(positions[:, 1:], 0)
 
-        # Adapt the temperatures
-        temperatures.update_buffer(
-            eqx.filter_jit(self._adapt_temperature)(temperatures.data, do_accepts), 0
-        )
+            # Adapt the temperatures
+            temperatures.update_buffer(
+                eqx.filter_jit(self._adapt_temperature)(temperatures.data, do_accepts), 0
+            )
 
         return rng_key, resources, positions[:, 0]
 

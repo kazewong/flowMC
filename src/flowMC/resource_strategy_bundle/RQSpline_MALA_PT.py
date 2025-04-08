@@ -268,6 +268,7 @@ class RQSpline_MALA_PT_Bundle(ResourceStrategyBundle):
             tempered_logpdf_name="tempered_logpdf",
             kernel_name="local_sampler",
             tempered_buffer_names=["tempered_positions", "temperatures"],
+            state_name="sampler_state",
             verbose=verbose,
         )
 
