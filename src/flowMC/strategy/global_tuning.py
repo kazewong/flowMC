@@ -8,6 +8,7 @@ from flowMC.strategy.train_model import TrainModel
 
 
 class LocalGlobalNFSample(Strategy):
+    """This is marked for deprecation. It will be removed in the next flowMC release."""
     n_loops: int
     train_state_name: str
 
