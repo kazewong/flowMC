@@ -1,4 +1,3 @@
-from abc import ABC
 from typing import Callable
 
 import jax
@@ -13,24 +12,12 @@ from flowMC.resource.local_kernel.MALA import MALA
 from flowMC.resource.nf_model.NF_proposal import NFProposal
 from flowMC.resource.nf_model.rqSpline import MaskedCouplingRQSpline
 from flowMC.resource.optimizer import Optimizer
-from flowMC.strategy.base import Strategy
 from flowMC.strategy.lambda_function import Lambda
 from flowMC.strategy.take_steps import TakeSerialSteps, TakeGroupSteps
 from flowMC.strategy.train_model import TrainModel
 from flowMC.strategy.update_state import UpdateState
+from flowMC.resource_strategy_bundle.base import ResourceStrategyBundle
 
-
-class ResourceStrategyBundle(ABC):
-    """Resource-Strategy Bundle is aim to be the highest level of abstraction in the
-    flowMC library.
-
-    It is a collection of resources and strategies that are used to perform a specific
-    task.
-    """
-
-    resources: dict[str, Resource]
-    strategies: dict[str, Strategy]
-    strategy_order: list[str]
 
 
 class RQSpline_MALA_Bundle(ResourceStrategyBundle):

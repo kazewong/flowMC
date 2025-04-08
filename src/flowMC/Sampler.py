@@ -4,7 +4,7 @@ from typing import Optional
 
 from flowMC.strategy.base import Strategy
 from flowMC.resource.base import Resource
-from flowMC.resource_strategy_bundles import ResourceStrategyBundle
+from flowMC.resource_strategy_bundle.RQSpline_MALA import ResourceStrategyBundle
 
 
 class Sampler:
