@@ -57,11 +57,12 @@ class RQSpline_MALA_PT_Bundle(ResourceStrategyBundle):
         local_thinning: int = 1,
         global_thinning: int = 1,
         n_flow_sample: int = 10000,
-        verbose: bool = False,
+        history_window: int = 100,
         n_temperatures: int = 5,
         max_temperature: float = 5.0,
         n_tempered_steps: int = -1,
         logprior: Callable[[Float[Array, " n_dim"], dict], Float] = lambda x, _: 0.0,
+        verbose: bool = False,
     ):
         n_training_steps = (
             n_local_steps * n_training_loops + n_global_steps * n_training_loops
@@ -181,6 +182,7 @@ class RQSpline_MALA_PT_Bundle(ResourceStrategyBundle):
             n_epochs=n_epochs,
             batch_size=batch_size,
             n_max_examples=n_max_examples,
+            history_window=history_window,
             verbose=verbose,
         )
 
@@ -308,18 +310,18 @@ class RQSpline_MALA_PT_Bundle(ResourceStrategyBundle):
         }
 
         training_phase = [
+            "parallel_tempering",
             "local_stepper",
             "update_global_step",
-            "parallel_tempering",
             "model_trainer",
             "update_model",
             "global_stepper",
             "update_local_step",
         ]
         production_phase = [
+            "parallel_tempering",
             "local_stepper",
             "update_global_step",
-            "parallel_tempering",
             "global_stepper",
             "update_local_step",
         ]
