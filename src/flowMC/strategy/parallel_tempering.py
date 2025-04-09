@@ -409,7 +409,8 @@ class ParallelTempering(Strategy):
         for i in range(1, temperatures.shape[0] - 1):
             new_temperatures = new_temperatures.at[i].set(
                 new_temperatures[i - 1]
-                + (temperatures[i] - temperatures[i - 1]) * jnp.exp(damping_factor[i])
+                + (temperatures[i] - temperatures[i - 1]) * jnp.exp(damping_factor[i-1])
             )
 
+        # jax.debug.print("{} {} {} {}", temperatures, acceptance_rate, damping_factor, new_temperatures )
         return new_temperatures
