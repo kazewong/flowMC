@@ -56,7 +56,7 @@ class RQSpline_MALA_PT_Bundle(ResourceStrategyBundle):
         n_max_examples: int = 10000,
         local_thinning: int = 1,
         global_thinning: int = 1,
-        n_flow_sample: int = 10000,
+        n_NFproposal_batch_size: int = 10000,
         history_window: int = 100,
         n_temperatures: int = 5,
         max_temperature: float = 5.0,
@@ -102,7 +102,7 @@ class RQSpline_MALA_PT_Bundle(ResourceStrategyBundle):
         model = MaskedCouplingRQSpline(
             n_dims, rq_spline_n_layers, rq_spline_hidden_units, rq_spline_n_bins, subkey
         )
-        global_sampler = NFProposal(model, n_flow_sample=n_flow_sample)
+        global_sampler = NFProposal(model, n_NFproposal_batch_size=n_NFproposal_batch_size)
         optimizer = Optimizer(model=model, learning_rate=learning_rate)
         logpdf = LogPDF(logpdf, n_dims=n_dims)
 
