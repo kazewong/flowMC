@@ -65,8 +65,10 @@ class TrainModel(Strategy):
         ), "Optimizer resource must be an optimizer"
         n_chains = data_resource.data.shape[0]
         n_dims = data_resource.data.shape[-1]
-        training_data = data_resource.data[jnp.isfinite(data_resource.data).all(axis=-1)].reshape(n_chains,-1,n_dims)
-        training_data = training_data[:, -self.history_window:].reshape(-1, n_dims)
+        training_data = data_resource.data[
+            jnp.isfinite(data_resource.data).all(axis=-1)
+        ].reshape(n_chains, -1, n_dims)
+        training_data = training_data[:, -self.history_window :].reshape(-1, n_dims)
         subkey, rng_key = jax.random.split(rng_key)
         training_data = training_data[
             jax.random.choice(
