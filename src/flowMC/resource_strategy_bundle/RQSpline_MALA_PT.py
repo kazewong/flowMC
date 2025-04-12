@@ -331,7 +331,6 @@ class RQSpline_MALA_PT_Bundle(ResourceStrategyBundle):
 
         strategy_order.append("reset_steppers")
         strategy_order.append("update_state")
-        strategy_order.append("initialize_tempered_positions")
         for _ in range(n_production_loops):
             strategy_order.extend(production_phase)
 
