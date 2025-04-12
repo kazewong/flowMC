@@ -102,13 +102,22 @@ class ParallelTempering(Strategy):
             subkey, initial_position, tempered_logpdf, temperatures.data, data
         )  # vmapping over chains
 
+        if self.verbose:
+            mean_accs = jnp.mean(do_accepts)
+            print("Mean acceptance of individual steps in PT: " + str(mean_accs))
+            # print(log_probs)
+
         # Exchange between temperatures
 
         rng_key, subkey = jax.random.split(rng_key)
         subkey = jax.random.split(subkey, initial_position.shape[0])
         positions, log_probs, do_accepts = eqx.filter_jit(
-            eqx.filter_vmap(self._exchange, in_axes=(0, 0, 0, None, None))
+            eqx.filter_vmap(self._exchange, in_axes=(0, 0, None, None, None))
         )(subkey, positions, tempered_logpdf, temperatures.data, data)
+
+        if self.verbose:
+            mean_accs = jnp.mean(do_accepts)
+            print("Mean acceptance of exchange steps in PT: " + str(mean_accs))
 
         # Update the buffers
         if state.data["training"]:
@@ -223,7 +232,9 @@ class ParallelTempering(Strategy):
                 - log_probs (Float[Array, "1"]): Log probabilities of the chain.
                 - do_accept (Int[Array, "1"]): Acceptance flag for the new position.
         """
-        log_probs = logpdf(positions, data)
+        log_probs = jax.tree_util.Partial(logpdf.tempered_log_pdf, temperatures)(
+            positions, data
+        )
 
         (key, position, log_prob, logpdf, temperatures, data), (
             positions,
@@ -310,7 +321,11 @@ class ParallelTempering(Strategy):
         )
         log_uniform = jnp.log(jax.random.uniform(subkey))
         do_accept: Bool[Array, " 1"] = log_uniform < ratio
-        swapped = jnp.flip(jax.lax.dynamic_slice_in_dim(positions, idx, 2, axis=0))
+        swapped = jnp.flip(
+            jax.lax.dynamic_slice_in_dim(positions, idx, 2, axis=0), axis=0
+        )
+        #        jax.debug.print("Before idx: {}, ratio: {}, idx: {}, temperature: {}, do_accept: {}", idx, ratio, log_probs,  temperatures, do_accept)
+        #        jax.debug.print("Before {}, {}, {}", idx, positions, do_accept)
         positions = jax.lax.cond(
             do_accept,
             true_fun=lambda: jax.lax.dynamic_update_slice_in_dim(
@@ -318,15 +333,27 @@ class ParallelTempering(Strategy):
             ),
             false_fun=lambda: positions,
         )
-        swapped_log_probs = jax.vmap(logpdf, in_axes=(0, None))(swapped, data)
+        swapped = jnp.flip(
+            jax.lax.dynamic_slice_in_dim(log_probs, idx, 2, axis=0), axis=0
+        )
         log_probs = jax.lax.cond(
             do_accept,
             true_fun=lambda: jax.lax.dynamic_update_slice_in_dim(
-                log_probs, swapped_log_probs, idx, axis=0
+                log_probs, swapped, idx, axis=0
             ),
             false_fun=lambda: log_probs,
         )
-        return (key, positions, log_probs, idx, logpdf, temperatures, data), do_accept
+        #        jax.debug.print("compute log_prob {}", jax.vmap(logpdf, in_axes=(0, None))(positions, {}))
+        #        jax.debug.print("new log_prob {}", log_probs)
+        return (
+            key,
+            positions,
+            log_probs,
+            idx + 1,
+            logpdf,
+            temperatures,
+            data,
+        ), do_accept
 
     def _exchange(
         self,
@@ -394,12 +421,16 @@ class ParallelTempering(Strategy):
             print("Adapting temperatures")
 
         acceptance_rate = jnp.mean(do_accept, axis=0)
-        damping_factor = acceptance_rate[:-1] - acceptance_rate[1:]
+        damping_factor = (100.0 / do_accept.shape[0]) * (
+            acceptance_rate[:-1] - acceptance_rate[1:]
+        )
         new_temperatures = temperatures
         for i in range(1, temperatures.shape[0] - 1):
             new_temperatures = new_temperatures.at[i].set(
                 new_temperatures[i - 1]
-                + (temperatures[i] - temperatures[i - 1]) * jnp.exp(damping_factor[i])
+                + (temperatures[i] - temperatures[i - 1])
+                * jnp.exp(damping_factor[i - 1])
             )
 
+        # jax.debug.print("{} {} {} {}", temperatures, acceptance_rate, damping_factor, new_temperatures )
         return new_temperatures

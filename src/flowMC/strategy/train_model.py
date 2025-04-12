@@ -30,7 +30,7 @@ class TrainModel(Strategy):
         n_epochs: int = 100,
         batch_size: int = 64,
         n_max_examples: int = 10000,
-        thinning: int = 1,
+        history_window: int = 100,
         verbose: bool = False,
     ):
         self.model_resource = model_resource
@@ -42,7 +42,7 @@ class TrainModel(Strategy):
         self.batch_size = batch_size
         self.n_max_examples = n_max_examples
         self.verbose = verbose
-        self.thinning = thinning
+        self.history_window = history_window
 
     def __call__(
         self,
@@ -63,10 +63,12 @@ class TrainModel(Strategy):
         assert isinstance(
             optimizer, Optimizer
         ), "Optimizer resource must be an optimizer"
-        training_data = data_resource.data.reshape(-1, data_resource.shape[-1])[
-            :: self.thinning
-        ]
-        training_data = training_data[jnp.isfinite(training_data).all(axis=1)]
+        n_chains = data_resource.data.shape[0]
+        n_dims = data_resource.data.shape[-1]
+        training_data = data_resource.data[
+            jnp.isfinite(data_resource.data).all(axis=-1)
+        ].reshape(n_chains, -1, n_dims)
+        training_data = training_data[:, -self.history_window :].reshape(-1, n_dims)
         subkey, rng_key = jax.random.split(rng_key)
         training_data = training_data[
             jax.random.choice(

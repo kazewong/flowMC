@@ -206,7 +206,7 @@ class TestNFStrategies:
             n_epochs=10,
             batch_size=self.n_chains * self.n_steps,
             n_max_examples=10000,
-            thinning=1,
+            history_window=1,
             verbose=True,
         )
 
