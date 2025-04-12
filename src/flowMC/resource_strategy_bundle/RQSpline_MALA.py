@@ -54,10 +54,10 @@ class RQSpline_MALA_Bundle(ResourceStrategyBundle):
         verbose: bool = False,
     ):
         n_training_steps = (
-            n_local_steps * n_training_loops + n_global_steps * n_training_loops
+            n_local_steps // local_thinning * n_training_loops + n_global_steps // global_thinning * n_training_loops
         )
         n_production_steps = (
-            n_local_steps * n_production_loops + n_global_steps * n_production_loops
+            n_local_steps //local_thinning * n_production_loops + n_global_steps // global_thinning * n_production_loops
         )
         n_total_epochs = n_training_loops * n_epochs
 
