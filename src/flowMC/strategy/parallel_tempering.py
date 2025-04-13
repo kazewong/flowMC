@@ -391,7 +391,15 @@ class ParallelTempering(Strategy):
         (key, positions, log_probs, idx, logpdf, temperatures, data), do_accept = (
             jax.lax.scan(
                 self._exchange_step_body,
-                (key, positions, log_probs, positions.shape[0]-1, logpdf, temperatures, data),
+                (
+                    key,
+                    positions,
+                    log_probs,
+                    positions.shape[0] - 1,
+                    logpdf,
+                    temperatures,
+                    data,
+                ),
                 length=positions.shape[0] - 1,
             )
         )
