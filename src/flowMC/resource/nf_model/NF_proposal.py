@@ -40,10 +40,10 @@ class NFProposal(ProposalBase):
         rng_key, subkey = random.split(rng_key)
 
         # nf_current is size (1, n_dim)
-        log_prob_nf_current = self.model.log_prob(position)
+        log_prob_nf_current = eqx.filter_jit(self.model.log_prob)(position)
 
         # All these are size (n_steps, n_dim)
-        proposed_position, log_prob_nf_proposed = self.sample_flow(subkey, n_steps)
+        proposed_position, log_prob_nf_proposed = eqx.filter_jit(self.sample_flow)(subkey, n_steps)
         if n_steps > self.n_batch_size:
             n_batch = ceil(proposed_position.shape[0] / self.n_batch_size)
             batched_proposed_position = proposed_position[:(n_batch-1)*self.n_batch_size].reshape(
