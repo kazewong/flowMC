@@ -316,30 +316,30 @@ class ParallelTempering(Strategy):
         key, positions, log_probs, idx, logpdf, temperatures, data = carry
 
         key, subkey = jax.random.split(key)
-        ratio = (1.0 / temperatures[idx - 1] - 1.0 / temperatures[idx]) * (
-            log_probs[idx] - log_probs[idx - 1]
+        ratio = (1.0 / temperatures[idx + 1] - 1.0 / temperatures[idx]) * (
+            log_probs[idx] - log_probs[idx + 1]
         )
         log_uniform = jnp.log(jax.random.uniform(subkey))
         do_accept: Bool[Array, " 1"] = log_uniform < ratio
         swapped = jnp.flip(
-            jax.lax.dynamic_slice_in_dim(positions, idx - 1, 2, axis=0), axis=0
+            jax.lax.dynamic_slice_in_dim(positions, idx, 2, axis=0), axis=0
         )
         #        jax.debug.print("Before idx: {}, ratio: {}, idx: {}, temperature: {}, do_accept: {}", idx, ratio, log_probs,  temperatures, do_accept)
         #        jax.debug.print("Before {}, {}, {}", idx, positions, do_accept)
         positions = jax.lax.cond(
             do_accept,
             true_fun=lambda: jax.lax.dynamic_update_slice_in_dim(
-                positions, swapped, idx - 1, axis=0
+                positions, swapped, idx, axis=0
             ),
             false_fun=lambda: positions,
         )
         swapped = jnp.flip(
-            jax.lax.dynamic_slice_in_dim(log_probs, idx - 1, 2, axis=0), axis=0
+            jax.lax.dynamic_slice_in_dim(log_probs, idx, 2, axis=0), axis=0
         )
         log_probs = jax.lax.cond(
             do_accept,
             true_fun=lambda: jax.lax.dynamic_update_slice_in_dim(
-                log_probs, swapped, idx - 1, axis=0
+                log_probs, swapped, idx, axis=0
             ),
             false_fun=lambda: log_probs,
         )
@@ -349,7 +349,7 @@ class ParallelTempering(Strategy):
             key,
             positions,
             log_probs,
-            idx - 1,
+            idx + 1,
             logpdf,
             temperatures,
             data,
@@ -391,15 +391,7 @@ class ParallelTempering(Strategy):
         (key, positions, log_probs, idx, logpdf, temperatures, data), do_accept = (
             jax.lax.scan(
                 self._exchange_step_body,
-                (
-                    key,
-                    positions,
-                    log_probs,
-                    positions.shape[0] - 1,
-                    logpdf,
-                    temperatures,
-                    data,
-                ),
+                (key, positions, log_probs, 0, logpdf, temperatures, data),
                 length=positions.shape[0] - 1,
             )
         )
