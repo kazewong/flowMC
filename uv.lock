@@ -515,24 +515,29 @@ wheels = [
 
 [[package]]
 name = "flowmc"
-version = "0.3.5"
+version = "0.4.3"
 source = { editable = "." }
 dependencies = [
     { name = "chex" },
-    { name = "coveralls" },
     { name = "equinox" },
-    { name = "jax", extra = ["cuda12"] },
+    { name = "jax" },
     { name = "jaxtyping" },
     { name = "optax" },
-    { name = "pre-commit" },
-    { name = "pyright" },
-    { name = "pytest" },
-    { name = "ruff" },
     { name = "scikit-learn" },
     { name = "tqdm" },
 ]
 
 [package.optional-dependencies]
+codeqa = [
+    { name = "coveralls" },
+    { name = "pre-commit" },
+    { name = "pyright" },
+    { name = "pytest" },
+    { name = "ruff" },
+]
+cuda = [
+    { name = "jax", extra = ["cuda12"] },
+]
 docs = [
     { name = "mkdocs" },
     { name = "mkdocs-gen-files" },
@@ -545,6 +550,7 @@ docs = [
 visualize = [
     { name = "arviz" },
     { name = "corner" },
+    { name = "matplotlib" },
 ]
 
 [package.metadata]
@@ -552,10 +558,12 @@ requires-dist = [
     { name = "arviz", marker = "extra == 'visualize'", specifier = ">=0.21.0" },
     { name = "chex", specifier = ">=0.1.87" },
     { name = "corner", marker = "extra == 'visualize'", specifier = ">=2.2.3" },
-    { name = "coveralls", specifier = ">=4.0.1" },
+    { name = "coveralls", marker = "extra == 'codeqa'", specifier = ">=4.0.1" },
     { name = "equinox", specifier = ">=0.11.9" },
-    { name = "jax", extras = ["cuda12"], specifier = "==0.5.0" },
+    { name = "jax", extras = ["cpu"], specifier = ">=0.5.0" },
+    { name = "jax", extras = ["cuda12"], marker = "extra == 'cuda'", specifier = ">=0.5.0" },
     { name = "jaxtyping", specifier = ">=0.2.36" },
+    { name = "matplotlib", marker = "extra == 'visualize'", specifier = ">=3.9.3" },
     { name = "mkdocs", marker = "extra == 'docs'", specifier = "==1.6.1" },
     { name = "mkdocs-gen-files", marker = "extra == 'docs'", specifier = "==0.5.0" },
     { name = "mkdocs-jupyter", marker = "extra == 'docs'", specifier = "==0.25.1" },
@@ -563,11 +571,11 @@ requires-dist = [
     { name = "mkdocs-material", marker = "extra == 'docs'", specifier = "==9.5.47" },
     { name = "mkdocstrings", extras = ["python"], marker = "extra == 'docs'", specifier = "==0.27.0" },
     { name = "optax", specifier = ">=0.2.4" },
-    { name = "pre-commit", specifier = "==4.0.1" },
+    { name = "pre-commit", marker = "extra == 'codeqa'", specifier = ">=4.0.1" },
     { name = "pymdown-extensions", marker = "extra == 'docs'", specifier = "==10.12" },
-    { name = "pyright", specifier = "==1.1.389" },
-    { name = "pytest", specifier = "==8.3.3" },
-    { name = "ruff", specifier = "==0.8.0" },
+    { name = "pyright", marker = "extra == 'codeqa'", specifier = ">=1.1.389" },
+    { name = "pytest", marker = "extra == 'codeqa'", specifier = ">=8.3.3" },
+    { name = "ruff", marker = "extra == 'codeqa'", specifier = ">=0.8.0" },
     { name = "scikit-learn", specifier = ">=1.6.0" },
     { name = "tqdm", specifier = ">=4.67.1" },
 ]

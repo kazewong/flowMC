@@ -9,6 +9,7 @@ from flowMC.resource.local_kernel.MALA import MALA
 from flowMC.resource.local_kernel.Gaussian_random_walk import GaussianRandomWalk
 from flowMC.resource.local_kernel.HMC import HMC
 from flowMC.resource.buffers import Buffer
+from flowMC.resource.states import State
 from flowMC.resource.logPDF import LogPDF, TemperedPDF
 
 # from flowMC.strategy.optimization import optimization_Adam
@@ -90,6 +91,15 @@ class TestLocalStep:
 
         logpdf = LogPDF(log_posterior, n_dims=n_dims)
 
+        sampler_state = State(
+            {
+                "test_position": "test_position",
+                "test_log_prob": "test_log_prob",
+                "test_acceptance": "test_acceptance",
+            },
+            name="sampler_state",
+        )
+
         resources = {
             "test_position": test_position,
             "test_log_prob": test_log_prob,
@@ -98,11 +108,13 @@ class TestLocalStep:
             "MALA": mala_kernel,
             "GRW": grw_kernel,
             "HMC": hmc_kernel,
+            "sampler_state": sampler_state,
         }
 
         strategy = TakeSerialSteps(
             "logpdf",
             "MALA",
+            "sampler_state",
             ["test_position", "test_log_prob", "test_acceptance"],
             n_batch,
         )
@@ -194,7 +206,7 @@ class TestNFStrategies:
             n_epochs=10,
             batch_size=self.n_chains * self.n_steps,
             n_max_examples=10000,
-            thinning=1,
+            history_window=1,
             verbose=True,
         )
 
@@ -225,10 +237,19 @@ class TestNFStrategies:
             jax.random.PRNGKey(10),
         )
 
-        proposal = NFProposal(model)
+        proposal = NFProposal(model, n_NFproposal_batch_size=5)
 
         def test_target(x, data={}):
             return model.log_prob(x)
+
+        sampler_state = State(
+            {
+                "test_position": "test_position",
+                "test_log_prob": "test_log_prob",
+                "test_acceptance": "test_acceptance",
+            },
+            name="sampler_state",
+        )
 
         resources = {
             "test_position": test_position,
@@ -236,13 +257,15 @@ class TestNFStrategies:
             "test_acceptance": test_acceptance,
             "NFProposal": proposal,
             "logpdf": LogPDF(test_target, n_dims=self.n_dims),
+            "sampler_state": sampler_state,
         }
 
         strategy = TakeGroupSteps(
             "logpdf",
             "NFProposal",
+            "sampler_state",
             ["test_position", "test_log_prob", "test_acceptance"],
-            self.n_steps,
+            n_steps=11,
         )
         key = jax.random.PRNGKey(42)
         positions = test_position.data[:, 0]
@@ -254,6 +277,20 @@ class TestNFStrategies:
             data={"data": jnp.arange(self.n_dims)},
         )
         print(test_position.data[:, :, 0])
+
+        strategy = TakeGroupSteps(
+            "logpdf",
+            "NFProposal",
+            "sampler_state",
+            ["test_position", "test_log_prob", "test_acceptance"],
+            n_steps=5,
+        )
+        strategy(
+            rng_key=key,
+            resources=resources,
+            initial_position=positions,
+            data={"data": jnp.arange(self.n_dims)},
+        )
 
     def test_training_effect(self):
         Buffer("test_position", (self.n_chains, self.n_steps, self.n_dims), 1)
@@ -301,11 +338,22 @@ class TestTemperingStrategies:
         temperatures = Buffer("temperatures", (self.n_temps,), 0)
         temperatures.update_buffer(jnp.arange(self.n_temps) + 1.0)
 
+        sampler_state = State(
+            {
+                "target_positions": "tempered_positions",
+                "target_log_prob": "logpdf",
+                "target_temperatures": "temperatures",
+                "training": False,
+            },
+            name="sampler_state",
+        )
+
         resources = {
             "logpdf": logpdf,
             "MALA": mala,
             "tempered_positions": tempered_positions,
             "temperatures": temperatures,
+            "sampler_state": sampler_state,
         }
 
         parallel_tempering_strat = ParallelTempering(
@@ -313,6 +361,7 @@ class TestTemperingStrategies:
             tempered_logpdf_name="logpdf",
             kernel_name="MALA",
             tempered_buffer_names=["tempered_positions", "temperatures"],
+            state_name="sampler_state",
         )
 
         return key, resources, parallel_tempering_strat, initial_position

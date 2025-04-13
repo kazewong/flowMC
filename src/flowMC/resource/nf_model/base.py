@@ -118,6 +118,7 @@ class NFModel(eqx.Module, Resource):
             model (eqx.Model): Updated model.
             opt_state (optax.OptState): Updated optimizer state.
         """
+        print("Compiling training step")
         loss, grads = model.loss_fn(x)
         updates, state = optim.update(grads, state, model)  # type: ignore
         model = eqx.apply_updates(model, updates)

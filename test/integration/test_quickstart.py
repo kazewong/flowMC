@@ -1,7 +1,7 @@
 import jax
 import jax.numpy as jnp
 from flowMC.Sampler import Sampler
-from flowMC.resource_strategy_bundles import RQSpline_MALA_Bundle
+from flowMC.resource_strategy_bundle.RQSpline_MALA import RQSpline_MALA_Bundle
 
 
 def log_posterior(x, data: dict):
