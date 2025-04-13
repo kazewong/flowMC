@@ -44,24 +44,30 @@ class NFProposal(ProposalBase):
 
         # All these are size (n_steps, n_dim)
         proposed_position, log_prob_nf_proposed = self.sample_flow(subkey, n_steps)
-        if proposed_position.shape[0] > self.n_batch_size:
+        if n_steps > self.n_batch_size:
             n_batch = ceil(proposed_position.shape[0] / self.n_batch_size)
+            batched_proposed_position = proposed_position[:(n_batch-1)*self.n_batch_size].reshape(
+                n_batch-1, self.n_batch_size, self.model.n_features
+            )
 
             def scan_sample(
                 carry,
                 aux,
             ):
-                idx = carry
-                start = idx * self.n_batch_size
-                end = min((idx + 1) * self.n_batch_size, proposed_position.shape[0])
-                return idx + 1, jax.vmap(logpdf, in_axes=(0, None))(
-                    proposed_position[start:end], data
+                proposed_position = aux
+                return carry, jax.vmap(logpdf, in_axes=(0, None))(
+                    proposed_position, data
                 )
-            log_prob_proposed = jax.lax.scan(
+            _, log_prob_proposed = jax.lax.scan(
                 scan_sample,
-                0,
-                length=n_batch,
+                (),
+                batched_proposed_position,
             )
+            log_prob_proposed = log_prob_proposed.reshape(-1)
+            log_prob_proposed = jnp.concatenate(
+                (log_prob_proposed, jax.vmap(logpdf, in_axes=(0, None))(
+                    jax.lax.dynamic_slice_in_dim(proposed_position, (n_batch-1)*self.n_batch_size, n_steps - (n_batch-1)*self.n_batch_size), data
+                )), axis=0)
 
         else:
             log_prob_proposed = jax.vmap(logpdf, in_axes=(0, None))(
@@ -143,7 +149,7 @@ class NFProposal(ProposalBase):
 
         else:
             proposal_position = self.model.sample(rng_key, n_steps)
-            proposed_log_prob = self.model.log_prob(proposal_position)
+            proposed_log_prob = eqx.filter_vmap(self.model.log_prob)(proposal_position)
 
         proposal_position = proposal_position.reshape(n_steps, self.model.n_features)
         proposed_log_prob = proposed_log_prob.reshape(n_steps)

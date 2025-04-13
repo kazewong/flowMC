@@ -319,11 +319,11 @@ class RQSpline_MALA_PT_Bundle(ResourceStrategyBundle):
             "update_local_step",
         ]
         production_phase = [
+            "parallel_tempering",
             "local_stepper",
             "update_global_step",
             "global_stepper",
             "update_local_step",
-            "parallel_tempering",
         ]
         strategy_order = ["initialize_tempered_positions"]
         for _ in range(n_training_loops):
