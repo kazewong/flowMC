@@ -11,6 +11,7 @@ from flowMC.resource.nf_model.base import NFModel
 from flowMC.resource.local_kernel.base import ProposalBase
 from flowMC.resource.logPDF import LogPDF
 
+
 class NFProposal(ProposalBase):
     model: NFModel
     n_batch_size: int
@@ -18,7 +19,7 @@ class NFProposal(ProposalBase):
     def __repr__(self):
         return "NF proposal with " + self.model.__repr__()
 
-    def __init__(self, model: NFModel, n_NFproposal_batch_size: int = 1000, n_steps: int = 100):
+    def __init__(self, model: NFModel, n_NFproposal_batch_size: int = 100):
         super().__init__()
         self.model = model
         self.n_batch_size = n_NFproposal_batch_size
@@ -43,12 +44,14 @@ class NFProposal(ProposalBase):
         log_prob_nf_current = eqx.filter_jit(self.model.log_prob)(position)
 
         # All these are size (n_steps, n_dim)
-        proposed_position, log_prob_nf_proposed = eqx.filter_jit(self.sample_flow)(subkey, n_steps)
+        proposed_position, log_prob_nf_proposed = eqx.filter_jit(self.sample_flow)(
+            subkey, n_steps
+        )
         if n_steps > self.n_batch_size:
             n_batch = ceil(proposed_position.shape[0] / self.n_batch_size)
-            batched_proposed_position = proposed_position[:(n_batch-1)*self.n_batch_size].reshape(
-                n_batch-1, self.n_batch_size, self.model.n_features
-            )
+            batched_proposed_position = proposed_position[
+                : (n_batch - 1) * self.n_batch_size
+            ].reshape(n_batch - 1, self.n_batch_size, self.model.n_features)
 
             def scan_sample(
                 carry,
@@ -58,6 +61,7 @@ class NFProposal(ProposalBase):
                 return carry, jax.vmap(logpdf, in_axes=(0, None))(
                     proposed_position, data
                 )
+
             _, log_prob_proposed = jax.lax.scan(
                 scan_sample,
                 (),
@@ -65,9 +69,19 @@ class NFProposal(ProposalBase):
             )
             log_prob_proposed = log_prob_proposed.reshape(-1)
             log_prob_proposed = jnp.concatenate(
-                (log_prob_proposed, jax.vmap(logpdf, in_axes=(0, None))(
-                    jax.lax.dynamic_slice_in_dim(proposed_position, (n_batch-1)*self.n_batch_size, n_steps - (n_batch-1)*self.n_batch_size), data
-                )), axis=0)
+                (
+                    log_prob_proposed,
+                    jax.vmap(logpdf, in_axes=(0, None))(
+                        jax.lax.dynamic_slice_in_dim(
+                            proposed_position,
+                            (n_batch - 1) * self.n_batch_size,
+                            n_steps - (n_batch - 1) * self.n_batch_size,
+                        ),
+                        data,
+                    ),
+                ),
+                axis=0,
+            )
 
         else:
             log_prob_proposed = jax.vmap(logpdf, in_axes=(0, None))(
@@ -134,7 +148,9 @@ class NFProposal(ProposalBase):
                 rng_key, subkey = random.split(rng_key)
                 combined = eqx.combine(model, static)
                 proposal_position = combined.sample(subkey, n_samples=n_sample)
-                proposed_log_prob = eqx.filter_vmap(combined.log_prob)(proposal_position)
+                proposed_log_prob = eqx.filter_vmap(combined.log_prob)(
+                    proposal_position
+                )
                 return (rng_key, model), (proposal_position, proposed_log_prob)
 
             _, (proposal_position, proposed_log_prob) = jax.lax.scan(
@@ -142,9 +158,9 @@ class NFProposal(ProposalBase):
                 (rng_key, dynamic),
                 length=n_batch,
             )
-            proposal_position = proposal_position.reshape(
-                -1, self.model.n_features
-            )[:n_steps]
+            proposal_position = proposal_position.reshape(-1, self.model.n_features)[
+                :n_steps
+            ]
             proposed_log_prob = proposed_log_prob.reshape(-1)[:n_steps]
 
         else:

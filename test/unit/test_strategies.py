@@ -237,7 +237,7 @@ class TestNFStrategies:
             jax.random.PRNGKey(10),
         )
 
-        proposal = NFProposal(model)
+        proposal = NFProposal(model, n_NFproposal_batch_size=5)
 
         def test_target(x, data={}):
             return model.log_prob(x)
@@ -265,7 +265,7 @@ class TestNFStrategies:
             "NFProposal",
             "sampler_state",
             ["test_position", "test_log_prob", "test_acceptance"],
-            self.n_steps,
+            n_steps=11,
         )
         key = jax.random.PRNGKey(42)
         positions = test_position.data[:, 0]
@@ -277,6 +277,20 @@ class TestNFStrategies:
             data={"data": jnp.arange(self.n_dims)},
         )
         print(test_position.data[:, :, 0])
+
+        strategy = TakeGroupSteps(
+            "logpdf",
+            "NFProposal",
+            "sampler_state",
+            ["test_position", "test_log_prob", "test_acceptance"],
+            n_steps=5,
+        )
+        strategy(
+            rng_key=key,
+            resources=resources,
+            initial_position=positions,
+            data={"data": jnp.arange(self.n_dims)},
+        )
 
     def test_training_effect(self):
         Buffer("test_position", (self.n_chains, self.n_steps, self.n_dims), 1)

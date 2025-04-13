@@ -65,10 +65,12 @@ class RQSpline_MALA_PT_Bundle(ResourceStrategyBundle):
         verbose: bool = False,
     ):
         n_training_steps = (
-            n_local_steps // local_thinning * n_training_loops + n_global_steps // global_thinning * n_training_loops
+            n_local_steps // local_thinning * n_training_loops
+            + n_global_steps // global_thinning * n_training_loops
         )
         n_production_steps = (
-            n_local_steps //local_thinning * n_production_loops + n_global_steps // global_thinning * n_production_loops
+            n_local_steps // local_thinning * n_production_loops
+            + n_global_steps // global_thinning * n_production_loops
         )
         n_total_epochs = n_training_loops * n_epochs
 
@@ -102,7 +104,9 @@ class RQSpline_MALA_PT_Bundle(ResourceStrategyBundle):
         model = MaskedCouplingRQSpline(
             n_dims, rq_spline_n_layers, rq_spline_hidden_units, rq_spline_n_bins, subkey
         )
-        global_sampler = NFProposal(model, n_NFproposal_batch_size=n_NFproposal_batch_size)
+        global_sampler = NFProposal(
+            model, n_NFproposal_batch_size=n_NFproposal_batch_size
+        )
         optimizer = Optimizer(model=model, learning_rate=learning_rate)
         logpdf = LogPDF(logpdf, n_dims=n_dims)
 
