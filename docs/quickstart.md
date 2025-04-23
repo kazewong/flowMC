@@ -162,10 +162,12 @@ resources = {
     "model": NormalizingFlow(model_parameters),
 }
 
-strategies = [
-    Strategy1(),
-    Strategy2(),
-]
+strategies = {
+    "Strategy 1": Strategy1(),
+    "Strategy 2": Strategy2(),
+}
+
+strategy_order = ["Strategy 1", "Strategy 2", "Strategy 1", ...]
 ```
 
 The reason for this separation is to allow users to compose different strategies together. For example, the user may want to update the parameters of a proposal kernel like MALA with the local information from a normalizing flow model. Instead of hard coding this functionality to associate with either the MALA kernel or the normalizing flow model, the current API allows the user to define a strategy that takes in both the MALA kernel and the normalizing flow model, and update the MALA kernel with the information from the normalizing flow model. This separate the concern of intermixing different components of the algorithm and make experimenting with new strategies more manageable.
