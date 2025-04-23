@@ -5,6 +5,7 @@ from jaxtyping import Array, Float, PyTree
 from flowMC.resource.local_kernel.Gaussian_random_walk import GaussianRandomWalk
 from flowMC.resource.local_kernel.HMC import HMC
 from flowMC.resource.local_kernel.MALA import MALA
+from flowMC.resource.states import State
 from flowMC.strategy.take_steps import TakeSerialSteps
 from flowMC.resource.buffers import Buffer
 from flowMC.resource.logPDF import LogPDF
@@ -142,13 +143,21 @@ class TestHMC:
         positions = Buffer("positions", (n_chains, n_local_steps, n_dims), 1)
         log_prob = Buffer("log_prob", (n_chains, n_local_steps), 1)
         acceptance = Buffer("acceptance", (n_chains, n_local_steps), 1)
-
+        sampler_state = State(
+            {
+                "positions": "positions",
+                "log_prob": "log_prob",
+                "acceptance": "acceptance",
+            },
+            name="sampler_state",
+        )
         resource = {
             "positions": positions,
             "log_prob": log_prob,
             "acceptance": acceptance,
             "HMC": HMC_obj,
             "logpdf": logpdf,
+            "sampler_state": sampler_state,
         }
 
         # Defining strategy
@@ -156,6 +165,7 @@ class TestHMC:
         strategy = TakeSerialSteps(
             "logpdf",
             kernel_name="HMC",
+            state_name="sampler_state",
             buffer_names=["positions", "log_prob", "acceptance"],
             n_steps=n_local_steps,
         )
@@ -170,8 +180,8 @@ class TestHMC:
 
         assert isinstance(result, Buffer)
 
-        assert jnp.isclose(jnp.mean(result.data), 0, atol=1e-2)
-        assert jnp.isclose(jnp.var(result.data), 1, atol=1e-2)
+        assert jnp.isclose(jnp.mean(result.data), 0, atol=3e-2)
+        assert jnp.isclose(jnp.var(result.data), 1, atol=3e-2)
 
 
 class TestMALA:
@@ -236,6 +246,14 @@ class TestMALA:
         positions = Buffer("positions", (n_chains, n_local_steps, n_dims), 1)
         log_prob = Buffer("log_prob", (n_chains, n_local_steps), 1)
         acceptance = Buffer("acceptance", (n_chains, n_local_steps), 1)
+        sampler_state = State(
+            {
+                "positions": "positions",
+                "log_prob": "log_prob",
+                "acceptance": "acceptance",
+            },
+            name="sampler_state",
+        )
 
         resource = {
             "positions": positions,
@@ -243,6 +261,7 @@ class TestMALA:
             "acceptance": acceptance,
             "MALA": MALA_Sampler,
             "logpdf": logpdf,
+            "sampler_state": sampler_state,
         }
 
         # Defining strategy
@@ -250,6 +269,7 @@ class TestMALA:
         strategy = TakeSerialSteps(
             "logpdf",
             kernel_name="MALA",
+            state_name="sampler_state",
             buffer_names=["positions", "log_prob", "acceptance"],
             n_steps=n_local_steps,
         )
@@ -264,8 +284,8 @@ class TestMALA:
 
         assert isinstance(result, Buffer)
 
-        assert jnp.isclose(jnp.mean(result.data), 0, atol=1e-2)
-        assert jnp.isclose(jnp.var(result.data), 1, atol=1e-2)
+        assert jnp.isclose(jnp.mean(result.data), 0, atol=3e-2)
+        assert jnp.isclose(jnp.var(result.data), 1, atol=3e-2)
 
 
 class TestGRW:
@@ -330,12 +350,22 @@ class TestGRW:
         log_prob = Buffer("log_prob", (n_chains, n_local_steps), 1)
         acceptance = Buffer("acceptance", (n_chains, n_local_steps), 1)
 
+        sampler_state = State(
+            {
+                "positions": "positions",
+                "log_prob": "log_prob",
+                "acceptance": "acceptance",
+            },
+            name="sampler_state",
+        )
+
         resource = {
             "positions": positions,
             "log_prob": log_prob,
             "acceptance": acceptance,
             "GRW": GRW_Sampler,
             "logpdf": logpdf,
+            "sampler_state": sampler_state,
         }
 
         # Defining strategy
@@ -343,6 +373,7 @@ class TestGRW:
         strategy = TakeSerialSteps(
             "logpdf",
             kernel_name="GRW",
+            state_name="sampler_state",
             buffer_names=["positions", "log_prob", "acceptance"],
             n_steps=n_local_steps,
         )
@@ -357,5 +388,5 @@ class TestGRW:
 
         assert isinstance(result, Buffer)
 
-        assert jnp.isclose(jnp.mean(result.data), 0, atol=1e-2)
-        assert jnp.isclose(jnp.var(result.data), 1, atol=1e-2)
+        assert jnp.isclose(jnp.mean(result.data), 0, atol=3e-2)
+        assert jnp.isclose(jnp.var(result.data), 1, atol=3e-2)

@@ -20,7 +20,11 @@ class HMC(ProposalBase):
 
     condition_matrix: Float[Array, " n_dim n_dim"]
     step_size: Float
-    n_leapfrog: Int
+    leapfrog_coefs: Float[Array, " n_leapfrog n_dim"]
+
+    @property
+    def n_leapfrog(self) -> Int:
+        return self.leapfrog_coefs.shape[0] - 2
 
     def __repr__(self):
         return (
@@ -39,9 +43,8 @@ class HMC(ProposalBase):
     ):
         self.condition_matrix = condition_matrix
         self.step_size = step_size
-        self.n_leapfrog = n_leapfrog
 
-        coefs = jnp.ones((self.n_leapfrog + 2, 2))
+        coefs = jnp.ones((n_leapfrog + 2, 2))
         coefs = coefs.at[0].set(jnp.array([0, 0.5]))
         coefs = coefs.at[-1].set(jnp.array([1, 0.5]))
         self.leapfrog_coefs = coefs

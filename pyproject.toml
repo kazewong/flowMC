@@ -1,26 +1,33 @@
 [project]
 name = "flowMC"
-version = "0.4.2"
+version = "0.4.4"
 description = "Normalizing flow exhanced sampler in jax"
 authors = [
     { name = "Kaze Wong", email = "kazewong.physics@gmail.com"},
     { name = "Marylou Gabrié"},
     { name = "Dan Foreman-Mackey"}
 ]
+
+classifiers = [
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "License :: OSI Approved :: MIT License",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+]
+
 readme = "README.md"
 requires-python = ">=3.11"
 keywords = ["sampling", "inference", "machine learning", "normalizing", "autodiff", "jax"]
 dependencies = [
     "chex>=0.1.87",
-    "coveralls>=4.0.1",
     "equinox>=0.11.9",
-    "jax[cuda12]==0.5.0",
+    "jax[cpu]>=0.5.0",
     "jaxtyping>=0.2.36",
     "optax>=0.2.4",
-    "pre-commit==4.0.1",
-    "pyright==1.1.389",
-    "pytest==8.3.3",
-    "ruff==0.8.0",
     "scikit-learn>=1.6.0",
     "tqdm>=4.67.1",
 ]
@@ -43,6 +50,17 @@ docs = [
 visualize = [
     "arviz>=0.21.0",
     "corner>=2.2.3",
+    "matplotlib>=3.9.3",
+]
+cuda = [
+    "jax[cuda12]>=0.5.0",
+]
+codeqa = [
+    "coveralls>=4.0.1",
+    "pre-commit>=4.0.1",
+    "pyright>=1.1.389",
+    "pytest>=8.3.3",
+    "ruff>=0.8.0",
 ]
 
 [dependency-groups]
