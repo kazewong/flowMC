@@ -98,13 +98,16 @@ class AdamOptimization(Strategy):
             final_log_prob: Float[Array, " n_chain"]
                 Final log-probabilities of the optimized positions.
         """
-        grad_fn = jax.jit(jax.grad(objective))
+        data_dict = data  # prevent shadowing inside the scan
+        grad_fn = jax.jit(
+            jax.grad(objective, argnums=0)
+        )  # differentiate w.r.t. params only
 
-        def _kernel(carry, data):
+        def _kernel(carry, _step):
             key, params, opt_state = carry
 
             key, subkey = jax.random.split(key)
-            grad = grad_fn(params, data) * (
+            grad = grad_fn(params, data_dict) * (
                 1 + jax.random.normal(subkey) * self.noise_level
             )
             updates, opt_state = self.solver.update(grad, opt_state, params)
