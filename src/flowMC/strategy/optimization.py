@@ -92,7 +92,9 @@ class AdamOptimization(Strategy):
             key, params, opt_state = carry
 
             key, subkey = jax.random.split(key)
-            grad = grad_fn(params, data) * (1 + jax.random.normal(subkey) * self.noise_level)
+            grad = grad_fn(params, data) * (
+                1 + jax.random.normal(subkey) * self.noise_level
+            )
             updates, opt_state = self.solver.update(grad, opt_state, params)
             params = optax.apply_updates(params, updates)
             params = optax.projections.projection_box(
