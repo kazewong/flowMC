@@ -64,7 +64,7 @@ class TestOptimizationStrategies:
         def loss_fn(params: Float[Array, " n_dim"]) -> Float:
             return -log_posterior(params, {"data": jnp.arange(self.n_dim)})
 
-        rng_key, optimized_position = self.strategy.optimize(
+        rng_key, optimized_position, _ = self.strategy.optimize(
             key, loss_fn, initial_position, {"data": jnp.arange(self.n_dim)}
         )
 
