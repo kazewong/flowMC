@@ -61,10 +61,10 @@ class TestOptimizationStrategies:
             jax.random.normal(subkey, shape=(self.n_chains, self.n_dim)) * 1 + 10
         )
 
-        def loss_fn(params: Float[Array, " n_dim"]) -> Float:
+        def loss_fn(params: Float[Array, " n_dim"], data: dict = {}) -> Float:
             return -log_posterior(params, {"data": jnp.arange(self.n_dim)})
 
-        rng_key, optimized_position, final_log_prob = self.strategy.optimize(
+        _, optimized_position, final_log_prob = self.strategy.optimize(
             key, loss_fn, initial_position, {"data": jnp.arange(self.n_dim)}
         )
 

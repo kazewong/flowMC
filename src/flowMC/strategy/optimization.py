@@ -62,7 +62,7 @@ class AdamOptimization(Strategy):
         dict[str, Resource],
         Float[Array, " n_chains n_dim"],
     ]:
-        def loss_fn(params: Float[Array, " n_dim"]) -> Float:
+        def loss_fn(params: Float[Array, " n_dim"], data: dict) -> Float:
             return -self.logpdf(params, data)
 
         rng_key, optimized_positions, _ = self.optimize(
