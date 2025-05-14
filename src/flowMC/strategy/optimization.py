@@ -63,7 +63,7 @@ class AdamOptimization(Strategy):
         def loss_fn(params: Float[Array, " n_dim"]) -> Float:
             return -self.logpdf(params, data)
 
-        rng_key, optimized_positions = self.optimize(
+        rng_key, optimized_positions, _ = self.optimize(
             rng_key, loss_fn, initial_position, data
         )
 
