@@ -52,7 +52,9 @@ class AdamOptimization(Strategy):
 
         # Validate bounds shape
         if bounds.ndim != 2 or bounds.shape[1] != 2:
-            raise ValueError(f"bounds must have shape (n_dim, 2) or (1, 2), got {bounds.shape}")
+            raise ValueError(
+                f"bounds must have shape (n_dim, 2) or (1, 2), got {bounds.shape}"
+            )
         # If bounds is (1, 2), it will be broadcast to all dimensions. If not, check compatibility.
         # Try to infer n_dim from logpdf signature or initial_position, but here we can't, so warn in runtime.
 
