@@ -85,6 +85,16 @@ class AdamOptimization(Strategy):
                 Objective function to optimize.
             initial_position: Float[Array, " n_chain n_dim"]
                 Initial positions for the optimization.
+            data: dict
+                Data to pass to the objective function.
+
+        Returns:
+            rng_key: PRNGKeyArray
+                Updated random key.
+            optimized_positions: Float[Array, " n_chain n_dim"]
+                Optimized positions.
+            final_log_prob: Float[Array, " n_chain"]
+                Final log-probabilities of the optimized positions.
         """
         grad_fn = jax.jit(jax.grad(objective))
 
