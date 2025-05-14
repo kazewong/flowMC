@@ -20,6 +20,8 @@ class AdamOptimization(Strategy):
             Learning rate for the optimization.
         noise_level: float = 10
             Variance of the noise added to the gradients.
+        bounds: Float[Array, " n_dim 2"] = jnp.array([[-jnp.inf, jnp.inf]])
+            Bounds for the optimization. The optimization will be projected to these bounds.
     """
 
     logpdf: Callable[[Float[Array, " n_dim"], dict], Float]
