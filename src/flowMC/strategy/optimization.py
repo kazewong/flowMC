@@ -22,6 +22,9 @@ class AdamOptimization(Strategy):
             Variance of the noise added to the gradients.
         bounds: Float[Array, " n_dim 2"] = jnp.array([[-jnp.inf, jnp.inf]])
             Bounds for the optimization. The optimization will be projected to these bounds.
+            If bounds has shape (1, 2), it will be broadcast to all dimensions. For n_dim > 1,
+            passing a (1, 2) array applies the same bound to every dimension. To specify different
+            bounds per dimension, provide an array of shape (n_dim, 2).
     """
 
     logpdf: Callable[[Float[Array, " n_dim"], dict], Float]
@@ -47,6 +50,12 @@ class AdamOptimization(Strategy):
         self.noise_level = noise_level
         self.bounds = bounds
 
+        # Validate bounds shape
+        if bounds.ndim != 2 or bounds.shape[1] != 2:
+            raise ValueError(f"bounds must have shape (n_dim, 2) or (1, 2), got {bounds.shape}")
+        # If bounds is (1, 2), it will be broadcast to all dimensions. If not, check compatibility.
+        # Try to infer n_dim from logpdf signature or initial_position, but here we can't, so warn in runtime.
+
         self.solver = optax.chain(
             optax.adam(learning_rate=self.learning_rate),
         )
@@ -60,7 +69,7 @@ class AdamOptimization(Strategy):
     ) -> tuple[
         PRNGKeyArray,
         dict[str, Resource],
-        Float[Array, " n_chains n_dim"],
+        Float[Array, " n_chain n_dim"],
     ]:
         def loss_fn(params: Float[Array, " n_dim"], data: dict) -> Float:
             return -self.logpdf(params, data)
@@ -78,6 +87,14 @@ class AdamOptimization(Strategy):
         initial_position: Float[Array, " n_chain n_dim"],
         data: dict,
     ):
+        # Validate bounds shape against n_dim
+        n_dim = initial_position.shape[-1]
+        if not (self.bounds.shape[0] == 1 or self.bounds.shape[0] == n_dim):
+            raise ValueError(
+                f"bounds shape {self.bounds.shape} is incompatible with n_dim={n_dim}. "
+                "Provide bounds of shape (1, 2) for broadcasting or (n_dim, 2) for per-dimension bounds."
+            )
+
         """Optimization kernel. This can be used independently of the __call__ method.
 
         Args:
