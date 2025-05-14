@@ -128,4 +128,4 @@ class AdamOptimization(Strategy):
         if jnp.isinf(final_log_prob).any() or jnp.isnan(final_log_prob).any():
             print("Warning: Optimization accessed infinite or NaN log-probabilities.")
 
-        return rng_key, optimized_positions
+        return rng_key, optimized_positions, final_log_prob
