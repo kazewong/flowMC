@@ -26,7 +26,7 @@ class AdamOptimization(Strategy):
     n_steps: int = 100
     learning_rate: float = 1e-2
     noise_level: float = 10
-    bounds: Float[Array, "n_dim 2"] = jnp.array([[-jnp.inf, jnp.inf]])
+    bounds: Float[Array, " n_dim 2"] = jnp.array([[-jnp.inf, jnp.inf]])
 
     def __repr__(self):
         return "AdamOptimization"
@@ -37,7 +37,7 @@ class AdamOptimization(Strategy):
         n_steps: int = 100,
         learning_rate: float = 1e-2,
         noise_level: float = 10,
-        bounds: Float[Array, "n_dim 2"] = jnp.array([[-jnp.inf, jnp.inf]]),
+        bounds: Float[Array, " n_dim 2"] = jnp.array([[-jnp.inf, jnp.inf]]),
     ):
         self.logpdf = logpdf
         self.n_steps = n_steps
@@ -58,7 +58,7 @@ class AdamOptimization(Strategy):
     ) -> tuple[
         PRNGKeyArray,
         dict[str, Resource],
-        Float[Array, "n_chains n_dim"],
+        Float[Array, " n_chains n_dim"],
     ]:
         def loss_fn(params: Float[Array, " n_dim"]) -> Float:
             return -self.logpdf(params, data)
