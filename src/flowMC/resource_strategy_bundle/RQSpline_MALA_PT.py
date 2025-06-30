@@ -48,6 +48,7 @@ class RQSpline_MALA_PT_Bundle(ResourceStrategyBundle):
         n_production_loops: int,
         n_epochs: int,
         mala_step_size: float = 1e-1,
+        chain_batch_size: int = 0,
         rq_spline_hidden_units: list[int] = [32, 32],
         rq_spline_n_bins: int = 8,
         rq_spline_n_layers: int = 4,
@@ -165,6 +166,7 @@ class RQSpline_MALA_PT_Bundle(ResourceStrategyBundle):
             ["target_positions", "target_log_prob", "target_local_accs"],
             n_local_steps,
             thinning=local_thinning,
+            chain_batch_size=chain_batch_size,
             verbose=verbose,
         )
 
@@ -175,6 +177,7 @@ class RQSpline_MALA_PT_Bundle(ResourceStrategyBundle):
             ["target_positions", "target_log_prob", "target_global_accs"],
             n_global_steps,
             thinning=global_thinning,
+            chain_batch_size=chain_batch_size,
             verbose=verbose,
         )
 
