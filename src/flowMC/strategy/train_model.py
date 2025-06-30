@@ -69,7 +69,7 @@ class TrainModel(Strategy):
             jnp.isfinite(data_resource.data).all(axis=-1)
         ].reshape(n_chains, -1, n_dims)
         training_data = training_data[:, -self.history_window :].reshape(-1, n_dims)
-        subkey, rng_key = jax.random.split(rng_key)
+        rng_key, subkey = jax.random.split(rng_key)
         training_data = training_data[
             jax.random.choice(
                 subkey,
