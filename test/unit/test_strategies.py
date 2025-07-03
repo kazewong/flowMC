@@ -157,6 +157,31 @@ class TestLocalStep:
             initial_position=positions,
             data={"data": jnp.arange(self.n_dims)},
         )
+        
+    def test_take_local_step_chain_batch_size(self):
+        # Use a chain_batch_size smaller than the number of chains to trigger batching logic
+        chain_batch_size = 2
+        strategy = TakeSerialSteps(
+            "logpdf",
+            "MALA",
+            "sampler_state",
+            ["test_position", "test_log_prob", "test_acceptance"],
+            self.n_batch,
+            chain_batch_size=chain_batch_size,
+        )
+        key = jax.random.PRNGKey(42)
+        positions = self.test_position.data[:, 0]
+        # Run the strategy, which should use batching internally
+        _, _, final_positions = strategy(
+            rng_key=key,
+            resources=self.resources,
+            initial_position=positions,
+            data={"data": jnp.arange(self.n_dims)},
+        )
+        # Check that the output shape is correct
+        assert final_positions.shape == (positions.shape[0], positions.shape[1])
+        # Optionally, check that the buffer was updated for all chains
+        assert self.resources["test_position"].data.shape[0] == positions.shape[0]
 
 
 class TestNFStrategies:
