@@ -1,6 +1,7 @@
 import jax
 import jax.numpy as jnp
 from jaxtyping import Array, Float
+import pytest
 
 from flowMC.resource.nf_model.rqSpline import MaskedCouplingRQSpline
 from flowMC.resource.optimizer import Optimizer
@@ -77,23 +78,21 @@ class TestOptimizationStrategies:
         assert jnp.all(jnp.isfinite(final_log_prob))
 
 
+
 class TestLocalStep:
-    def test_take_local_step(self):
+    @pytest.fixture(autouse=True)
+    def setup(self):
         n_chains = 5
         n_steps = 25
         n_dims = 2
         n_batch = 5
-
         test_position = Buffer("test_position", (n_chains, n_steps, n_dims), 1)
         test_log_prob = Buffer("test_log_prob", (n_chains, n_steps), 1)
         test_acceptance = Buffer("test_acceptance", (n_chains, n_steps), 1)
-
         mala_kernel = MALA(1.0)
         grw_kernel = GaussianRandomWalk(1.0)
         hmc_kernel = HMC(jnp.eye(n_dims), 0.1, 10)
-
         logpdf = LogPDF(log_posterior, n_dims=n_dims)
-
         sampler_state = State(
             {
                 "test_position": "test_position",
@@ -102,8 +101,10 @@ class TestLocalStep:
             },
             name="sampler_state",
         )
-
-        resources = {
+        self.n_batch = n_batch
+        self.n_dims = n_dims
+        self.test_position = test_position
+        self.resources = {
             "test_position": test_position,
             "test_log_prob": test_log_prob,
             "test_acceptance": test_acceptance,
@@ -114,50 +115,47 @@ class TestLocalStep:
             "sampler_state": sampler_state,
         }
 
+    def test_take_local_step(self):
         strategy = TakeSerialSteps(
             "logpdf",
             "MALA",
             "sampler_state",
             ["test_position", "test_log_prob", "test_acceptance"],
-            n_batch,
+            self.n_batch,
         )
         key = jax.random.PRNGKey(42)
-        positions = test_position.data[:, 0]
-
-        for i in range(n_batch):
+        positions = self.test_position.data[:, 0]
+        for _ in range(self.n_batch):
             key, subkey1, subkey2 = jax.random.split(key, 3)
-            _, resources, positions = strategy(
+            _, self.resources, positions = strategy(
                 rng_key=subkey1,
-                resources=resources,
+                resources=self.resources,
                 initial_position=positions,
-                data={"data": jnp.arange(n_dims)},
+                data={"data": jnp.arange(self.n_dims)},
             )
-
         key, subkey1, subkey2 = jax.random.split(key, 3)
         strategy.set_current_position(0)
-        _, resources, positions = strategy(
+        _, self.resources, positions = strategy(
             rng_key=subkey1,
-            resources=resources,
+            resources=self.resources,
             initial_position=positions,
-            data={"data": jnp.arange(n_dims)},
+            data={"data": jnp.arange(self.n_dims)},
         )
-
         key, subkey1, subkey2 = jax.random.split(key, 3)
         strategy.kernel_name = "GRW"
         strategy.set_current_position(0)
-        _, resources, positions = strategy(
+        _, self.resources, positions = strategy(
             rng_key=subkey1,
-            resources=resources,
+            resources=self.resources,
             initial_position=positions,
-            data={"data": jnp.arange(n_dims)},
+            data={"data": jnp.arange(self.n_dims)},
         )
-
         strategy.kernel_name = "HMC"
-        _, resources, positions = strategy(
+        _, self.resources, positions = strategy(
             rng_key=subkey1,
-            resources=resources,
+            resources=self.resources,
             initial_position=positions,
-            data={"data": jnp.arange(n_dims)},
+            data={"data": jnp.arange(self.n_dims)},
         )
 
 
