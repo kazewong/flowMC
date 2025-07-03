@@ -78,7 +78,6 @@ class TestOptimizationStrategies:
         assert jnp.all(jnp.isfinite(final_log_prob))
 
 
-
 class TestLocalStep:
     @pytest.fixture(autouse=True)
     def setup(self):
@@ -157,7 +156,7 @@ class TestLocalStep:
             initial_position=positions,
             data={"data": jnp.arange(self.n_dims)},
         )
-        
+
     def test_take_local_step_chain_batch_size(self):
         # Use a chain_batch_size smaller than the number of chains to trigger batching logic
         chain_batch_size = 2
@@ -181,7 +180,8 @@ class TestLocalStep:
         # Check that the output shape is correct
         assert final_positions.shape == (positions.shape[0], positions.shape[1])
         # Optionally, check that the buffer was updated for all chains
-        assert self.resources["test_position"].data.shape[0] == positions.shape[0]
+        assert isinstance(test_position := self.resources["test_position"], Buffer)
+        assert test_position.data.shape[0] == positions.shape[0]
 
 
 class TestNFStrategies:
