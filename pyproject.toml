@@ -1,6 +1,6 @@
 [project]
 name = "flowMC"
-version = "0.4.4"
+version = "0.4.5"
 description = "Normalizing flow exhanced sampler in jax"
 authors = [
     { name = "Kaze Wong", email = "kazewong.physics@gmail.com"},
