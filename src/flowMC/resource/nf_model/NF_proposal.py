@@ -12,12 +12,6 @@ from flowMC.resource.local_kernel.base import ProposalBase
 from flowMC.resource.logPDF import LogPDF
 
 
-# from jax import debug
-# def cond_print(log_prob_proposal, log_prob_current, log_prob_nf_proposal, log_prob_nf_current, do_accept, position_proposal, position_current, tag=""):
-#     if (do_accept == True and ((log_prob_proposal - log_prob_current) < -5)):
-#         print(f"{tag} pro_prob: {log_prob_proposal}, cur_prob: {log_prob_current}, pro_nf_prob: {log_prob_nf_proposal}, cur_nf_prob: {log_prob_nf_current}, accept: {do_accept}, pro_pos: {position_proposal[0]}, cur_pos: {position_current[0]}")
-
-
 class NFProposal(ProposalBase):
     model: NFModel
     n_batch_size: int
@@ -113,8 +107,6 @@ class NFProposal(ProposalBase):
             log_prob_nf_current = jnp.where(
                 do_accept, log_prob_nf_proposal, log_prob_nf_initial
             )
-
-            # debug.callback(cond_print, log_prob_proposal, log_prob_initial, log_prob_nf_proposal, log_prob_nf_initial, do_accept, position_proposal, position_initial)
 
             return (rng_key, position_current, log_prob_current, log_prob_nf_current), (
                 position_current,

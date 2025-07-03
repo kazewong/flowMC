@@ -6,6 +6,7 @@ from flowMC.resource.logPDF import LogPDF
 from flowMC.strategy.base import Strategy
 from jaxtyping import Array, Float, PRNGKeyArray
 import jax
+import jax.numpy as jnp
 import equinox as eqx
 from abc import abstractmethod
 
@@ -18,7 +19,7 @@ class TakeSteps(Strategy):
     n_steps: int
     current_position: int
     thinning: int
-    chain_batch_size: int # If vmap over a large number of chains is memory bounded, this splits the computation
+    chain_batch_size: int  # If vmap over a large number of chains is memory bounded, this splits the computation
     verbose: bool
 
     def __init__(
@@ -112,19 +113,21 @@ class TakeSteps(Strategy):
                 initial_position_batch = initial_position[batch_slice]
                 positions_batch, log_probs_batch, do_accepts_batch = eqx.filter_jit(
                     eqx.filter_vmap(
-                        jax.tree_util.Partial(self.sample, kernel), in_axes=(0, 0, None, None)
+                        jax.tree_util.Partial(self.sample, kernel),
+                        in_axes=(0, 0, None, None),
                     )
                 )(subkey_batch, initial_position_batch, logpdf, data)
                 positions_list.append(positions_batch)
                 log_probs_list.append(log_probs_batch)
                 do_accepts_list.append(do_accepts_batch)
-            positions = jax.numpy.concatenate(positions_list, axis=0)
-            log_probs = jax.numpy.concatenate(log_probs_list, axis=0)
-            do_accepts = jax.numpy.concatenate(do_accepts_list, axis=0)
+            positions = jnp.concatenate(positions_list, axis=0)
+            log_probs = jnp.concatenate(log_probs_list, axis=0)
+            do_accepts = jnp.concatenate(do_accepts_list, axis=0)
         else:
             positions, log_probs, do_accepts = eqx.filter_jit(
                 eqx.filter_vmap(
-                    jax.tree_util.Partial(self.sample, kernel), in_axes=(0, 0, None, None)
+                    jax.tree_util.Partial(self.sample, kernel),
+                    in_axes=(0, 0, None, None),
                 )
             )(subkey, initial_position, logpdf, data)
 
