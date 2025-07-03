@@ -91,22 +91,21 @@ class NFProposal(ProposalBase):
         def body(carry, data):
             (
                 rng_key,
-                position_current,
-                log_prob_current,
-                log_prob_nf_current,
+                position_initial,
+                log_prob_initial,
+                log_prob_nf_initial,
             ) = carry
-            (position_proposed, log_prob_proposal, log_prob_nf_proposal) = data
-
+            (position_proposal, log_prob_proposal, log_prob_nf_proposal) = data
             rng_key, subkey = random.split(rng_key)
-            ratio = (log_prob_proposal - log_prob_current) - (
-                log_prob_nf_proposal - log_prob_nf_current
+            ratio = (log_prob_proposal - log_prob_initial) - (
+                log_prob_nf_proposal - log_prob_nf_initial
             )
             uniform_random = jnp.log(jax.random.uniform(subkey))
             do_accept = uniform_random < ratio
-            position_current = jnp.where(do_accept, position_proposed, position_current)
-            log_prob_current = jnp.where(do_accept, log_prob_proposal, log_prob_current)
+            position_current = jnp.where(do_accept, position_proposal, position_initial)
+            log_prob_current = jnp.where(do_accept, log_prob_proposal, log_prob_initial)
             log_prob_nf_current = jnp.where(
-                do_accept, log_prob_nf_proposal, log_prob_nf_current
+                do_accept, log_prob_nf_proposal, log_prob_nf_initial
             )
 
             return (rng_key, position_current, log_prob_current, log_prob_nf_current), (

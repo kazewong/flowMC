@@ -6,6 +6,7 @@ from flowMC.resource.logPDF import LogPDF
 from flowMC.strategy.base import Strategy
 from jaxtyping import Array, Float, PRNGKeyArray
 import jax
+import jax.numpy as jnp
 import equinox as eqx
 from abc import abstractmethod
 
@@ -18,6 +19,7 @@ class TakeSteps(Strategy):
     n_steps: int
     current_position: int
     thinning: int
+    chain_batch_size: int  # If vmap over a large number of chains is memory bounded, this splits the computation
     verbose: bool
 
     def __init__(
@@ -28,6 +30,7 @@ class TakeSteps(Strategy):
         buffer_names: list[str],
         n_steps: int,
         thinning: int = 1,
+        chain_batch_size: int = 0,
         verbose: bool = False,
     ):
         self.logpdf_name = logpdf_name
@@ -37,6 +40,7 @@ class TakeSteps(Strategy):
         self.n_steps = n_steps
         self.current_position = 0
         self.thinning = thinning
+        self.chain_batch_size = chain_batch_size
         self.verbose = verbose
 
     @abstractmethod
@@ -98,11 +102,34 @@ class TakeSteps(Strategy):
 
         # Filter jit will bypass the compilation of
         # the function if not clearing the cache
-        positions, log_probs, do_accepts = eqx.filter_jit(
-            eqx.filter_vmap(
-                jax.tree_util.Partial(self.sample, kernel), in_axes=(0, 0, None, None)
-            )
-        )(subkey, initial_position, logpdf, data)
+        n_chains = initial_position.shape[0]
+        if self.chain_batch_size > 1 and n_chains > self.chain_batch_size:
+            positions_list = []
+            log_probs_list = []
+            do_accepts_list = []
+            for i in range(0, n_chains, self.chain_batch_size):
+                batch_slice = slice(i, min(i + self.chain_batch_size, n_chains))
+                subkey_batch = subkey[batch_slice]
+                initial_position_batch = initial_position[batch_slice]
+                positions_batch, log_probs_batch, do_accepts_batch = eqx.filter_jit(
+                    eqx.filter_vmap(
+                        jax.tree_util.Partial(self.sample, kernel),
+                        in_axes=(0, 0, None, None),
+                    )
+                )(subkey_batch, initial_position_batch, logpdf, data)
+                positions_list.append(positions_batch)
+                log_probs_list.append(log_probs_batch)
+                do_accepts_list.append(do_accepts_batch)
+            positions = jnp.concatenate(positions_list, axis=0)
+            log_probs = jnp.concatenate(log_probs_list, axis=0)
+            do_accepts = jnp.concatenate(do_accepts_list, axis=0)
+        else:
+            positions, log_probs, do_accepts = eqx.filter_jit(
+                eqx.filter_vmap(
+                    jax.tree_util.Partial(self.sample, kernel),
+                    in_axes=(0, 0, None, None),
+                )
+            )(subkey, initial_position, logpdf, data)
 
         positions = positions[:, :: self.thinning]
         log_probs = log_probs[:, :: self.thinning]
