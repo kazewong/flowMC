@@ -1,8 +1,8 @@
 import jax
 import jax.numpy as jnp
 
-from flowMC.resource.nf_model.realNVP import AffineCoupling, RealNVP
-from flowMC.resource.nf_model.rqSpline import MaskedCouplingRQSpline
+from flowMC.resource.model.nf_model.realNVP import AffineCoupling, RealNVP
+from flowMC.resource.model.nf_model.rqSpline import MaskedCouplingRQSpline
 
 
 def test_affine_coupling_forward_and_inverse():
