@@ -10,7 +10,7 @@ This page contains information about the most important hyperparameters which af
 | [`rng_key_set`](#rng_key_set)     | [`n_chains`](#n_chains)                   | [`momenutum`](#momenutum)           |
 | [`local_sampler`](#local_sampler) | [`n_loop_training`](#n_loop_training)     | [`nf_variable`](#nf_variable)       |
 | [`data`](#data)                   | [`n_loop_production`](#n_loop_production) | [`local_autotune`](#local_autotune) |
-| [`nf_model`](#nf_model)           | [`n_local_steps`](#n_local_steps)         | [`train_thinning`](#train_thinning) |
+| [`model`](#model)           | [`n_local_steps`](#n_local_steps)         | [`train_thinning`](#train_thinning) |
 |                                   | [`n_global_steps`](#n_global_steps)       |                                     |
 |                                   | [`n_epochs`](#n_epochs)                   |                                     |
 |                                   | [`learning_rate`](#learning_rate)         |                                     |
@@ -41,7 +41,7 @@ If your likelihood does not take any data arguments, simply put it as None shoul
 ## [local_sampler](#local_sampler)
 Specific local sampler you want to use.
 
-## [nf_model](#nf_model)
+## [model](#model)
 Specific normalizing flow model you want to use.
 
 Optional arguments that you might want to tune

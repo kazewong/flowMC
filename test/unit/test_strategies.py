@@ -3,9 +3,9 @@ import jax.numpy as jnp
 from jaxtyping import Array, Float
 import pytest
 
-from flowMC.resource.nf_model.rqSpline import MaskedCouplingRQSpline
+from flowMC.resource.model.rqSpline import MaskedCouplingRQSpline
 from flowMC.resource.optimizer import Optimizer
-from flowMC.resource.nf_model.NF_proposal import NFProposal
+from flowMC.resource.model.NF_proposal import NFProposal
 from flowMC.resource.local_kernel.MALA import MALA
 from flowMC.resource.local_kernel.Gaussian_random_walk import GaussianRandomWalk
 from flowMC.resource.local_kernel.HMC import HMC

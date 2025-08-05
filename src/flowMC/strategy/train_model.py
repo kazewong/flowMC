@@ -1,7 +1,7 @@
 from flowMC.strategy.base import Strategy
 from flowMC.resource.base import Resource
 from flowMC.resource.buffers import Buffer
-from flowMC.resource.nf_model.base import NFModel
+from flowMC.resource.model.base import NFModel
 from flowMC.resource.optimizer import Optimizer
 from jaxtyping import Array, Float, PRNGKeyArray
 import jax
