@@ -7,7 +7,7 @@ from jaxtyping import Array, Float, Int, PRNGKeyArray, PyTree
 from typing import Callable
 import equinox as eqx
 
-from flowMC.resource.model.base import NFModel
+from flowMC.resource.nf_model.base import NFModel
 from flowMC.resource.local_kernel.base import ProposalBase
 from flowMC.resource.logPDF import LogPDF
 
