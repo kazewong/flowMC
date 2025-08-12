@@ -515,7 +515,7 @@ wheels = [
 
 [[package]]
 name = "flowmc"
-version = "0.4.3"
+version = "0.4.4"
 source = { editable = "." }
 dependencies = [
     { name = "chex" },
@@ -553,6 +553,11 @@ visualize = [
     { name = "matplotlib" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "ipykernel" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "arviz", marker = "extra == 'visualize'", specifier = ">=0.21.0" },
@@ -578,6 +583,12 @@ requires-dist = [
     { name = "ruff", marker = "extra == 'codeqa'", specifier = ">=0.8.0" },
     { name = "scikit-learn", specifier = ">=1.6.0" },
     { name = "tqdm", specifier = ">=4.67.1" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "flowmc", editable = "." },
+    { name = "ipykernel", specifier = ">=6.29.5" },
 ]
 
 [[package]]
