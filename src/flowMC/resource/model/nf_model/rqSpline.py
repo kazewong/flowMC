@@ -6,8 +6,10 @@ import jax
 import jax.numpy as jnp
 from jaxtyping import Array, Float, PRNGKeyArray
 
-from flowMC.resource.model.nf_model.base import Bijection, Distribution, NFModel
-from flowMC.resource.model.nf_model.common import (
+from flowMC.resource.model.nf_model.base import NFModel
+from flowMC.resource.model.common import (
+    Distribution,
+    Bijection,
     MLP,
     Gaussian,
     MaskedCouplingLayer,
