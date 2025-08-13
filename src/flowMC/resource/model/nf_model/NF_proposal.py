@@ -8,7 +8,7 @@ from typing import Callable
 import equinox as eqx
 
 from flowMC.resource.model.nf_model.base import NFModel
-from flowMC.resource.local_kernel.base import ProposalBase
+from flowMC.resource.kernel.base import ProposalBase
 from flowMC.resource.logPDF import LogPDF
 
 

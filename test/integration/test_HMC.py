@@ -3,7 +3,7 @@ import jax.numpy as jnp
 from jax.scipy.special import logsumexp
 from jaxtyping import Array, Float
 
-from flowMC.resource.local_kernel.HMC import HMC
+from flowMC.resource.kernel.HMC import HMC
 from flowMC.strategy.take_steps import TakeSerialSteps
 from flowMC.resource.buffers import Buffer
 from flowMC.resource.states import State

@@ -1,5 +1,5 @@
 from flowMC.resource.base import Resource
-from flowMC.resource.local_kernel.base import ProposalBase
+from flowMC.resource.kernel.base import ProposalBase
 from flowMC.resource.buffers import Buffer
 from flowMC.resource.states import State
 from flowMC.resource.logPDF import TemperedPDF

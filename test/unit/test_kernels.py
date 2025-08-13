@@ -2,9 +2,9 @@ import jax
 import jax.numpy as jnp
 from jaxtyping import Array, Float, PyTree
 
-from flowMC.resource.local_kernel.Gaussian_random_walk import GaussianRandomWalk
-from flowMC.resource.local_kernel.HMC import HMC
-from flowMC.resource.local_kernel.MALA import MALA
+from flowMC.resource.kernel.Gaussian_random_walk import GaussianRandomWalk
+from flowMC.resource.kernel.HMC import HMC
+from flowMC.resource.kernel.MALA import MALA
 from flowMC.resource.states import State
 from flowMC.strategy.take_steps import TakeSerialSteps
 from flowMC.resource.buffers import Buffer

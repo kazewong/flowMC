@@ -6,9 +6,9 @@ import pytest
 from flowMC.resource.model.nf_model.rqSpline import MaskedCouplingRQSpline
 from flowMC.resource.optimizer import Optimizer
 from flowMC.resource.model.nf_model.NF_proposal import NFProposal
-from flowMC.resource.local_kernel.MALA import MALA
-from flowMC.resource.local_kernel.Gaussian_random_walk import GaussianRandomWalk
-from flowMC.resource.local_kernel.HMC import HMC
+from flowMC.resource.kernel.MALA import MALA
+from flowMC.resource.kernel.Gaussian_random_walk import GaussianRandomWalk
+from flowMC.resource.kernel.HMC import HMC
 from flowMC.resource.buffers import Buffer
 from flowMC.resource.states import State
 from flowMC.resource.logPDF import LogPDF, TemperedPDF

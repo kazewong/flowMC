@@ -4,7 +4,7 @@ import jax
 import jax.numpy as jnp
 from jaxtyping import Array, Float, Int, PRNGKeyArray, PyTree
 
-from flowMC.resource.local_kernel.base import ProposalBase
+from flowMC.resource.kernel.base import ProposalBase
 from flowMC.resource.logPDF import LogPDF
 
 
