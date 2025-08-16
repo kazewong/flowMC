@@ -5,14 +5,40 @@ from flowMC.resource.base import Resource
 from typing_extensions import Self
 import jax.numpy as jnp
 import jax
+from diffrax import diffeqsolve, ODETerm, Dopri5
 
 class Solver:
     pass
     
+class Scheduler:
+    
+    def __call__(self, t: Float) -> tuple[Float, Float, Float, Float]:
+        """Return the parameters of the scheduler at time t."""
+        raise NotImplementedError
+        
+class CondOTScheduler(Scheduler):
+    """Conditional Optimal Transport Scheduler."""
+        
+    def __call__(self, t: Float) -> tuple[Float, Float, Float, Float]:
+        """Return the parameters of the scheduler at time t."""
+        # Implement the logic to compute alpha_t, d_alpha_t, sigma_t, d_sigma_t
+        return t, 1., 1. - t, -1.
+    
 class Path:
-    pass
+    
+    scheduler: Scheduler
+    
+    def sample(self, x0: Float, x1: Float, t:Float) -> Float:
+        """Sample a point along the path between x0 and x1 at time t."""
+        alpha_t, d_alpha_t, sigma_t, d_sigma_t = self.scheduler(t)
+        x_t = sigma_t * x0 + alpha_t * x1
+        dx_t = d_sigma_t * x0 + d_alpha_t * x1
+        return x_t, dx_t
     
 class FlowMatchingModel(eqx.Module, Resource):
+    
+    solver: Solver
+    path: Path
     
     def __init__(self, solver: Solver, path: Path):
         self.solver = solver
