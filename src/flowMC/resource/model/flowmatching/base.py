@@ -10,7 +10,7 @@ import jax
 from diffrax import diffeqsolve, ODETerm, Dopri5, AbstractSolver
 from tqdm import trange, tqdm
 
-class Solver:
+class Solver(eqx.Module):
 
     model: MLP # Shape should be [input_dim + t_dim, hiddens, output_dim]
     method: AbstractSolver
