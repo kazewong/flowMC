@@ -7,7 +7,7 @@ from flowMC.resource.model.common import MLP
 from typing_extensions import Self
 import jax.numpy as jnp
 import jax
-from jax.scipy.stats.norm import logpdf
+from jax.scipy.stats.multivariate_normal import logpdf
 from diffrax import diffeqsolve, ODETerm, Dopri5, AbstractSolver
 from tqdm import trange, tqdm
 
@@ -75,8 +75,8 @@ class Solver(eqx.Module):
             )
             return sol.ys
         
-        x0, log_p = eqx.filter_vmap(solve_ode, in_axes=(0, None))(x1, dt)
-        return logpdf(x1, loc=0., scale=1.) + log_p
+        x0, log_p = solve_ode(x1, dt)
+        return logpdf(x1, mean=self.model.n_output * jnp.zeros(self.model.n_output), cov=jnp.eye(self.model.n_output)) + log_p
 
 class Scheduler:
 
