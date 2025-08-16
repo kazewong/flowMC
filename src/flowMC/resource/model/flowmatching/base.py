@@ -87,9 +87,9 @@ class FlowMatchingModel(eqx.Module, Resource):
         self.solver = solver
         self.path = path
 
-    def sample(self, rng_key: PRNGKeyArray, num_samples: int) -> Float[Array, " n_dim"]:
+    def sample(self, rng_key: PRNGKeyArray, num_samples: int, dt: Float = 1e-1) -> Float[Array, " n_dim"]:
         rng_key, subkey = jax.random.split(rng_key)
-        samples = self.solver.sample(subkey, num_samples)
+        samples = self.solver.sample(subkey, num_samples, dt=dt)
         return samples
 
     def log_prob(self, x: Float[Array, " n_dim"]) -> Float:
