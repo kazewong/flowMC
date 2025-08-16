@@ -7,6 +7,7 @@ from flowMC.resource.model.common import MLP
 from typing_extensions import Self
 import jax.numpy as jnp
 import jax
+from jax.scipy.stats.norm import logpdf
 from diffrax import diffeqsolve, ODETerm, Dopri5, AbstractSolver
 from tqdm import trange, tqdm
 
@@ -20,35 +21,62 @@ class Solver(eqx.Module):
         self.method = Dopri5()
 
     def sample(self, rng_key: PRNGKeyArray, n_samples: int, dt: Float = 1e-1) -> Float[Array, "n_samples n_dim"]:
-        """Sample points from the solver."""
-        term = ODETerm(self.model_wrapper)
+        """Sample points from the solver.
+        This sovles the ODE forward, i.e. from the prior to the posterior.
+        """
+
+        def model_wrapper(t: Float, x: Float[Array, "n_dims"], args: PyTree) -> Float[Array, "n_dim"]:
+            """Wrapper for the model to be used in the ODE solver."""
+            t = jnp.expand_dims(t, axis=-1)
+            x = jnp.concatenate([x, t], axis=-1)
+            return self.model(x)
+
+        def solve_ode(y0: Float[Array, " n_dims"], dt: Float = 1e-1) -> Float[Array, " n_dims"]:
+            """Solve the ODE with initial condition y0."""
+            term = ODETerm(model_wrapper)
+            sol = diffeqsolve(
+                term,
+                self.method,
+                t0=0.0,
+                t1=1.0,
+                dt0=dt,
+                y0=y0,
+            )
+            return sol.ys[-1] # type: ignore
+                    
         x0 = jax.random.normal(rng_key, (n_samples, self.model.n_input-1)) 
-        sols = eqx.filter_vmap(self.solve_ode, in_axes=(0, None))(x0, dt)
+        sols = eqx.filter_vmap(solve_ode, in_axes=(0, None))(x0, dt)
         return sols
         
 
-    def log_prob():
-        pass
-    
-    def solve_ode(self, y0: Float[Array, " n_dims"], dt: Float = 1e-1) -> Float[Array, " n_dims"]:
-        """Solve the ODE with initial condition y0."""
-        term = ODETerm(self.model_wrapper)
-        sol = diffeqsolve(
-            term,
-            self.method,
-            t0=0.0,
-            t1=1.0,
-            dt0=dt,
-            y0=y0,
-        )
-        return sol.ys[-1] # type: ignore
-    
-    def model_wrapper(self, t: Float, x: Float[Array, "n_dims"], args: PyTree) -> Float[Array, "n_dim"]:
-        """Wrapper for the model to be used in the ODE solver."""
-        t = jnp.expand_dims(t, axis=-1)
-        x = jnp.concatenate([x, t], axis=-1)
-        return self.model(x)
-
+    def log_prob(self, x1: Float[Array, " n_dims"], dt: Float = 1e-1) -> Float:
+        """Compute the log probability of the initial condition x1.
+        This solves the ODE backward, i.e. from the posterior to the prior.
+        """
+        def model_wrapper(t: Float, x: Float[Array, "n_dims"], args: PyTree) -> tuple[Float[Array, "n_dim"], Float[Array, "1"]]:
+            """Wrapper for the model to be used in the ODE solver."""
+            t = jnp.expand_dims(t, axis=-1)
+            x = jnp.concatenate([x[0], t], axis=-1)
+            y = self.model(x)
+            div = jax.jacrev(self.model, argnums=0)(x)[:, :-1]
+            return [y, jnp.trace(div)]
+            
+        def solve_ode(y0: Float[Array, " n_dims"], dt: Float = 1e-1) -> Float[Array, " n_dims"]:
+            """Solve the ODE with initial condition y0."""
+            term = ODETerm(model_wrapper)
+            y_init = jax.tree.map(jnp.asarray, [y0, 0.0])
+            sol = diffeqsolve(
+                term,
+                self.method,
+                t0=1.0,
+                t1=0.0,
+                dt0=-dt,
+                y0=y_init,
+            )
+            return sol.ys
+        
+        x0, log_p = eqx.filter_vmap(solve_ode, in_axes=(0, None))(x1, dt)
+        return logpdf(x1, loc=0., scale=1.) + log_p
 
 class Scheduler:
 
@@ -93,7 +121,7 @@ class FlowMatchingModel(eqx.Module, Resource):
         return samples
 
     def log_prob(self, x: Float[Array, " n_dim"]) -> Float:
-        raise NotImplementedError
+        return self.solver.log_prob(x)
 
     def save_model(self, path: str):
         eqx.tree_serialise_leaves(path + ".eqx", self)
