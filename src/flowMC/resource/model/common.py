@@ -6,6 +6,7 @@ import jax.numpy as jnp
 from jaxtyping import Array, Float, PRNGKeyArray
 from abc import abstractmethod
 
+
 class Bijection(eqx.Module):
     """Base class for bijective transformations.
 

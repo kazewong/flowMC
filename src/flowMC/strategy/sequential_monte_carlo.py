@@ -1,12 +1,11 @@
-from flowMC.strategy.base import Strategy
 from flowMC.resource.base import Resource
 from jaxtyping import Array, Float, PRNGKeyArray
-from typing import Callable
+
 
 class SequentialMonteCarlo(Resource):
     def __init__(self):
         raise NotImplementedError
-        
+
     def __call__(
         self,
         rng_key: PRNGKeyArray,
