@@ -5,6 +5,7 @@ import optax
 from flowMC.resource.base import Resource
 from flowMC.resource.model.common import MLP
 from typing_extensions import Self
+from typing import Optional
 import jax.numpy as jnp
 import jax
 from jax.scipy.stats.multivariate_normal import logpdf
@@ -110,18 +111,53 @@ class FlowMatchingModel(eqx.Module, Resource):
 
     solver: Solver
     path: Path
+    _data_mean: Float[Array, " n_dim"]
+    _data_cov: Float[Array, " n_dim n_dim"]
 
-    def __init__(self, solver: Solver, path: Path):
+    @property
+    def n_features(self):
+        return self.solver.model.n_input - 1
+
+    @property
+    def data_mean(self):
+        return jax.lax.stop_gradient(self._data_mean)
+
+    @property
+    def data_cov(self):
+        return jax.lax.stop_gradient(jnp.atleast_2d(self._data_cov))
+
+    def __init__(
+        self,
+        solver: Solver,
+        path: Path,
+        data_mean: Optional[Float[Array, " n_dim"]] = None,
+        data_cov: Optional[Float[Array, " n_dim n_dim"]] = None,
+    ):
         self.solver = solver
         self.path = path
+        n_features = self.n_features
+        if data_mean is not None:
+            self._data_mean = data_mean
+        else:
+            self._data_mean = jnp.zeros(n_features)
+
+        if data_cov is not None:
+            self._data_cov = data_cov
+        else:
+            self._data_cov = jnp.eye(n_features)
 
     def sample(self, rng_key: PRNGKeyArray, num_samples: int, dt: Float = 1e-1) -> Float[Array, " n_dim"]:
         rng_key, subkey = jax.random.split(rng_key)
         samples = self.solver.sample(subkey, num_samples, dt=dt)
+        std = jnp.sqrt(jnp.diag(self.data_cov))
+        samples = samples * std + self.data_mean
         return samples
 
     def log_prob(self, x: Float[Array, " n_dim"]) -> Float:
-        return self.solver.log_prob(x)
+        std = jnp.sqrt(jnp.diag(self.data_cov))
+        x_whitened = (x - self.data_mean) / std
+        log_det = -jnp.sum(jnp.log(std))
+        return self.solver.log_prob(x_whitened) + log_det
 
     def save_model(self, path: str):
         eqx.tree_serialise_leaves(path + ".eqx", self)
@@ -160,8 +196,9 @@ class FlowMatchingModel(eqx.Module, Resource):
         """Train for a single epoch."""
         value = 1e9
         model = self
-        train_ds_size = len(data)
+        train_ds_size = len(data[0])
         steps_per_epoch = train_ds_size // batch_size
+        std = jnp.sqrt(jnp.diag(self.data_cov))
         if steps_per_epoch > 0:
             perms = jax.random.permutation(rng, train_ds_size)
 
@@ -169,12 +206,14 @@ class FlowMatchingModel(eqx.Module, Resource):
             perms = perms.reshape((steps_per_epoch, batch_size))
             for perm in perms:
                 batch_x0, batch_x1, batch_t = data[0][perm, ...], data[1][perm, ...], data[2][perm, ...]
+                batch_x1 = (batch_x1 - self.data_mean) / std
                 batch_x_t, batch_dx_t = self.path.sample(batch_x0, batch_x1, batch_t)
                 value, model, state = model.train_step(
                     batch_x_t, batch_t, batch_dx_t, optim, state
                 )
         else:
-            x_t, dx_t = self.path.sample(data[0], data[1], data[2])
+            batch_x1 = (data[1] - self.data_mean) / std
+            x_t, dx_t = self.path.sample(data[0], batch_x1, data[2])
             value, model, state = model.train_step(
                 x_t, data[2], dx_t, optim, state
             )
@@ -214,8 +253,8 @@ class FlowMatchingModel(eqx.Module, Resource):
         best_model = model = self
         best_state = state
         best_loss = 1e9
-        # model = eqx.tree_at(lambda m: m._data_mean, model, jnp.mean(data, axis=0))
-        # model = eqx.tree_at(lambda m: m._data_cov, model, jnp.cov(data.T))
+        model = eqx.tree_at(lambda m: m._data_mean, model, jnp.mean(data[1], axis=0))
+        model = eqx.tree_at(lambda m: m._data_cov, model, jnp.cov(data[1].T))
         for epoch in pbar:
             # Use a separate PRNG key to permute image data during shuffling
             rng, input_rng = jax.random.split(rng)
