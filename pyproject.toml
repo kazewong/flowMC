@@ -24,6 +24,7 @@ requires-python = ">=3.11"
 keywords = ["sampling", "inference", "machine learning", "normalizing", "autodiff", "jax"]
 dependencies = [
     "chex>=0.1.87",
+    "diffrax>=0.7.0",
     "equinox>=0.11.9",
     "jax[cpu]>=0.5.0",
     "jaxtyping>=0.2.36",
@@ -55,18 +56,17 @@ visualize = [
 cuda = [
     "jax[cuda12]>=0.5.0",
 ]
-codeqa = [
-    "coveralls>=4.0.1",
-    "pre-commit>=4.0.1",
-    "pyright>=1.1.389",
-    "pytest>=8.3.3",
-    "ruff>=0.8.0",
-]
 
 [dependency-groups]
 dev = [
     "flowMC",
     "ipykernel>=6.29.5",
+    "coveralls>=4.0.1",
+    "pre-commit>=4.0.1",
+    "pyright>=1.1.389",
+    "pytest>=8.3.3",
+    "ruff>=0.8.0",
+    "ipython>=8.30.0",
 ]
 
 [tool.uv.sources]

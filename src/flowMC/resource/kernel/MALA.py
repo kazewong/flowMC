@@ -5,7 +5,7 @@ from jaxtyping import Array, Bool, Float, Int, PRNGKeyArray, PyTree
 from typing import Callable
 
 from flowMC.resource.logPDF import LogPDF
-from flowMC.resource.local_kernel.base import ProposalBase
+from flowMC.resource.kernel.base import ProposalBase
 
 
 class MALA(ProposalBase):

@@ -2,7 +2,7 @@ import jax
 import jax.numpy as jnp
 from flowMC.resource.buffers import Buffer
 from flowMC.resource.logPDF import LogPDF, Variable, TemperedPDF
-from flowMC.resource.local_kernel.MALA import MALA
+from flowMC.resource.kernel.MALA import MALA
 from flowMC.resource.states import State
 from flowMC.strategy.take_steps import TakeSerialSteps
 

@@ -1,11 +1,68 @@
-from typing import Callable, List, Tuple
+from typing import Callable, List, Tuple, Optional
 
 import equinox as eqx
 import jax
 import jax.numpy as jnp
 from jaxtyping import Array, Float, PRNGKeyArray
+from abc import abstractmethod
 
-from flowMC.resource.nf_model.base import Bijection, Distribution
+
+class Bijection(eqx.Module):
+    """Base class for bijective transformations.
+
+    This is an abstract template that should not be directly used.
+    """
+
+    @abstractmethod
+    def __init__(self):
+        raise NotImplementedError
+
+    def __call__(
+        self,
+        x: Float[Array, " n_dim"],
+        condition: Float[Array, " n_condition"],
+    ) -> tuple[Float[Array, " n_dim"], Float]:
+        return self.forward(x, condition)
+
+    @abstractmethod
+    def forward(
+        self,
+        x: Float[Array, " n_dim"],
+        condition: Float[Array, " n_condition"],
+    ) -> tuple[Float[Array, " n_dim"], Float]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def inverse(
+        self,
+        x: Float[Array, " n_dim"],
+        condition: Float[Array, " n_condition"],
+    ) -> tuple[Float[Array, " n_dim"], Float]:
+        raise NotImplementedError
+
+
+class Distribution(eqx.Module):
+    """Base class for probability distributions.
+
+    This is an abstract template that should not be directly used.
+    """
+
+    @abstractmethod
+    def __init__(self):
+        raise NotImplementedError
+
+    def __call__(self, x: Array, key: Optional[PRNGKeyArray] = None) -> Array:
+        return self.log_prob(x)
+
+    @abstractmethod
+    def log_prob(self, x: Array) -> Array:
+        raise NotImplementedError
+
+    @abstractmethod
+    def sample(
+        self, rng_key: PRNGKeyArray, n_samples: int
+    ) -> Float[Array, " n_samples n_features"]:
+        raise NotImplementedError
 
 
 class MLP(eqx.Module):

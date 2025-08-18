@@ -9,9 +9,9 @@ from flowMC.resource.base import Resource
 from flowMC.resource.buffers import Buffer
 from flowMC.resource.states import State
 from flowMC.resource.logPDF import LogPDF, TemperedPDF
-from flowMC.resource.local_kernel.MALA import MALA
-from flowMC.resource.nf_model.NF_proposal import NFProposal
-from flowMC.resource.nf_model.rqSpline import MaskedCouplingRQSpline
+from flowMC.resource.kernel.MALA import MALA
+from flowMC.resource.kernel.NF_proposal import NFProposal
+from flowMC.resource.model.nf_model.rqSpline import MaskedCouplingRQSpline
 from flowMC.resource.optimizer import Optimizer
 from flowMC.strategy.lambda_function import Lambda
 from flowMC.strategy.take_steps import TakeSerialSteps, TakeGroupSteps
