@@ -17,9 +17,9 @@ class Solver(eqx.Module):
     model: MLP  # Shape should be [input_dim + t_dim, hiddens, output_dim]
     method: AbstractSolver
 
-    def __init__(self, model: MLP, method: str = "dopri5"):
+    def __init__(self, model: MLP, method: AbstractSolver = Dopri5()):
         self.model = model
-        self.method = Dopri5()
+        self.method = method
 
     def sample(
         self, rng_key: PRNGKeyArray, n_samples: int, dt: Float = 1e-1
@@ -62,7 +62,7 @@ class Solver(eqx.Module):
 
         def model_wrapper(
             t: Float, x: Float[Array, " n_dims"], args: PyTree
-        ) -> list[Float[Array, " ,,,"]]:
+        ) -> list[Float[Array, " ..."]]:
             """Wrapper for the model to be used in the ODE solver.
 
             The output shape should be [n_dims, 1].
