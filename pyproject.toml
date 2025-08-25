@@ -31,6 +31,7 @@ dependencies = [
     "optax>=0.2.4",
     "scikit-learn>=1.6.0",
     "tqdm>=4.67.1",
+    "loguru>=0.7.0",
 ]
 license = { file = "LICENSE" }
 
