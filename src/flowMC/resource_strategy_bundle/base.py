@@ -1,7 +1,17 @@
+import enum
 from abc import ABC
 
 from flowMC.resource.base import Resource
 from flowMC.strategy.base import Strategy
+
+
+class Phase(enum.Enum):
+    """Enumeration for the different phases of the resource-strategy bundle."""
+
+    INITIALIZATION = "initialization"
+    INTERMEDIATE = "intermediate"
+    PRODUCTION = "production"
+    TRAINING = "training"
 
 
 class ResourceStrategyBundle(ABC):
@@ -14,4 +24,4 @@ class ResourceStrategyBundle(ABC):
 
     resources: dict[str, Resource]
     strategies: dict[str, Strategy]
-    strategy_order: list[str]
+    strategy_order: list[tuple[str, str]]
