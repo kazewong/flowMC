@@ -96,6 +96,14 @@ class Sampler:
         last_step = initial_position
         assert isinstance(self.strategy_order, list)
 
+        if not all(
+            isinstance(item, (tuple, list)) and len(item) == 2
+            for item in self.strategy_order
+        ):
+            raise TypeError(
+                "strategy_order must be a list of 2-tuples: (strategy_name, phase)."
+            )
+
         for strategy, _ in self.strategy_order:
             if strategy not in self.strategies:
                 raise ValueError(
