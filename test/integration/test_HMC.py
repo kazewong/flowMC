@@ -3,12 +3,12 @@ import jax.numpy as jnp
 from jax.scipy.special import logsumexp
 from jaxtyping import Array, Float
 
-from flowMC.resource.kernel.HMC import HMC
-from flowMC.strategy.take_steps import TakeSerialSteps
 from flowMC.resource.buffers import Buffer
-from flowMC.resource.states import State
+from flowMC.resource.kernel.HMC import HMC
 from flowMC.resource.logPDF import LogPDF
+from flowMC.resource.states import State
 from flowMC.Sampler import Sampler
+from flowMC.strategy.take_steps import TakeSerialSteps
 
 
 def dual_moon_pe(x: Float[Array, " n_dims"], data: dict):
@@ -82,7 +82,7 @@ nf_sampler = Sampler(
     rng_key=rng_key,
     resources=resource,
     strategies={"take_steps": strategy},
-    strategy_order=["take_steps"],
+    strategy_order=[("take_steps", "testing_phase")],
 )
 
 nf_sampler.sample(initial_position, data)

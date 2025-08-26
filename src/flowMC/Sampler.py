@@ -1,10 +1,12 @@
-import jax.numpy as jnp
-from jaxtyping import Array, Float, PRNGKeyArray
 from typing import Optional
 
-from flowMC.strategy.base import Strategy
+import jax.numpy as jnp
+import tqdm
+from jaxtyping import Array, Float, PRNGKeyArray
+
 from flowMC.resource.base import Resource
 from flowMC.resource_strategy_bundle.base import ResourceStrategyBundle
+from flowMC.strategy.base import Strategy
 
 
 class Sampler:
@@ -29,7 +31,7 @@ class Sampler:
     rng_key: PRNGKeyArray
     resources: dict[str, Resource]
     strategies: dict[str, Strategy]
-    strategy_order: Optional[list[str]]
+    strategy_order: Optional[list[tuple[str, str]]]
 
     # Logging hyperparameters
     verbose: bool = False
@@ -43,7 +45,7 @@ class Sampler:
         rng_key: PRNGKeyArray,
         resources: None | dict[str, Resource] = None,
         strategies: None | dict[str, Strategy] = None,
-        strategy_order: None | list[str] = None,
+        strategy_order: None | list[tuple[str, str]] = None,
         resource_strategy_bundles: None | ResourceStrategyBundle = None,
         **kwargs,
     ):
@@ -93,19 +95,27 @@ class Sampler:
         rng_key = self.rng_key
         last_step = initial_position
         assert isinstance(self.strategy_order, list)
-        for strategy in self.strategy_order:
+
+        for strategy, _ in self.strategy_order:
             if strategy not in self.strategies:
                 raise ValueError(
                     f"Invalid strategy name '{strategy}' provided. "
                     f"Available strategies are: {list(self.strategies.keys())}."
                 )
-            (
-                rng_key,
-                self.resources,
-                last_step,
-            ) = self.strategies[
-                strategy
-            ](rng_key, self.resources, last_step, data)
+
+        with tqdm.tqdm(
+            self.strategy_order,
+            total=len(self.strategy_order),
+        ) as strategy_order_bar:
+            for strategy, phase in strategy_order_bar:
+                strategy_order_bar.set_description(phase)
+                (
+                    rng_key,
+                    self.resources,
+                    last_step,
+                ) = self.strategies[
+                    strategy
+                ](rng_key, self.resources, last_step, data)
 
     # TODO: Implement quick access and summary functions that operates on buffer
 

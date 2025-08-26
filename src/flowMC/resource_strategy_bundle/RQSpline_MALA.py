@@ -1,22 +1,22 @@
 from typing import Callable
 
+import equinox as eqx
 import jax
 from jaxtyping import Array, Float, PRNGKeyArray
-import equinox as eqx
 
 from flowMC.resource.base import Resource
 from flowMC.resource.buffers import Buffer
-from flowMC.resource.states import State
-from flowMC.resource.logPDF import LogPDF
 from flowMC.resource.kernel.MALA import MALA
 from flowMC.resource.kernel.NF_proposal import NFProposal
+from flowMC.resource.logPDF import LogPDF
 from flowMC.resource.model.nf_model.rqSpline import MaskedCouplingRQSpline
 from flowMC.resource.optimizer import Optimizer
+from flowMC.resource.states import State
+from flowMC.resource_strategy_bundle.base import Phase, ResourceStrategyBundle
 from flowMC.strategy.lambda_function import Lambda
-from flowMC.strategy.take_steps import TakeSerialSteps, TakeGroupSteps
+from flowMC.strategy.take_steps import TakeGroupSteps, TakeSerialSteps
 from flowMC.strategy.train_model import TrainModel
 from flowMC.strategy.update_state import UpdateState
-from flowMC.resource_strategy_bundle.base import ResourceStrategyBundle
 
 
 class RQSpline_MALA_Bundle(ResourceStrategyBundle):
@@ -249,25 +249,28 @@ class RQSpline_MALA_Bundle(ResourceStrategyBundle):
         }
 
         training_phase = [
-            "local_stepper",
-            "update_global_step",
-            "model_trainer",
-            "update_model",
-            "global_stepper",
-            "update_local_step",
+            ("local_stepper", Phase.TRAINING.value),
+            ("update_global_step", Phase.TRAINING.value),
+            ("model_trainer", Phase.TRAINING.value),
+            ("update_model", Phase.TRAINING.value),
+            ("global_stepper", Phase.TRAINING.value),
+            ("update_local_step", Phase.TRAINING.value),
         ]
         production_phase = [
-            "local_stepper",
-            "update_global_step",
-            "global_stepper",
-            "update_local_step",
+            ("local_stepper", Phase.PRODUCTION.value),
+            ("update_global_step", Phase.PRODUCTION.value),
+            ("global_stepper", Phase.PRODUCTION.value),
+            ("update_local_step", Phase.PRODUCTION.value),
         ]
+
         strategy_order = []
+
         for _ in range(n_training_loops):
             strategy_order.extend(training_phase)
 
-        strategy_order.append("reset_steppers")
-        strategy_order.append("update_state")
+        strategy_order.append(("reset_steppers", Phase.INTERMEDIATE.value))
+        strategy_order.append(("update_state", Phase.INTERMEDIATE.value))
+
         for _ in range(n_production_loops):
             strategy_order.extend(production_phase)
 
