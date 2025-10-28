@@ -11,6 +11,9 @@
 <a href='https://coveralls.io/github/kazewong/flowMC?branch=main'><img src='https://img.shields.io/coverallsCoverage/github/kazewong/flowMC?style=flat-square' alt='Coverage Status' /></a>
 
 > [!WARNING]
+> As I have new priority in my life now, this code base is in very low maintanence mode. This means I am not actively developing the codebase, and only infrequently responds to the issue board. Small PRs that I can finish reviewing within say 15 minutes will still be looked at, but anything that changes more than 5-10 long files is unlikely to retain my attention. In the meantime, a group of friends of mine forked the repo here https://github.com/GW-JAX-Team/flowMC. I am not officially associated with them and have no idea on what their plan with the fork, but feel free to look over there to find if they have something you need.
+
+> [!WARNING]
 > Note that `flowMC` has not reached v1.0.0, meaning the API could subject to changes. In general, the higher level the API, the less likely it is going to change. However, intermediate level API such as the resource strategy interface could subject to major revision for performance concerns.
 
 ![flowMC_logo](./docs/logo_0810.png)
